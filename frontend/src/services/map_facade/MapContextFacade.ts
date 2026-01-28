@@ -22,13 +22,27 @@ import { OfflineOSMRenderer } from './adapters/OfflineOSMRenderer';
 
 // Попытка импортировать утилиту категорий — если модуль недоступен при сборке,
 // используем локальный fallback, который будет заменён реальной реализацией позже.
+import { getCategoryByKey as getCategoryByKeyOriginal, type MarkerCategory } from '../../constants/markerCategories';
+
 let getCategoryByKey: (key: string | undefined) => { id: string; color?: string; icon?: string } = (k) => ({ id: k || 'other', color: '#3B82F6', icon: 'map-pin' });
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mc = require('../../constants/markerCategories');
-  if (mc?.getCategoryByKey) getCategoryByKey = mc.getCategoryByKey;
-} catch (e) {
-  console.warn('[MapContextFacade] Failed to load markerCategories:', (e instanceof Error) ? e.message : String(e));
+
+// Используем статический импорт (ESM-compatible)
+if (getCategoryByKeyOriginal) {
+  getCategoryByKey = (key) => {
+    if (!key) {
+      return { id: 'other', color: '#3B82F6', icon: 'map-pin' };
+    }
+    const result = getCategoryByKeyOriginal(key);
+    if (result) {
+      // Преобразуем MarkerCategory в ожидаемый формат
+      return {
+        id: result.key,
+        color: result.color,
+        icon: result.iconName
+      };
+    }
+    return { id: key, color: '#3B82F6', icon: 'map-pin' };
+  };
 }
 
 const objectHasOwn = (obj: any, prop: PropertyKey) => (Object as any).hasOwn ? (Object as any).hasOwn(obj, prop) : Object.getOwnPropertyDescriptor(obj, prop) !== undefined;
@@ -676,29 +690,39 @@ export class MapContextFacade {
 
   private async initializeRenderer(containerId: string, cfg?: any): Promise<any> {
     try {
-      const ctx = this.activeContext;
-      const cachedMeta = this.rendererMeta[ctx];
-      if (cfg?.preserveState) {
-        const internalApi = (this as any).INTERNAL?.api;
-        // Сохраняем состояние только если контейнер тот же самый
-        if ((internalApi?.map || internalApi?.mapInstance) && internalApi?.containerId === containerId) {
-          return internalApi;
+        const ctx = this.activeContext;
+        const cachedMeta = this.rendererMeta[ctx];
+        if (cfg?.preserveState) {
+            const internalApi = (this as any).INTERNAL?.api;
+            if ((internalApi?.map || internalApi?.mapInstance) && internalApi?.containerId === containerId) {
+                return internalApi;
+            }
         }
-        // Если в пуле есть метаданные, но контейнер отличается — форсируем инициализацию заново
-        if (cachedMeta?.containerId && cachedMeta.containerId !== containerId) {
-          // noop, пойдём на init ниже
+        
+        const result = await this.currentRenderer?.init(containerId, cfg);
+        
+        // Сохраняем containerId в результат для последующей проверки
+        if (result) {
+            (result as any).containerId = containerId;
+            this.rendererMeta[ctx] = { containerId };
         }
-      }
-      const result = await this.currentRenderer?.init(containerId, cfg);
-      // Сохраняем containerId в результат для последующей проверки
-      if (result) {
-        (result as any).containerId = containerId;
-        this.rendererMeta[ctx] = { containerId };
-      }
-      return result;
+        
+        // КРИТИЧНО: Сохраняем карту в INTERNAL.api для mapRef
+        if (result && this.currentRenderer) {
+            (this as any).INTERNAL = (this as any).INTERNAL || {};
+            (this as any).INTERNAL.api = (this as any).INTERNAL.api || {};
+            // Пробуем разные пути к карте
+            if ((this.currentRenderer as any).map) {
+                (this as any).INTERNAL.api.map = (this.currentRenderer as any).map;
+            }
+            (this as any).INTERNAL.api.containerId = containerId;
+            console.log('[MapContextFacade] Saved map to INTERNAL.api:', !!(this as any).INTERNAL.api.map);
+        }
+        
+        return result;
     } catch (error_) {
-      console.debug('[MapContextFacade] renderer init failed:', error_);
-      return null;
+        console.debug('[MapContextFacade] renderer init failed:', error_);
+        return null;
     }
   }
 
@@ -765,11 +789,10 @@ export class MapContextFacade {
   private async awardXPForTrack(track: TrackedRoute, distance: number): Promise<void> {
     try {
       const userId = this.deps.userService?.getCurrentUser?.()?.id;
-      // lazy import helper to avoid circular deps
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { addXPForTrack } = require('../../utils/gamificationHelper');
-      if (addXPForTrack && userId) {
-        await addXPForTrack(track.id, { distance, isTracked: true, userId });
+      // Используем динамический import() вместо require() для ESM-совместимости
+      const module = await import('../../utils/gamificationHelper');
+      if (module.addXPForTrack && userId) {
+        await module.addXPForTrack(track.id, { distance, isTracked: true, userId });
       }
     } catch (error_) {
       console.warn('[MapContextFacade] Gamification error:', error_);

@@ -90,6 +90,7 @@ export class OSMMapRenderer implements IMapRenderer {
       }, 500);
 
       console.log('[OSMMapRenderer] Leaflet map initialized successfully');
+      return this.map;
     } catch (error) {
       console.error('[OSMMapRenderer] Failed to initialize Leaflet map:', error);
       throw error;

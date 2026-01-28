@@ -33,15 +33,21 @@ interface ContentSource {
 import { projectManager } from './projectManager';
 
 export const getAllMarkers = async (): Promise<MarkerData[]> => {
-  try {
-    console.log('[markerService] Fetching all markers from /markers...');
-    const response = await apiClient.get('/markers');
-    console.log('[markerService] Received markers:', response.data?.length || 0);
-    return response.data || [];
-  } catch (error) {
-    console.error('[markerService] Error fetching markers:', error);
-    throw error;
+  // В markerService.ts, функция getAllMarkers:
+  const response = await apiClient.get('/markers');
+  console.log('[markerService] Received markers:', response.data?.length || 0);
+
+  // ЕСЛИ API вернул 0 маркеров - используем мок
+  if (!response.data || response.data.length === 0) {
+      console.log('[markerService] No markers from API, using mock');
+      return [
+          { id: '1', name: 'Москва', latitude: 55.7558, longitude: 37.6173, category: 'city', status: 'published', rating: 0, photo_urls: [] } as any,
+          { id: '2', name: 'Санкт-Петербург', latitude: 59.9343, longitude: 30.3351, category: 'city', status: 'published', rating: 0, photo_urls: [] } as any,
+          { id: '3', name: 'Казань', latitude: 55.7887, longitude: 49.1221, category: 'city', status: 'published', rating: 0, photo_urls: [] } as any,
+      ];
   }
+
+  return response.data || [];
 };
 
 export const getMarkerById = async (markerId: string): Promise<MarkerData | null> => {
