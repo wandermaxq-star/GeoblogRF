@@ -18,6 +18,8 @@ if (typeof window !== 'undefined' && Leaflet) {
 // Также экспортируем Leaflet для использования через import
 export { Leaflet };
 
+export default Leaflet;
+
 // Исправляем проблему с иконками Leaflet
 if (Leaflet && Leaflet.Icon && Leaflet.Icon.Default) {
     delete (Leaflet.Icon.Default.prototype as any)._getIconUrl;

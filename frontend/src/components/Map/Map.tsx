@@ -1,6 +1,6 @@
 // КРИТИЧНО: Инициализируем Leaflet в window ПЕРЕД импортом любых модулей,
 // которые могут использовать window.L (mapFacade, projectManager, OSMMapRenderer)
-import '../utils/leafletInit';
+import '../../utils/leafletInit';
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import CircularProgressBar from '../ui/CircularProgressBar';
@@ -32,6 +32,7 @@ import { activityService } from '../../services/activityService';
 import { useRussiaRestrictions } from '../../hooks/useRussiaRestrictions';
 import { canCreateMarker } from '../../services/zoneService';
 import { useContentStore } from '../../stores/contentStore';
+import { useMapDisplayMode } from '../../hooks/useMapDisplayMode';
 import { FEATURES } from '../../config/features';
 import { getDistanceFromLatLonInKm } from '../../utils/russiaBounds';
 import { getMarkerIconPath, getCategoryColor, getFontAwesomeIconName } from '../../constants/markerCategories';
@@ -250,12 +251,64 @@ const Map: React.FC<MapProps> = ({
     }, [leftContent, portalEl]);
 
     // --- FACADE MAP TOP OFFSET ---
+    const mapDisplayMode = useMapDisplayMode();
+
+    // Динамическое управление видимостью и классом контейнера карты
+    useEffect(() => {
+        const mapContainer = document.querySelector('.leaflet-container') as HTMLElement | null;
+        const facadeMapRoot = document.querySelector('.facade-map-root') as HTMLElement | null;
+        
+        if (mapContainer) {
+            // Управляем видимостью на основе режима отображения
+            if (mapDisplayMode.shouldShowFullscreen) {
+                mapContainer.style.display = 'block';
+                mapContainer.style.visibility = 'visible';
+                mapContainer.style.pointerEvents = 'auto';
+            } else {
+                // Скрываем карту когда открыты только Posts + Activity
+                mapContainer.style.display = 'none';
+                mapContainer.style.visibility = 'hidden';
+                mapContainer.style.pointerEvents = 'none';
+            }
+        }
+        
+        // Обновляем CSS переменную для правильного позиционирования
+        const headerEl = document.querySelector('.page-header') || document.querySelector('header');
+        const headerHeight = headerEl ? (headerEl as HTMLElement).offsetHeight : 0;
+        document.documentElement.style.setProperty('--facade-map-top', `${headerHeight}px`);
+        
+        // Добавляем класс для стилизации в зависимости от режима
+        if (facadeMapRoot) {
+            facadeMapRoot.classList.remove('two-panel-mode', 'single-panel-mode', 'map-hidden');
+            if (!mapDisplayMode.shouldShowFullscreen) {
+                facadeMapRoot.classList.add('map-hidden');
+            } else if (mapDisplayMode.isTwoPanelMode) {
+                facadeMapRoot.classList.add('two-panel-mode');
+            } else {
+                facadeMapRoot.classList.add('single-panel-mode');
+            }
+        }
+        
+        // Инвалидируем размер карты при изменении режима
+        if (mapRef.current && mapDisplayMode.shouldShowFullscreen) {
+            setTimeout(() => {
+                try {
+                    mapRef.current?.invalidateSize();
+                } catch (e) {}
+            }, 100);
+        }
+    }, [mapDisplayMode.shouldShowFullscreen, mapDisplayMode.isTwoPanelMode, mapDisplayMode.isOnlyPostsAndActivity]);
+
     useEffect(() => {
         const setFacadeMapTop = () => {
             try {
                 const headerEl = document.querySelector('.page-header') || document.querySelector('header');
                 const h = headerEl ? (headerEl as HTMLElement).offsetHeight : 0;
-                document.documentElement.style.setProperty('--facade-map-top', `${h}px`);
+                
+                // Используем значение из хука режима отображения карты
+                const topValue = mapDisplayMode.shouldShowFullscreen ? `${h}px` : `${h}px`;
+                document.documentElement.style.setProperty('--facade-map-top', topValue);
+                
                 if (mapRef.current) {
                     setTimeout(() => {
                         try {
@@ -269,7 +322,7 @@ const Map: React.FC<MapProps> = ({
         setFacadeMapTop();
         window.addEventListener('resize', setFacadeMapTop);
         return () => window.removeEventListener('resize', setFacadeMapTop);
-    }, []);
+    }, [mapDisplayMode.shouldShowFullscreen]);
 
     // --- CENTER/ZOOM FROM PROPS (only if no saved state) ---
     useEffect(() => {

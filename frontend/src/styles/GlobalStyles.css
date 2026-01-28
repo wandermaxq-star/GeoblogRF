@@ -1122,3 +1122,51 @@ html, body, #root {
 .bg-gray-100 {
   background-color: #f0f0f0 !important;
 } 
+
+/* ======== MAP STYLES ======== */
+
+/* Глобальные стили для карты */
+.facade-map-root {
+  position: fixed !important;
+  top: var(--facade-map-top, 0px);
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: calc(100vh - var(--facade-map-top, 0px)) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  z-index: 0;
+  overflow: hidden !important;
+  pointer-events: auto;
+  transition: all 0.3s ease;
+}
+
+/* Двухоконный режим */
+.facade-map-root.two-panel-mode {
+  width: 100% !important;
+  height: calc(100vh - var(--facade-map-top, 0px)) !important;
+}
+
+.facade-map-root.two-panel-mode .leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Однооконный режим (полный экран) */
+.facade-map-root.single-panel-mode {
+  width: 100vw !important;
+  height: calc(100vh - var(--facade-map-top, 0px)) !important;
+}
+
+.facade-map-root.single-panel-mode .leaflet-container {
+  width: 100vw !important;
+  height: calc(100vh - var(--facade-map-top, 0px)) !important;
+}
+
+/* Режим когда карта скрыта (только Posts + Activity) */
+.facade-map-root.map-hidden {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+} 

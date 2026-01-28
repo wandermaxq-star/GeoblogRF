@@ -1,6 +1,12 @@
-import styled from 'styled-components';
+import styled, { css } from 'styled-components';
 
-export const MapContainer = styled.div`
+// Типы для пропсов
+interface MapContainerProps {
+  $isFullscreen?: boolean;
+  $isTwoPanel?: boolean;
+}
+
+export const MapContainer = styled.div<MapContainerProps>`
   /* Располагаем карту фиксированно под шапкой и растягиваем на весь экран */
   position: fixed !important;
   top: var(--facade-map-top, 0px);
@@ -13,13 +19,63 @@ export const MapContainer = styled.div`
   margin: 0 !important;
   padding: 0 !important;
   background: transparent !important;
-  z-index: 0; /* Карта на базовом уровне */
-  will-change: transform; /* Оптимизация для анимаций */
-  /* Карта должна получать события мыши */
+  z-index: 0;
+  will-change: transform;
   pointer-events: auto;
-  /* Игнорируем ограничения родительских контейнеров */
   max-width: none !important;
   overflow: visible !important;
+
+  /* Двухоконный режим - карта занимает всю ширину левой панели */
+  ${props => props.$isTwoPanel && css`
+    width: 100% !important;
+    height: calc(100vh - var(--facade-map-top, 0px)) !important;
+    right: auto !important;
+  `}
+
+  /* Полноэкранный режим (по умолчанию) */
+  ${props => props.$isFullscreen && css`
+    width: 100vw !important;
+    height: calc(100vh - var(--facade-map-top, 0px)) !important;
+  `}
+
+  /* Режим когда карта скрыта (только Posts + Activity) */
+  ${props => !props.$isFullscreen && css`
+    display: none !important;
+  `}
+`;
+
+// Глобальные стили для классов режимов карты
+export const MapContainerClasses = styled.div`
+  /* Класс для скрытия карты (только Posts + Activity) */
+  &.map-hidden {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  /* Двухоконный режим */
+  &.two-panel-mode {
+    width: 100% !important;
+    height: calc(100vh - var(--facade-map-top, 0px)) !important;
+    
+    /* Leaflet контейнер в двухоконном режиме */
+    .leaflet-container {
+      width: 100% !important;
+      height: 100% !important;
+    }
+  }
+
+  /* Однооконный режим (полный экран) */
+  &.single-panel-mode {
+    width: 100vw !important;
+    height: calc(100vh - var(--facade-map-top, 0px)) !important;
+    
+    /* Leaflet контейнер в полноэкранном режиме */
+    .leaflet-container {
+      width: 100vw !important;
+      height: calc(100vh - var(--facade-map-top, 0px)) !important;
+    }
+  }
 `;
 
 export const MapWrapper = styled.div.attrs(() => ({
