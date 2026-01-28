@@ -51,8 +51,8 @@ interface ContentState {
 
 export const useContentStore = create<ContentState>()(
   subscribeWithSelector((set, get) => ({
-    // Начальное состояние - при загрузке НЕ открываем панели автоматически
-    leftContent: null,
+    // Начальное состояние - карта открыта сразу для быстрой загрузки
+    leftContent: 'map',
     rightContent: null,
     isMobile: typeof window !== 'undefined' ? window.innerWidth < 768 : false,
 

@@ -1101,7 +1101,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
             }
 
             {/* Область карты */}
-            <MapContainer className="map-area">
+            <MapContainer className="facade-map-root map-area">
               {/* Кнопки управления по бокам карты - в однооконном режиме внутри MapContainer */}
               {!isTwoPanelMode && (
                 <MapActionButtons

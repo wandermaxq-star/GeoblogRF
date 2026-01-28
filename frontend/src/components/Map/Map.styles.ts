@@ -38,14 +38,6 @@ export const MapContainer = styled.div<MapContainerProps>`
     height: calc(100vh - var(--facade-map-top, 0px)) !important;
   `}
 
-  /* Режим когда карта скрыта (только Posts + Activity) */
-  ${props => !props.$isFullscreen && css`
-    display: none !important;
-  `}
-`;
-
-// Глобальные стили для классов режимов карты
-export const MapContainerClasses = styled.div`
   /* Класс для скрытия карты (только Posts + Activity) */
   &.map-hidden {
     display: none !important;
@@ -77,6 +69,9 @@ export const MapContainerClasses = styled.div`
     }
   }
 `;
+
+// MapContainerClasses больше не используется - объединён в MapContainer
+export const MapContainerClasses = styled.div``;
 
 export const MapWrapper = styled.div.attrs(() => ({
   // Убеждаемся, что элемент имеет правильные атрибуты
