@@ -248,3 +248,8 @@
 .settings-menu-btn:hover {
   background: rgba(0,0,0,0.03);
 }
+
+/* Иконки внутри кнопки настроек */
+.settings-menu-btn i {
+  margin-right: 8px;
+} 

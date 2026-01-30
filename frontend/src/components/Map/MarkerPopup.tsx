@@ -653,15 +653,15 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
                     >
                       {isOwner ? (
                         <button className="settings-menu-btn" onClick={e => { e.stopPropagation(); setSettingsOpen(false); setEditModalOpen(true); }}>
-                          <i className="fas fa-edit" style={{ marginRight: 8 }} /> Изменить
-                        </button>
+                          <i className="fas fa-edit" /> Изменить
+                        </button> 
                       ) : (
                         <button className="settings-menu-btn" onClick={e => { e.stopPropagation(); setSettingsOpen(false); setShowSuggestInfo(true); }}>
-                          <i className="fas fa-edit" style={{ marginRight: 8 }} /> Изменить
-                        </button>
+                          <i className="fas fa-edit" /> Изменить
+                        </button> 
                       )} 
                       <button className="settings-menu-btn" onClick={e => { e.stopPropagation(); setSettingsOpen(false); setSuggestModalOpen(true); }}>
-                        <i className="fas fa-paper-plane" style={{ marginRight: 8 }} /> На модерацию
+                        <i className="fas fa-paper-plane" /> На модерацию
                       </button> 
                       <div style={{ width: '100%', marginTop: '4px' }}>
                         <ReportButton
