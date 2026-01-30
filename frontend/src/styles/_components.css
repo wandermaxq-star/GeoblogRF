@@ -481,3 +481,11 @@
 .pc-section-title { margin-bottom: 15px; }
 
 .pc-selected-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+
+/* Preview utilities for guide sections */
+.pc-section-preview-content { padding: 20px; }
+.pc-mb-md { margin-bottom: 15px; }
+.pc-mt-md { margin-top: 15px; }
+
+/* Fill-flex helper used in modal lists */
+.pc-fill-flex { flex: 1; }

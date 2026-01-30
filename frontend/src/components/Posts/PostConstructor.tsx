@@ -704,7 +704,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                     
                     {/* Выбор элемента для карты */}
                     {section.hasMap && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+                      <div className="pc-map-actions">
                         <button
                           onClick={() => {
                             setFavoritesType('routes');
@@ -737,12 +737,12 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                           Выбрать событие
                         </button>
                         {(section.routeId || section.markerId || section.eventId) && (
-                          <div className="pc-label-sm" style={{ marginTop: 4, padding: 4, background: '#f0f9ff', borderRadius: 4 }}>
+                          <div className="pc-status-badge">
                             {section.routeId ? '✓ Маршрут добавлен' : section.markerId ? '✓ Метка добавлена' : section.eventId ? '✓ Событие добавлено' : ''}
                           </div>
                         )}
                       </div>
-                    )}
+                    )} 
                   </div>
                 ))}
               </div>
@@ -750,12 +750,12 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
           )}
           
           {/* Кнопки действий */}
-          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className="pc-bottom-actions">
             <ActionButton variant="secondary">
               <Save size={16} />
               Сохранить в черновик
             </ActionButton>
-          </div>
+          </div> 
         </LeftPanel>
         
         {/* Правая панель - 75% */}
@@ -936,7 +936,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
             {/* Для путеводителя: секции */}
             {postType === 'guide' && guideSections.map((section, idx) => (
               <ContentBlock key={section.id} onClick={() => setSelectedBlock(`section-${section.id}`)}>
-                <div style={{ padding: 20 }}>
+                <div className="pc-section-preview-content">
                   <TitleBlock
                     contentEditable
                     suppressContentEditableWarning
@@ -946,7 +946,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                       setGuideSections(newSections);
                     }}
                     data-placeholder={`Заголовок секции ${idx + 1}`}
-                    style={{ marginBottom: 15 }}
+                    className="pc-mb-md"
                   />
                   <TextBlock
                     contentEditable
@@ -975,7 +975,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                     }
                     
                     return (
-                      <div style={{ marginTop: 15 }}>
+                      <div className="pc-mt-md">
                         <MapBlock>
                           <MapContainer>
                             <PostMap
@@ -1046,7 +1046,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
             <div className="modal-list">
               {favoritesType === 'markers' && favorites?.favoritePlaces?.map(place => (
                 <div key={place.id} className="pc-list-item">
-                  <div style={{ flex: 1 }}>
+                  <div className="pc-fill-flex">
                     <div className="pc-text-muted-sm">{place.name}</div>
                     <div className="pc-label-sm">{place.description || place.location}</div>
                   </div>
@@ -1074,7 +1074,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                 })
                 .map(route => (
                 <div key={route.id} className="pc-list-item">
-                  <div style={{ flex: 1 }}>
+                  <div className="pc-fill-flex">
                     <div className="pc-text-muted-sm">{route.title}</div>
                     <div className="pc-label-sm">{route.description}</div>
                   </div>
@@ -1131,7 +1131,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
 
               {favoritesType === 'events' && favorites?.favoriteEvents?.map(event => (
                 <div key={event.id} className="pc-list-item">
-                  <div style={{ flex: 1 }}>
+                  <div className="pc-fill-flex">
                     <div className="pc-text-muted-sm">{event.title}</div>
                     <div className="pc-label-sm">{event.description || event.location}</div>
                   </div>
