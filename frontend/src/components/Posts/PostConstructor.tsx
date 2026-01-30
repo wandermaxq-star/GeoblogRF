@@ -216,107 +216,9 @@ const BottomButtons = styled.div`
   background: #f8fafc;
 `;
 
-// Модальное окно для выбора из избранного
-const FavoritesModal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-`;
-
-const FavoritesModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  max-width: 600px;
-  width: 100%;
-  max-height: 80vh;
-  overflow-y: auto;
-`;
-
-const FavoritesModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-`;
-
-const FavoritesModalTitle = styled.h3`
-  font-size: 18px;
-  font-weight: 600;
-  color: #1f2937;
-`;
-
-const FavoritesList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-`;
-
-const FavoritesItem = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-  
-  &:hover {
-    border-color: #3b82f6;
-    background: #f0f9ff;
-  }
-`;
-
-const FavoritesItemInfo = styled.div`
-  flex: 1;
-`;
-
-const FavoritesItemTitle = styled.div`
-  font-weight: 500;
-  color: #1f2937;
-  margin-bottom: 4px;
-`;
-
-const FavoritesItemDescription = styled.div`
-  font-size: 14px;
-  color: #6b7280;
-`;
-
-const FavoritesItemButton = styled.button`
-  padding: 8px 16px;
-  background: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.2s;
-  
-  &:hover {
-    background: #2563eb;
-  }
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #6b7280;
-  
-  &:hover {
-    color: #1f2937;
-  }
-`;
+/* Модальные стили перенесены в `frontend/src/styles/_components.css`.
+   Используйте классы: `.modal-overlay`, `.modal-content`, `.modal-header`, `.modal-title`, `.modal-list`,
+   а также утилиты `.image-remove-btn`, `.image-cover`, `.pc-section-heading`, `.pc-btn-row`, `.pc-section`. */
 
 type PostType = 'simple' | 'guide';
 
@@ -681,9 +583,9 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
           {/* Кнопки для выбора из избранного */}
           {postData.map.visible && (
             <>
-              <div style={{ marginTop: 10 }}>
-                <div style={{ fontSize: 12, color: '#4b5563', marginBottom: 6 }}>Фон карты</div>
-                <div style={{ display: 'flex', gap: 8 }}>
+              <div className="pc-section">
+                <div className="pc-label-sm">Фон карты</div>
+                <div className="pc-btn-row">
                   <ControlButton active={postData.map.base === 'opentopo'} onClick={() => setPostData(prev => ({ ...prev, map: { ...prev.map, base: 'opentopo' } }))}>OpenTopoMap</ControlButton>
                   <ControlButton active={postData.map.base === 'alidade'} onClick={() => setPostData(prev => ({ ...prev, map: { ...prev.map, base: 'alidade' } }))}>Alidade Smooth</ControlButton>
                 </div>
@@ -712,7 +614,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                 <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {postData.map.elements.markers.length > 0 && (
                     <div>
-                      <div style={{ fontSize: 12, color: '#4b5563', marginBottom: 6 }}>Метки на карте</div>
+                      <div className="pc-label-sm">Метки на карте</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {postData.map.elements.markers.map((m: any) => (
                           <div key={m.id} className="pc-list-item">
@@ -725,7 +627,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                   )}
                   {postData.map.elements.routes.length > 0 && (
                     <div>
-                      <div style={{ fontSize: 12, color: '#4b5563', marginBottom: 6 }}>Маршруты на карте</div>
+                      <div className="pc-label-sm">Маршруты на карте</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {postData.map.elements.routes.map((r: any) => (
                           <div key={r.id} className="pc-list-item">
@@ -738,7 +640,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                   )}
                   {postData.map.elements.events.length > 0 && (
                     <div>
-                      <div style={{ fontSize: 12, color: '#4b5563', marginBottom: 6 }}>События на карте</div>
+                      <div className="pc-label-sm">События на карте</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {postData.map.elements.events.map((e: any) => (
                           <div key={e.id} className="pc-list-item">
@@ -757,7 +659,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
           {/* Для путеводителя: список секций */}
           {postType === 'guide' && guideSections.length > 0 && (
             <div style={{ marginTop: 20, marginBottom: 20 }}>
-              <div style={{ fontSize: 12, color: '#4b5563', marginBottom: 8, fontWeight: 600 }}>
+              <div className="pc-section-heading">
                 Секции путеводителя ({guideSections.length})
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
@@ -977,30 +879,14 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                             <img 
                               src={image.src} 
                               alt={image.alt} 
-                              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '6px' }} 
+                              className="image-cover" 
                             />
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 removeImage(image.id);
                               }}
-                              style={{
-                                position: 'absolute',
-                                top: '4px',
-                                right: '4px',
-                                background: 'rgba(239, 68, 68, 0.9)',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '50%',
-                                width: '24px',
-                                height: '24px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '16px',
-                                lineHeight: '1'
-                              }}
+                              className="image-remove-btn"
                             >
                               ×
                             </button>
@@ -1152,14 +1038,14 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
       {showFavoritesModal && (
         <div className="modal-overlay" onClick={() => setShowFavoritesModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#1f2937' }}>
+            <div className="modal-header">
+              <h3 className="modal-title">
                 Выбрать {favoritesType === 'markers' ? 'метки' : favoritesType === 'routes' ? 'маршруты' : 'события'}
               </h3>
               <button className="modal-close-btn" onClick={() => setShowFavoritesModal(false)}>&times;</button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="modal-list">
               {favoritesType === 'markers' && favorites?.favoritePlaces?.map(place => (
                 <div key={place.id} className="pc-list-item">
                   <div style={{ flex: 1 }}>
