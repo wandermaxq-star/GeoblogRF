@@ -806,3 +806,189 @@
 .posts-state-subtitle {
   color: #4b5563; /* gray-600 */
 }
+
+/* ========================================
+   UNIFIED BUTTON SYSTEM
+   Заменяет GlassButton, MapActionButtons, CalendarActionButtons
+   ======================================== */
+
+/* Базовый сброс для кнопок */
+.btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: visible;
+  gap: 8px;
+}
+
+/* --- Base Style: Glass Effect --- */
+.btn-glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(0, 0, 0, 0.8);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Fallback для старых браузеров */
+@supports not (backdrop-filter: blur(10px)) {
+  .btn-glass {
+    background: rgba(255, 255, 255, 0.85);
+  }
+}
+
+/* Hover эффект (общий) */
+.btn-glass:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* --- Shapes (Формы) --- */
+
+/* Прямоугольные (по умолчанию для GlassButton) */
+.btn-rect {
+  border-radius: 12px;
+}
+
+/* Круглые (для Map и Calendar) */
+.btn-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  padding: 0;
+}
+
+/* --- Sizes (Размеры для прямоугольных) --- */
+.btn-sm { padding: 8px 16px; font-size: 12px; border-radius: 8px; }
+.btn-md { padding: 12px 24px; font-size: 14px; border-radius: 12px; }
+.btn-lg { padding: 16px 32px; font-size: 16px; border-radius: 16px; }
+
+/* --- Variants (Цвета) --- */
+
+/* Primary (Синий) */
+.btn-primary {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: rgba(59, 130, 246, 1);
+}
+.btn-primary:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.3);
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+}
+
+/* Danger (Красный) */
+.btn-danger {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: rgba(239, 68, 68, 1);
+}
+.btn-danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.2);
+}
+
+/* Success (Зеленый) */
+.btn-success {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: rgba(34, 197, 94, 1);
+}
+.btn-success:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(34, 197, 94, 0.4);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.2);
+}
+
+/* --- Active State (Пульсация) --- */
+.btn-active {
+  background: rgba(59, 130, 246, 0.3);
+  border: 2px solid rgba(59, 130, 246, 0.6);
+  animation: btn-pulse 2s ease-in-out infinite;
+}
+
+@keyframes btn-pulse {
+  0%, 100% { box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+  50% { box-shadow: 0 4px 20px rgba(59, 130, 246, 0.6); }
+}
+
+/* --- Dark Theme & Light Variants --- */
+
+/* Темная тема (для Map/Calendar на темном фоне) */
+.btn-dark {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+.btn-dark:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Светлая тема (для кнопок на темном фоне, как в Calendar horizontal) */
+.btn-light {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.btn-light:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* --- Disabled --- */
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* --- Utilities --- */
+.btn-full-width { width: 100%; }
+
+/* Badge (для счетчиков) */
+.btn-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #fbbf24;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 1;
+}
+
+/* Icon/Text inside unified buttons */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 6px;
+  line-height: 0;
+}
+
+.btn-text {
+  display: inline-flex;
+  align-items: center;
+}
