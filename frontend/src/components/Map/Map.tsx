@@ -33,7 +33,7 @@ import { projectManager } from '../../services/projectManager';
 import { activityService } from '../../services/activityService';
 import { useRussiaRestrictions } from '../../hooks/useRussiaRestrictions';
 import { canCreateMarker } from '../../services/zoneService';
-import { useContentStore } from '../../stores/contentStore';
+import { useContentStore, ContentState } from '../../stores/contentStore';
 import { useMapDisplayMode } from '../../hooks/useMapDisplayMode';
 import { FEATURES } from '../../config/features';
 import { getDistanceFromLatLonInKm } from '../../utils/russiaBounds';
@@ -41,7 +41,7 @@ import { getMarkerIconPath, getCategoryColor, getFontAwesomeIconName } from '../
 import { mapFacade, INTERNAL } from '../../services/map_facade/index';
 import type { MapConfig } from '../../services/map_facade/index';
 import { useMapStateStore } from '../../stores/mapStateStore';
-import { useEventsStore } from '../../stores/eventsStore';
+import { useEventsStore, EventsState } from '../../stores/eventsStore';
 import { MockEvent } from '../TravelCalendar/mockEvents';
 import { getCategoryById } from '../TravelCalendar/TravelCalendar';
 import { markerService } from '../../services/markerService';
@@ -174,12 +174,12 @@ const Map: React.FC<MapProps> = ({
     const { isDarkMode } = useTheme();
     const mapStyle = useMapStyle();
     const russiaRestrictions = useRussiaRestrictions();
-    const leftContent = useContentStore((state) => state.leftContent);
-    const rightContent = useContentStore((state) => state.rightContent);
+    const leftContent = useContentStore((state: ContentState) => state.leftContent);
+    const rightContent = useContentStore((state: ContentState) => state.rightContent);
     const isTwoPanelMode = rightContent !== null;
-    const openEvents = useEventsStore((state) => state.openEvents);
-    const selectedEvent = useEventsStore((state) => state.selectedEvent);
-    const setSelectedEvent = useEventsStore((state) => state.setSelectedEvent);
+    const openEvents = useEventsStore((state: EventsState) => state.openEvents);
+    const selectedEvent = useEventsStore((state: EventsState) => state.selectedEvent);
+    const setSelectedEvent = useEventsStore((state: EventsState) => state.setSelectedEvent);
 
     // --- STATE ---
     const [isLoading, setIsLoading] = useState(true);
