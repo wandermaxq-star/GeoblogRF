@@ -1210,6 +1210,11 @@ export class MapContextFacade {
     };
     this.moveStartHandlers.push(wrapper);
     this.moveStartHandlerMap.set(handler as any, wrapper);
+    // Immediately attach to active renderer so the handler works without a renderer switch
+    try {
+      const r = this.currentRenderer as any;
+      r?.onMapMoveStart?.(wrapper);
+    } catch (error_) { console.debug('[MapContextFacade] onMapMoveStart setup failed:', error_); }
   }
 
   offMapMoveStart(handler: () => void): void {
@@ -1218,6 +1223,10 @@ export class MapContextFacade {
     this.moveStartHandlerMap.delete(handler as any);
     const idx = this.moveStartHandlers.indexOf(wrapper as any);
     if (idx >= 0) this.moveStartHandlers.splice(idx, 1);
+    try {
+      const r = this.currentRenderer as any;
+      r?.offMapMoveStart?.(wrapper);
+    } catch (error_) { console.debug('[MapContextFacade] offMapMoveStart failed:', error_); }
   }
 
   // Подписка на начало изменения зума карты
@@ -1227,6 +1236,11 @@ export class MapContextFacade {
     };
     this.zoomStartHandlers.push(wrapper);
     this.zoomStartHandlerMap.set(handler as any, wrapper);
+    // Immediately attach to active renderer
+    try {
+      const r = this.currentRenderer as any;
+      r?.onMapZoomStart?.(wrapper);
+    } catch (error_) { console.debug('[MapContextFacade] onMapZoomStart setup failed:', error_); }
   }
 
   offMapZoomStart(handler: () => void): void {
@@ -1235,6 +1249,10 @@ export class MapContextFacade {
     this.zoomStartHandlerMap.delete(handler as any);
     const idx = this.zoomStartHandlers.indexOf(wrapper as any);
     if (idx >= 0) this.zoomStartHandlers.splice(idx, 1);
+    try {
+      const r = this.currentRenderer as any;
+      r?.offMapZoomStart?.(wrapper);
+    } catch (error_) { console.debug('[MapContextFacade] offMapZoomStart failed:', error_); }
   }
 
   // Proxy to flyTo on underlying renderer

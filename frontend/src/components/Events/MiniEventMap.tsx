@@ -28,6 +28,14 @@ const MiniEventMap: React.FC<MiniEventMapProps> = ({
   const markerRef = useRef<any | null>(null);
   const rendererRef = useRef<OSMMapRenderer | null>(null);
 
+  // Refs for callback props so we don't re-init the map when handlers change
+  const onMarkerPositionChangeRef = useRef(onMarkerPositionChange);
+  const onMapClickRef = useRef(onMapClick);
+  const clickHandlerRef = useRef<((e: any) => void) | null>(null);
+
+  useEffect(() => { onMarkerPositionChangeRef.current = onMarkerPositionChange; }, [onMarkerPositionChange]);
+  useEffect(() => { onMapClickRef.current = onMapClick; }, [onMapClick]);
+
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
     let destroyed = false;
@@ -62,21 +70,21 @@ const MiniEventMap: React.FC<MiniEventMapProps> = ({
                 try {
                   const pos = marker.getLatLng();
                   const newPosition: [number, number] = [pos.lat, pos.lng];
-                  onMarkerPositionChange?.(newPosition);
+                  onMarkerPositionChangeRef.current?.(newPosition);
                 } catch (err) { }
               });
 
               markerRef.current = marker;
             }
 
-            onMarkerPositionChange?.(position);
-            onMapClick?.(position);
+            onMarkerPositionChangeRef.current?.(position);
+            onMapClickRef.current?.(position);
           } catch (err) { }
         };
 
-        // Подписываемся на клики. Если рендерер не поддерживает onMapClick, используем L hander.
+        // Подписываемся на клики. Если рендерер не поддерживает onMapClick, используем L handler.
         try { renderer.onMapClick?.(clickHandler); } catch (e) { map.on('click', clickHandler); }
-        (renderer as any).__miniClickHandler = clickHandler;
+        clickHandlerRef.current = clickHandler;
       } catch (err) {
         console.warn('[MiniEventMap] Failed to initialize renderer', err);
       }
@@ -87,7 +95,7 @@ const MiniEventMap: React.FC<MiniEventMapProps> = ({
     return () => {
       destroyed = true;
       try {
-        const clickHandler = (renderer as any).__miniClickHandler;
+        const clickHandler = clickHandlerRef.current;
         const map = mapInstanceRef.current;
         if (map && clickHandler) {
           try { map.off('click', clickHandler); } catch (e) { }
@@ -102,7 +110,7 @@ const MiniEventMap: React.FC<MiniEventMapProps> = ({
         markerRef.current = null;
       } catch (e) { }
     };
-  }, [center, zoom, onMarkerPositionChange, onMapClick]);
+  }, []);
 
   // Обновление позиции маркера при изменении пропса
   useEffect(() => {
@@ -121,14 +129,20 @@ const MiniEventMap: React.FC<MiniEventMapProps> = ({
       marker.on('dragend', () => {
         const pos = marker.getLatLng();
         const newPosition: [number, number] = [pos.lat, pos.lng];
-        onMarkerPositionChange?.(newPosition);
+        onMarkerPositionChangeRef.current?.(newPosition);
       });
       
       markerRef.current = marker;
     }
 
     // Центрируем карту на маркере через рендерер
-    try { rendererRef.current?.setView([lat, lng], Math.max(rendererRef.current?.getZoom?.() ?? 13)); } catch (e) { try { mapInstanceRef.current?.setView(latlng, Math.max(mapInstanceRef.current?.getZoom?.() ?? 13)); } catch (err) {} }
+    const targetZoom = rendererRef.current?.getZoom?.() ?? mapInstanceRef.current?.getZoom?.() ?? 13;
+    const safeZoom = Math.max(targetZoom, 13);
+    try {
+      rendererRef.current?.setView([lat, lng], safeZoom);
+    } catch (e) {
+      try { mapInstanceRef.current?.setView(latlng, safeZoom); } catch (err) { /* ignore */ }
+    }
   }, [markerPosition, onMarkerPositionChange]);
 
   // Обновление центра карты

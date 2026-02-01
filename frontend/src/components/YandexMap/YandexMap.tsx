@@ -285,7 +285,7 @@ const YandexMap: React.FC<YandexMapProps> = ({
         });
 
         // Register background API in facade so facade methods can operate on this instance
-        try { mapFacade().registerBackgroundApi({ map: mapInstanceRef.current }); } catch (e) { }
+        try { mapFacade().registerBackgroundApi({ map: mapInstanceRef.current }); } catch (e) { console.debug('[YandexMap] Failed to register with facade', e); }
 
         // Добавление обработчика клика по карте
         if (!destroyed) {
@@ -332,7 +332,7 @@ const YandexMap: React.FC<YandexMapProps> = ({
         mapInstanceRef.current = null;
       }
 
-      try { mapFacade().registerBackgroundApi(null); } catch (e) { }
+      try { mapFacade().registerBackgroundApi(null); } catch (e) { console.debug('[YandexMap] Failed to unregister from facade', e); }
       
       // Очищаем маркеры
       markersRef.current.forEach(marker => {
@@ -492,7 +492,7 @@ const YandexMap: React.FC<YandexMapProps> = ({
               [bounds.maxLng + padding, bounds.maxLat + padding]
             ];
 
-            try { mapFacade().fitBounds({ southWest: [newBounds[0][0], newBounds[0][1]], northEast: [newBounds[1][0], newBounds[1][1]] }, { padding: 50 }); } catch (e) { mapInstanceRef.current.setBounds(newBounds, { checkZoomRange: true, duration: 300 }); }
+            try { mapFacade().fitBounds({ southWest: [newBounds[0][1], newBounds[0][0]], northEast: [newBounds[1][1], newBounds[1][0]] }, { padding: 50 }); } catch (e) { mapInstanceRef.current.setBounds(newBounds, { checkZoomRange: true, duration: 300 }); }
           } catch (error) {
             // Игнорируем ошибки при автоматическом масштабировании
           }

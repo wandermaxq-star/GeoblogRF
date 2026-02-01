@@ -199,7 +199,6 @@ export interface IMapRenderer {
 
   // === Работа со слоями ===
   eachLayer?(fn: (layer: any) => void): void;
-  removeLayer?(layer: any): void;
 
   // Рендеринг данных (вендор-агностично)
   renderMarkers(markers: UnifiedMarker[]): void;

@@ -13,7 +13,9 @@ export class YandexPlannerRenderer implements IMapRenderer {
   private polylines: Map<string, any> = new Map();
 
   // Хранение пользовательских обработчиков, чтобы можно было отписаться
-  private eventHandlerWrappers: Map<(...args: any[]) => void, (...args: any[]) => void> = new Map();
+  // Key format: `${event}::${handlerId}` where handlerId is assigned to the handler function
+  private eventHandlerWrappers: Map<string, (...args: any[]) => void> = new Map();
+  private handlerIdCounter = 0;
 
   // Слои/объекты, добавленные вручную
   private customLayers: any[] = [];
@@ -277,19 +279,23 @@ export class YandexPlannerRenderer implements IMapRenderer {
   on(event: string, handler: (...args: any[]) => void): void {
     if (!this.map) return;
     try {
+      const handlerId = (handler as any).__handlerId ?? (((handler as any).__handlerId = ++this.handlerIdCounter));
+      const key = `${event}::${handlerId}`;
       const wrapper = (...args: any[]) => { try { handler(...args); } catch (e) { /* ignore */ } };
       this.map.events.add(event, wrapper);
-      this.eventHandlerWrappers.set(handler, wrapper);
+      this.eventHandlerWrappers.set(key, wrapper);
     } catch (e) { /* ignore */ }
   }
 
   off(event: string, handler: (...args: any[]) => void): void {
     if (!this.map) return;
     try {
-      const wrapper = this.eventHandlerWrappers.get(handler);
+      const handlerId = (handler as any).__handlerId;
+      const key = handlerId ? `${event}::${handlerId}` : null;
+      const wrapper = key ? this.eventHandlerWrappers.get(key) : undefined;
       if (wrapper) {
         this.map.events.remove(event, wrapper);
-        this.eventHandlerWrappers.delete(handler);
+        if (key) this.eventHandlerWrappers.delete(key);
       } else {
         try { this.map.events.remove(event, handler); } catch (e) { /* ignore */ }
       }

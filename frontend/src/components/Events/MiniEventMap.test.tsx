@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, cleanup } from '@testing-library/react';
-import { vi, describe, it, expect, afterEach, beforeEach } from 'vitest';
+import { vi, describe, it, expect, afterEach } from 'vitest';
 
 // Mock OSMMapRenderer so tests don't require real Leaflet DOM behavior
 vi.mock('../../services/map_facade/adapters/OSMMapRenderer', () => ({
