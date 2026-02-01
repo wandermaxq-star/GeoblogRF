@@ -403,19 +403,29 @@ class OfflineContentQueue {
   }
 
   private async tryAwardXPForRoute(createdId: string | null): Promise<void> {
+    const userSnapshot = storageService.getItem('user');
+    if (!createdId || !userSnapshot) return;
+
+    const user = JSON.parse(userSnapshot);
+    const userId = user?.id;
+    if (!userId) return;
+
+    // Попытка аккуратно загрузить опциональный модуль геймификации
     try {
-      const userSnapshot = storageService.getItem('user');
-      if (!createdId || !userSnapshot) return;
-      const user = JSON.parse(userSnapshot);
-      const userId = user?.id;
-      if (!userId) return;
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { gamificationFacade } = require('./gamificationFacade');
+      const gamificationModule = require('./gamificationFacade');
+      const gamificationFacade = gamificationModule?.gamificationFacade;
+
       if (gamificationFacade && typeof gamificationFacade.addXP === 'function') {
         await gamificationFacade.addXP({ userId, source: 'route_created', amount: 50, contentId: createdId, contentType: 'route' });
       }
-    } catch (e) {
-      console.debug('[OfflineContentQueue] gamification error:', e);
+    } catch (err: any) {
+      // Если модуль отсутствует — это нормально в тестовой среде или при отключённой фиче
+      if (err && err.code === 'MODULE_NOT_FOUND') {
+        console.debug('[OfflineContentQueue] gamification module not available, skipping XP award');
+      } else {
+        console.debug('[OfflineContentQueue] gamification require error:', err?.message || err);
+      }
     }
   }
 
