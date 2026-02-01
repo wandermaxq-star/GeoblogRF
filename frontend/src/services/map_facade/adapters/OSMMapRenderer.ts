@@ -53,9 +53,10 @@ export class OSMMapRenderer implements IMapRenderer {
   /**
    * Добавляет слой тайлов на карту. Публичный метод для фасада.
    */
-  public addTileLayer(url?: string, options?: L.TileLayerOptions): L.TileLayer {
+  public addTileLayer(url?: string, options?: L.TileLayerOptions): L.TileLayer | null {
     if (!this.mapInstance) {
-      throw new Error('Карта не инициализирована');
+      console.warn('[OSMMapRenderer] addTileLayer called but map is not initialized');
+      return null;
     }
     const tileUrl = url || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
     const tileOpts = options || {
@@ -136,9 +137,11 @@ export class OSMMapRenderer implements IMapRenderer {
     this.mapInstance.off('zoomstart', handler);
   }
 
-  public getMap(): L.Map {
+  public getMap(): L.Map | null {
     if (!this.mapInstance) {
-      throw new Error('Карта не инициализирована');
+      // Не выбрасываем ошибку — фасад и компоненты ожидают `null`/`undefined` когда карта ещё не готова
+      console.warn('[OSMMapRenderer] getMap called but map is not initialized');
+      return null;
     }
     return this.mapInstance;
   }
