@@ -1,23 +1,17 @@
-// ========================
-// Базовые гео-типы
-// ========================
+import { DomainGeoPoint, DomainGeoBounds, PolylineStyle, IMapObjectHandle } from './types';
 
-export interface GeoPoint {
-  lat: number;
-  lon: number;
-}
+// Backwards-compatible object-based GeoPoint (existing codebase uses {lat, lon})
+export interface GeoPoint { lat: number; lon: number; }
 
-export type LatLng = [number, number]; // [lat, lng] — как в Leaflet
+// Keep LatLng alias for convenience (tuple [lat, lng])
+export type LatLng = [number, number];
 
-export type Bounds = {
-  north?: number;
-  south?: number;
-  east?: number;
-  west?: number;
-  // Альтернативный формат (например, для Leaflet)
+// Bounds remain compatible with domain bounds, with legacy aliases
+export type Bounds = DomainGeoBounds & {
   southWest?: LatLng;
   northEast?: LatLng;
 };
+
 
 // ========================
 // Контекст и конфигурация
@@ -207,25 +201,45 @@ export interface IMapRenderer {
   eachLayer?(fn: (layer: any) => void): void;
   removeLayer?(layer: any): void;
 
-  // Рендеринг данных
+  // Рендеринг данных (вендор-агностично)
   renderMarkers(markers: UnifiedMarker[]): void;
   renderRoute(route: PersistedRoute): void;
+
+  // Высокоуровневые операции с объектами карты
+  // Use domain types (tuples) for facade-level polyline operations
+  createPolyline?(points: DomainGeoPoint[], style?: PolylineStyle): IMapObjectHandle;
+
+  // Низкоуровневое добавление/удаление слоёв
+  addLayer?(layer: any): void;
+  removeLayer?(layer: any): void;
 
   // Очистка (опционально)
   clear?(): void;
   removeMarker?(id: string): void;
   removeRoute?(id: string): void;
 
+  // Навигация и bounds — facade-level uses domain types
+  setCenter?(center: DomainGeoPoint, zoom?: number): void;
+  getCenter?(): DomainGeoPoint;
+  setBounds?(bounds: DomainGeoBounds, options?: any): void;
+
   // Доступ к инстансу (для расширенных сценариев)
   getMap?(): unknown;
 
   // --- Доп. утилиты (опциональные) для упрощения работы компонентов через фасад ---
-  // Только общие методы, не завязанные на конкретной реализации карты
   addTileLayer?(url: string, options?: any): any;
   // Перелет/анимация к точке
   flyTo?(center: LatLng, zoom?: number, options?: any): void;
 
-  // Обработка событий
+  // Универсальная подписка на события
+  on?(event: string, handler: (...args: any[]) => void): void;
+  off?(event: string, handler: (...args: any[]) => void): void;
+
+  // Специфичные опции/поведения (опционально)
+  enableBehavior?(id: string): void;
+  disableBehavior?(id: string): void;
+
+  // Обработка событий (deprecated shorthands kept for compatibility)
   onMapClick?(handler: (event: any) => void): void;
   onMapMove?(handler: () => void): void;
   offMapMove?(handler: () => void): void;
