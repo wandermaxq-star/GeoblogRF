@@ -242,18 +242,23 @@ const Map: React.FC<MapProps> = ({
 
     // --- PORTAL VISIBILITY ---
     useEffect(() => {
-        if (portalEl) {
-            if (leftContent !== 'map' && leftContent !== null) {
-                portalEl.style.display = 'none';
-                portalEl.style.visibility = 'hidden';
-                portalEl.style.pointerEvents = 'none';
-            } else {
-                portalEl.style.display = 'block';
-                portalEl.style.visibility = 'visible';
-                portalEl.style.pointerEvents = 'auto';
-            }
+        if (!portalEl) return;
+        // Показываем портал, если карта активна в любой из панелей или если левая панель не задана
+        const shouldShowPortal = leftContent === 'map' || rightContent === 'map' || leftContent === null || mapDisplayMode.shouldShowFullscreen;
+        if (!shouldShowPortal) {
+            portalEl.style.display = 'none';
+            portalEl.style.visibility = 'hidden';
+            portalEl.style.pointerEvents = 'none';
+        } else {
+            portalEl.style.display = 'block';
+            portalEl.style.visibility = 'visible';
+            portalEl.style.pointerEvents = 'auto';
+            // Когда портал снова показан, даём Leaflet немного времени и инвалидируем размер
+            setTimeout(() => {
+                try { mapRef.current?.invalidateSize(); } catch (e) { }
+            }, 150);
         }
-    }, [leftContent, portalEl]);
+    }, [leftContent, rightContent, portalEl, mapDisplayMode.shouldShowFullscreen]);
 
     // Dev helper: add a debug toggle to disable overlays and bring map forward for inspection
     useEffect(() => {
@@ -662,7 +667,7 @@ const Map: React.FC<MapProps> = ({
                 }
             }
         };
-    }, [leftContent, center, zoom, mapSettings.mapType, onBoundsChange, onMapClick]);
+    }, [leftContent, rightContent, center, zoom, mapSettings.mapType, onBoundsChange, onMapClick, mapDisplayMode.shouldShowFullscreen]);
 
     // --- MAP STATE SAVING ---
     useEffect(() => {
