@@ -7,6 +7,7 @@ import { useContentStore } from '../stores/contentStore';
 export const useMapDisplayMode = () => {
   const leftContent = useContentStore((state) => state.leftContent);
   const rightContent = useContentStore((state) => state.rightContent);
+  const showBackgroundMap = useContentStore((state) => state.showBackgroundMap);
 
   return useMemo(() => {
     // Проверяем, активен ли Planner (использует Яндекс карту)
@@ -18,8 +19,8 @@ export const useMapDisplayMode = () => {
     // Двухоконный режим - когда открыта правая панель
     const isTwoPanelMode = rightContent !== null;
 
-    // Карта на полном экране ВСЕГДА, кроме случая когда открыты ТОЛЬКО Posts + Activity без Map
-    // То есть: карта НЕ полноэкранная когда rightContent === 'posts' И leftContent !== 'map' И не Planner
+    // Карта на полном экране по умолчанию, но может быть скрыта специальным флагом
+    // Прежняя логика скрывала карту если открыты только posts + activity — это ломало фон.
     const isOnlyPostsAndActivity = 
       rightContent === 'posts' && 
       leftContent !== 'map' && 
@@ -30,8 +31,8 @@ export const useMapDisplayMode = () => {
       // Использовать Leaflet карту (не Яндекс)
       shouldUseLeaflet: !isPlannerActive,
       
-      // Показывать карту на полном экране
-      shouldShowFullscreen: !isOnlyPostsAndActivity,
+      // Показывать карту на полном экране — зависит от store.showBackgroundMap (по умолчанию true)
+      shouldShowFullscreen: showBackgroundMap && !isOnlyPostsAndActivity,
       
       // Режимы
       isPlannerActive,
