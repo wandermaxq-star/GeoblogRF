@@ -4,7 +4,7 @@ export interface RouteCategory {
   name: string;
   icon: string;
   color: string;
-  purpose: 'personal' | 'blog' | 'event' | 'shared' | 'draft' | 'post';
+  purpose: 'personal' | 'event' | 'shared' | 'draft' | 'post';
   maxRoutes: number; // Лимит для категории
   description: string;
   isDefault?: boolean;
@@ -21,15 +21,7 @@ export const ROUTE_CATEGORIES: RouteCategory[] = [
     description: 'Ваши личные маршруты для путешествий и прогулок',
     isDefault: true
   },
-  {
-    id: 'blog',
-    name: 'Для блогов',
-    icon: '●',
-    color: '#FFD93D',
-    purpose: 'blog',
-    maxRoutes: 50,
-    description: 'Маршруты для создания контента и блогов'
-  },
+
   {
     id: 'post',
     name: 'Для постов',

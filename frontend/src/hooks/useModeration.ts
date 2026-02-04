@@ -7,7 +7,7 @@ export const useModeration = () => {
 
   const moderateContent = useCallback(async (content: {
     text: string;
-    type: 'chat' | 'blog' | 'comment' | 'review';
+    type: 'chat' | 'post' | 'comment' | 'review';
     userId: string;
     location?: string;
   }): Promise<ModerationResult> => {

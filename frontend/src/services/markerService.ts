@@ -19,7 +19,7 @@ import storageService from './storageService';
 
 interface ContentSource {
   id: string;
-  type: 'blog' | 'event' | 'route' | 'chat' | 'attraction' | 'restaurant' | 'hotel' | 'nature' | 'culture' | 'entertainment' | 'transport' | 'service' | 'other';
+  type: 'post' | 'event' | 'route' | 'chat' | 'attraction' | 'restaurant' | 'hotel' | 'nature' | 'culture' | 'entertainment' | 'transport' | 'service' | 'other';
   title: string;
   location: {
     latitude: number;

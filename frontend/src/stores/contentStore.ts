@@ -15,7 +15,7 @@ export type ContentType =
   | 'test'
   | null;
 
-interface ContentState {
+export interface ContentState {
   // Состояние панелей
   leftContent: ContentType;
   rightContent: ContentType;

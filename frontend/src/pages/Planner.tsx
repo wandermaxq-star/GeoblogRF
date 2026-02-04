@@ -81,7 +81,7 @@ const Planner: React.FC<PlannerProps> = function Planner() {
   const [titleSuggestions, setTitleSuggestions] = useState<string[]>([]);
   const [routeTitleInput, setRouteTitleInput] = useState<string>('');
   const [isCustomTitle, setIsCustomTitle] = useState<boolean>(false);
-  const [useForBlogs, setUseForBlogs] = useState<boolean>(false);
+
   const [useForPosts, setUseForPosts] = useState<boolean>(false);
   const [useForEvents, setUseForEvents] = useState<boolean>(false);
   const [mapResetKey, setMapResetKey] = useState(0);
@@ -530,7 +530,7 @@ const Planner: React.FC<PlannerProps> = function Planner() {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             points: pointsForFav,
-            categories: { personal: true, blog: false, post: false, event: false }
+            categories: { personal: true, post: false, event: false }
           });
         }
       } catch { }
@@ -789,7 +789,6 @@ const Planner: React.FC<PlannerProps> = function Planner() {
       // Добавляем в избранное для отображения в ЛК и назначения ролей
       try {
         const tagsFromToggles: string[] = [
-          ...(useForBlogs ? ['blog'] : []),
           ...(useForPosts ? ['post'] : []),
           ...(useForEvents ? ['event'] : [])
         ];
@@ -811,7 +810,6 @@ const Planner: React.FC<PlannerProps> = function Planner() {
           points: pointsForFav,
           categories: {
             personal: true,
-            blog: tagsFromToggles.includes('blog'),
             post: tagsFromToggles.includes('post'),
             event: tagsFromToggles.includes('event')
           }
@@ -1413,7 +1411,7 @@ const Planner: React.FC<PlannerProps> = function Planner() {
                             }));
                           const needModeration = requiresModeration(routeTitleInput, isCustomTitle, points);
                           const selectedTags: string[] = [
-                            ...(useForBlogs ? ['blog'] : []),
+                            
                             ...(useForPosts ? ['post'] : []),
                             ...(useForEvents ? ['event'] : [])
                           ];
@@ -1448,7 +1446,6 @@ const Planner: React.FC<PlannerProps> = function Planner() {
                             }));
                           const needModeration = requiresModeration(routeTitleInput, isCustomTitle, points);
                           const selectedTags: string[] = [
-                            ...(useForBlogs ? ['blog'] : []),
                             ...(useForPosts ? ['post'] : []),
                             ...(useForEvents ? ['event'] : [])
                           ];
@@ -1472,10 +1469,6 @@ const Planner: React.FC<PlannerProps> = function Planner() {
                     <div className="mt-3 text-sm text-gray-600">
                       <p className="mb-2">Подсказка: выберите готовый вариант для быстрой публикации. Свой вариант может потребовать модерации.</p>
                       <div className="flex flex-wrap items-center gap-3 mt-2">
-                        <label className="flex items-center gap-2">
-                          <input type="checkbox" checked={useForBlogs} onChange={(e) => setUseForBlogs(e.target.checked)} />
-                          <span>для блогов</span>
-                        </label>
                         <label className="flex items-center gap-2">
                           <input type="checkbox" checked={useForPosts} onChange={(e) => setUseForPosts(e.target.checked)} />
                           <span>для постов</span>

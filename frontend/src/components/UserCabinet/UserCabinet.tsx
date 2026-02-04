@@ -26,7 +26,7 @@ const UserCabinet: React.FC<UserCabinetProps> = ({ onLogout }) => {
       id: '2',
       title: 'Гастрономический тур',
       description: 'Лучшие рестораны города',
-      category: 'blog',
+      category: 'post',
       visibility: 'public' as const,
       pointsCount: 8,
       createdAt: '2024-01-10T14:00:00Z',

@@ -26,7 +26,7 @@ import { useFavorites } from '../../contexts/FavoritesContext';
 import ModerationBadge from '../Moderation/ModerationBadge';
 import { useInRouterContext, useNavigate } from 'react-router-dom';
 import { useLayoutState } from '../../contexts/LayoutContext';
-import { useContentStore } from '../../stores/contentStore';
+import { useContentStore, ContentState } from '../../stores/contentStore';
 import { MarkerData } from '../../types/marker';
 import { FEATURES } from '../../config/features';
 import StarRating from '../ui/StarRating';
@@ -144,7 +144,7 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
     return result || address; // Если не удалось отформатировать, возвращаем оригинал
   };
   // Используем store для управления панелями
-  const openRightPanel = useContentStore((state) => state.openRightPanel);
+  const openRightPanel = useContentStore((state: ContentState) => state.openRightPanel);
 
   const currentUserId = "test_creator_id";
   const numericRating = summary.avg || 0;
@@ -190,55 +190,11 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
 
   // Discuss handler
   const handleDiscussClick = async () => {
-    if (!FEATURES.CHAT_ENABLED) {
-      // Чаты отключены
-      return;
-    }
+    // Чаты отключены в этой сборке — показываем информативное сообщение
     try {
-      // Сначала проверяем, существует ли уже чат для этого маркера
-      const searchResponse = await fetch(`/api/chat/rooms?hashtag=${marker.id}`);
-      
-      if (searchResponse.ok) {
-        const existingRooms = await searchResponse.json();
-        if (existingRooms.length > 0) {
-          // Чат уже существует, открываем его
-            openRightPanel('chat');
-          if (navigate) navigate(`/chat?room=${existingRooms[0].id}`);
-          return;
-        }
-      }
-      
-      // Создаём новый чат
-      const chatData = {
-        name: marker.title,
-        hashtag: String(marker.id),
-        title: marker.title,
-        description: marker.hashtags?.join(', ') || `Обсуждение места: ${marker.title}`,
-        type: 'marker',
-        creatorId: 1 // ID текущего пользователя (пока хардкод)
-      };
-      
-      const response = await fetch('/api/chat/rooms', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(chatData),
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        
-        // Автоматически открываем чат-панель
-          openRightPanel('chat');
-        
-        // Переходим на страницу чата
-        if (navigate) navigate(`/chat?room=${result.id}`);
-      } else {
-        // Handle error silently or show user-friendly message
-      }
+      alert('Чаты отключены в текущей сборке приложения. Обсуждения недоступны.');
     } catch (error) {
-      // Handle error silently or show user-friendly message
+      // noop
     }
   };
 
@@ -388,13 +344,13 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
 
   return (
     <div className={`custom-marker-popup ${isSelected ? 'selected' : ''} ${visualClasses}`}>
-      <PopupContainer style={{ position: 'relative' }}>
+      <PopupContainer>
         <CloseButton onClick={onClose}>&times;</CloseButton>
         <PopupContent>
           {!showCategorySelection ? (
             <>
               <PopupHeader>
-                <PhotoBlock style={{ position: 'relative' }}>
+                <PhotoBlock>
                   <BookmarkButton
                     onClick={(e: React.MouseEvent) => handleFavoriteClick(e)}
                     title={isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'}
@@ -424,53 +380,25 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
                     src={marker.photo_urls?.[mainPhotoIdx] || 'https://via.placeholder.com/80?text=No+Image'}
                     alt="Фото объекта"
                     onClick={() => (marker.photo_urls?.length ?? 0) > 0 && openGallery(mainPhotoIdx)}
-                    style={{ cursor: (marker.photo_urls?.length ?? 0) > 0 ? 'pointer' : 'default' }}
+                    className={(marker.photo_urls?.length ?? 0) > 0 ? 'photo-clickable' : undefined}
                     onError={e => {
                       (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80?text=No+Image';
                     }}
                   />
-                  <i
-                    className="fas fa-camera"
+                  <button
+                    className="overlay-icon-btn"
                     title="Добавить фото"
                     onClick={() => setIsAddPhotoOpen(true)}
-                    style={{
-                      position: 'absolute',
-                      bottom: '8px',
-                      right: '10px',
-                      color: '#333',
-                      fontSize: '1.4em',
-                      cursor: 'pointer',
-                      zIndex: 3,
-                      transition: 'color 0.2s',
-                      textShadow: '0px 0px 4px rgba(255, 255, 255, 0.8)',
-                    }}
-                    onMouseOver={e => (e.currentTarget.style.color = '#007bff')}
-                    onMouseOut={e => (e.currentTarget.style.color = '#333')}
-                  />
+                    aria-label="Добавить фото"
+                  >
+                    <i className="fas fa-camera"></i>
+                  </button>
                   {marker.photo_urls && marker.photo_urls.length > 1 && (
-                    <div
-                      title="Open gallery"
-                      style={{
-                        position: 'absolute',
-                        bottom: '8px',
-                        left: '8px',
-                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                        color: 'white',
-                        borderRadius: '12px',
-                        padding: '4px 8px',
-                        fontSize: '0.8em',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        cursor: 'pointer',
-                        zIndex: 3,
-                      }}
-                      onClick={() => openGallery(mainPhotoIdx)}
-                    >
+                    <div title="Open gallery" className="overlay-badge" onClick={() => openGallery(mainPhotoIdx)}>
                       <i className="fas fa-images"></i>
                       <span>{marker.photo_urls.length}</span>
                     </div>
-                  )}
+                  )} 
                 </PhotoBlock>
               </PopupHeader>
               
@@ -494,14 +422,8 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
                 else if (completeness > 75) strokeColor = '#84cc16'; // салатовый
                 
                 return (
-                  <div style={{ 
-                    position: 'absolute', 
-                    top: '8px', 
-                    left: '50%', 
-                    transform: 'translateX(-50%)',
-                    zIndex: 10
-                  }}>
-                    <div className="relative">
+                  <div className="completeness-badge">
+                    <div>
                       <svg width="32" height="32" className="transform -rotate-90">
                         <circle
                           cx="16"
@@ -577,35 +499,11 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
                 {marker.description && marker.description.length > 120 && (
                   <div style={{ textAlign: 'right', margin: 0, padding: 0, lineHeight: 1 }}>
                     {!isDescriptionExpanded ? (
-                      <button
-                        onClick={handleDescriptionToggle}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#3498db',
-                          cursor: 'pointer',
-                          fontSize: '0.8em',
-                          margin: 0,
-                          padding: 0,
-                          lineHeight: 1
-                        }}
-                      >
+                      <button onClick={handleDescriptionToggle} className="text-link-btn">
                         Читать далее
                       </button>
                     ) : (
-                      <button
-                        onClick={handleDescriptionToggle}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#3498db',
-                          cursor: 'pointer',
-                          fontSize: '0.8em',
-                          margin: 0,
-                          padding: 0,
-                          lineHeight: 1
-                        }}
-                      >
+                      <button onClick={handleDescriptionToggle} className="text-link-btn">
                         Скрыть
                       </button>
                     )}
@@ -710,17 +608,17 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
                       }}
                     >
                       {isOwner ? (
-                        <button style={menuBtnStyle} onClick={e => { e.stopPropagation(); setSettingsOpen(false); setEditModalOpen(true); }}>
-                          <i className="fas fa-edit" style={{ marginRight: 8 }} /> Изменить
-                        </button>
+                        <button className="settings-menu-btn" onClick={e => { e.stopPropagation(); setSettingsOpen(false); setEditModalOpen(true); }}>
+                          <i className="fas fa-edit" /> Изменить
+                        </button> 
                       ) : (
-                        <button style={menuBtnStyle} onClick={e => { e.stopPropagation(); setSettingsOpen(false); setShowSuggestInfo(true); }}>
-                          <i className="fas fa-edit" style={{ marginRight: 8 }} /> Изменить
-                        </button>
-                      )}
-                      <button style={menuBtnStyle} onClick={e => { e.stopPropagation(); setSettingsOpen(false); setSuggestModalOpen(true); }}>
-                        <i className="fas fa-paper-plane" style={{ marginRight: 8 }} /> На модерацию
-                      </button>
+                        <button className="settings-menu-btn" onClick={e => { e.stopPropagation(); setSettingsOpen(false); setShowSuggestInfo(true); }}>
+                          <i className="fas fa-edit" /> Изменить
+                        </button> 
+                      )} 
+                      <button className="settings-menu-btn" onClick={e => { e.stopPropagation(); setSettingsOpen(false); setSuggestModalOpen(true); }}>
+                        <i className="fas fa-paper-plane" /> На модерацию
+                      </button> 
                       <div style={{ width: '100%', marginTop: '4px' }}>
                         <ReportButton
                           contentId={marker.id}
@@ -751,20 +649,7 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
                 Добавить в избранное
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '12px' }}>
-                <button
-                  onClick={handleCancelCategory}
-                  style={{
-                    padding: '6px 12px',
-                    border: '1px solid #6c757d',
-                    borderRadius: '4px',
-                    background: '#fff',
-                    color: '#6c757d',
-                    fontSize: '12px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Отмена
-                </button>
+                <button onClick={handleCancelCategory} className="modal-btn modal-btn-alt">Отмена</button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -794,15 +679,7 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
                     // Закрываем форму выбора категории, но оставляем попап открытым
                     setShowCategorySelection(false);
                   }}
-                  style={{
-                    padding: '6px 12px',
-                    border: 'none',
-                    borderRadius: '4px',
-                    background: '#28a745',
-                    color: '#fff',
-                    fontSize: '12px',
-                    cursor: 'pointer'
-                  }}
+                  className="modal-btn modal-btn-success"
                 >
                   Добавить
                 </button>
@@ -812,130 +689,27 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
         </PopupContent>
       </PopupContainer>
       {isGalleryOpen && createPortal(
-        <div
-          style={{
-            position: 'fixed',
-            top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.85)',
-            zIndex: 2000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          onClick={closeGallery}
-        >
-          <button
-            aria-label="Close gallery"
-            style={{
-              position: 'absolute',
-              top: '20px',
-              right: '30px',
-              background: 'none',
-              border: 'none',
-              fontSize: '2.5em',
-              color: '#fff',
-              cursor: 'pointer',
-              zIndex: 2001
-            }}
-            onClick={closeGallery}
-          >
-            &times;
-          </button>
+        <div className="modal-overlay modal-overlay-dark" onClick={closeGallery}>
+          <button aria-label="Close gallery" className="modal-close-btn" onClick={closeGallery}>&times;</button>
           {marker.photo_urls && marker.photo_urls.length > 1 && (
             <>
-              <button
-                aria-label="Previous image"
-                onClick={handlePrevPhoto}
-                style={{
-                  position: 'absolute', left: '20px', top: '50%', transform: 'translateY(-50%)',
-                  background: 'rgba(0,0,0,0.3)', color: 'white', border: 'none',
-                  fontSize: '2em', cursor: 'pointer', padding: '10px 15px',
-                  borderRadius: '5px', zIndex: 2001
-                }}
-              >
-                &#10094;
-              </button>
-              <button
-                aria-label="Next image"
-                onClick={handleNextPhoto}
-                style={{
-                  position: 'absolute', right: '20px', top: '50%', transform: 'translateY(-50%)',
-                  background: 'rgba(0,0,0,0.3)', color: 'white', border: 'none',
-                  fontSize: '2em', cursor: 'pointer', padding: '10px 15px',
-                  borderRadius: '5px', zIndex: 2001
-                }}
-              >
-                &#10095;
-              </button>
+              <button aria-label="Previous image" onClick={handlePrevPhoto} className="gallery-nav-btn gallery-prev">&#10094;</button>
+              <button aria-label="Next image" onClick={handleNextPhoto} className="gallery-nav-btn gallery-next">&#10095;</button>
             </>
           )}
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <img
-              src={marker.photo_urls?.[mainPhotoIdx]}
-              alt={`Фото ${marker.title}`}
-              style={{
-                maxWidth: 'calc(100% - 60px)',
-                maxHeight: 'calc(100% - 60px)',
-                objectFit: 'contain',
-                border: '3px solid white',
-                borderRadius: '4px',
-                boxShadow: '0 5px 20px rgba(0,0,0,0.4)',
-              }}
-            />
+          <div className="gallery-inner" onClick={e => e.stopPropagation()}>
+            <img src={marker.photo_urls?.[mainPhotoIdx]} alt={`Фото ${marker.title}`} className="gallery-image" />
           </div>
         </div>,
         document.body
       )}
       {isAddPhotoOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.5)',
-            zIndex: 3000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-          onClick={() => setIsAddPhotoOpen(false)}
-        >
-          <div
-            style={{
-              background: '#fff',
-              borderRadius: 10,
-              padding: 24,
-              minWidth: 320,
-              boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
-              position: 'relative'
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setIsAddPhotoOpen(false)}
-              style={{
-                position: 'absolute',
-                top: 8,
-                right: 12,
-                background: 'none',
-                border: 'none',
-                fontSize: '1.5em',
-                color: '#888',
-                cursor: 'pointer'
-              }}
-            >
-              &times;
-            </button>
-            <h3 style={{ marginBottom: 12 }}>Добавить фото</h3>
+        <div className="modal-overlay" onClick={() => setIsAddPhotoOpen(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => setIsAddPhotoOpen(false)}>&times;</button>
+            <h3>Добавить фото</h3>
             <input
+              className="modal-input"
               type="file"
               accept="image/png, image/jpeg, image/webp"
               onChange={e => {
@@ -943,47 +717,16 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
                   setNewPhotoFile(e.target.files[0]);
                 }
               }}
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '1px solid #ccc',
-                borderRadius: 4,
-                marginBottom: 12,
-                cursor: 'pointer'
-              }}
             />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button
-                onClick={() => setIsAddPhotoOpen(false)}
-                style={{
-                  padding: '6px 16px',
-                  background: '#eee',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: 'pointer'
-                }}
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handlePhotoSubmit}
-                disabled={!newPhotoFile}
-                style={{
-                  padding: '6px 16px',
-                  background: '#8e44ad',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: newPhotoFile ? 'pointer' : 'not-allowed',
-                  opacity: newPhotoFile ? 1 : 0.6,
-                }}
-              >
+            <div className="modal-actions">
+              <button className="modal-btn modal-btn-alt" onClick={() => setIsAddPhotoOpen(false)}>Отмена</button>
+              <button className="modal-btn modal-btn-primary" onClick={handlePhotoSubmit} disabled={!newPhotoFile}>
                 Добавить
               </button>
             </div>
           </div>
         </div>
-      )}
+      )} 
       {editModalOpen && (
         <MarkerFormModal
           mode="edit"
@@ -1017,111 +760,27 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
         />
       )}
       {showShareModal && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.5)',
-            zIndex: 3000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-          onClick={() => setShowShareModal(false)}
-        >
-          <div
-            style={{
-              background: '#fff',
-              borderRadius: 10,
-              padding: 24,
-              minWidth: 320,
-              boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
-              position: 'relative'
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setShowShareModal(false)}
-              style={{
-                position: 'absolute',
-                top: 8,
-                right: 12,
-                background: 'none',
-                border: 'none',
-                fontSize: '1.5em',
-                color: '#888',
-                cursor: 'pointer'
-              }}
-            >
-              &times;
-            </button>
-            <h3 style={{ marginBottom: 12 }}>Поделиться меткой</h3>
+        <div className="modal-overlay" onClick={() => setShowShareModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => setShowShareModal(false)}>&times;</button>
+            <h3>Поделиться меткой</h3>
             <form onSubmit={handleShareSubmit}>
-              <input
-                type="text"
-                placeholder="Email или ссылка"
-                value={shareValue}
-                onChange={e => setShareValue(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #ccc',
-                  borderRadius: 4,
-                  marginBottom: 12,
-                  cursor: 'pointer'
-                }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setShowShareModal(false)}
-                  style={{
-                    padding: '6px 16px',
-                    background: '#eee',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  style={{
-                    padding: '6px 16px',
-                    background: '#8e44ad',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Отправить
-                </button>
+              <input className="modal-input" type="text" placeholder="Email или ссылка" value={shareValue} onChange={e => setShareValue(e.target.value)} />
+              <div className="modal-actions">
+                <button type="button" className="modal-btn modal-btn-alt" onClick={() => setShowShareModal(false)}>Отмена</button>
+                <button type="submit" className="modal-btn modal-btn-primary">Отправить</button>
               </div>
             </form>
-            {shareStatus && <div style={{ marginTop: 10, color: shareStatus.includes('успешно') ? 'green' : 'red' }}>{shareStatus}</div>}
+            {shareStatus && <div className="modal-status" style={{ color: shareStatus.includes('успешно') ? 'var(--state-success)' : 'var(--state-danger)' }}>{shareStatus}</div>}
           </div>
         </div>
       )}
+
 
     </div>
   );
 });
 
-const menuBtnStyle: React.CSSProperties = {
-  width: '100%',
-  background: 'none',
-  border: 'none',
-  textAlign: 'left',
-  padding: '10px 16px',
-  fontSize: '1em',
-  color: '#333',
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  transition: 'background 0.15s',
-};
+
 
 export default MarkerPopup;

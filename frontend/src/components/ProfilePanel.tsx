@@ -4,7 +4,6 @@ import { useFavorites } from '../contexts/FavoritesContext';
 import { getMarkerVisualClasses, getRouteVisualClasses, getEventVisualClasses } from '../utils/visualStates';
 import { FaUser, FaCog, FaSignOutAlt, FaTrophy, FaMapMarkedAlt, FaStar, FaChartLine, FaTimes, FaCamera, FaUsers, FaEnvelope, FaChevronDown, FaFileAlt, FaBell, FaCloud, FaChartBar } from 'react-icons/fa';
 import { moderationNotificationsService } from '../services/moderationNotificationsService';
-import { blogDraftBus } from '../utils/blogDraftBus';
 import { RouteData } from '../types/route';
 import { getRoutes } from '../api/routes';
 import { listPosts, PostDTO } from '../services/postsService';
@@ -94,7 +93,6 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
   const [activeEventSubcategory, setActiveEventSubcategory] = useState<'upcoming' | 'past' | 'created' | 'participating'>('upcoming');
   const [activeEventPurposeSubcategory, setActiveEventPurposeSubcategory] = useState<'posts' | 'events' | 'personal'>('personal');
   const [showAllPlaces, setShowAllPlaces] = useState(false);
-  const [blogDraftSnapshot, setBlogDraftSnapshot] = useState(blogDraftBus.getSnapshot());
   const [routes, setRoutes] = useState<RouteData[]>([]);
   const [routesLoading, setRoutesLoading] = useState(false);
   const [selectedFriend, setSelectedFriend] = useState<any>(null);
@@ -132,12 +130,6 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
   // const [blogsLoading, setBlogsLoading] = useState(false);
   // const [hasDraft, setHasDraft] = useState(false);
 
-  useEffect(() => {
-    const unsub = blogDraftBus.subscribe(setBlogDraftSnapshot);
-    return () => {
-      unsub();
-    };
-  }, []);
 
   // Загрузка блогов пользователя при открытии вкладки "Блоги"
   // useEffect(() => {
@@ -1165,13 +1157,6 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                                 {new Date(ev.date).toLocaleDateString('ru-RU')}
                               </div>
                               <div className="flex items-center space-x-2">
-                              <button
-                                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${blogDraftSnapshot.events.has(ev.id) ? 'bg-green-500 text-white border-green-600' : 'bg-white text-green-700 border-green-400'}`}
-                                onClick={() => blogDraftBus.toggle('event', ev.id)}
-                                title="В блог"
-                              >
-                                {blogDraftSnapshot.events.has(ev.id) ? 'В блоге' : 'В блог'}
-                              </button>
                                 <button
                                   className="px-2 py-1 text-red-600 hover:text-red-800 text-xs"
                                   onClick={() => {

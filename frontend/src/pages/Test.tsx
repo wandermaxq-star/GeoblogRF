@@ -4,7 +4,7 @@ import { MirrorGradientContainer, usePanelRegistration } from '../components/Mir
 import { markerService } from '../services/markerService';
 import { routeService } from '../services/routeService';
 import { externalEventsService } from '../services/externalEventsService';
-import { bookService } from '../services/bookService';
+
 import StarRating from '../components/ui/StarRating';
 import { useRating } from '../hooks/useRating';
 import '../styles/GlobalStyles.css';
@@ -13,7 +13,7 @@ import { projectManager } from '../services/projectManager';
 
 interface RatedItem {
   id: string;
-  type: 'marker' | 'route' | 'event' | 'book';
+  type: 'marker' | 'route' | 'event';
   title: string;
   description?: string;
   author: string;
@@ -30,7 +30,7 @@ const TestPage = () => {
   const { registerPanel, unregisterPanel } = usePanelRegistration();
   const [ratedItems, setRatedItems] = useState<RatedItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'markers' | 'routes' | 'events' | 'books'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'markers' | 'routes' | 'events'>('all');
   
   // Регистрируем панели при монтировании компонента
   useEffect(() => {
@@ -50,11 +50,10 @@ const TestPage = () => {
     try {
       setLoading(true);
       
-      const [markers, routes, events, books] = await Promise.all([
+      const [markers, routes, events] = await Promise.all([
         (() => { try { return projectManager.getMarkers(); } catch { return []; } })(),
         routeService.getAllRoutes().catch(() => []),
-        externalEventsService.searchEvents({}).catch(() => []),
-        bookService.listMyBooks().catch(() => [])
+        externalEventsService.searchEvents({}).catch(() => [])
       ]);
 
       // Фильтруем только элементы с рейтингом
@@ -107,22 +106,7 @@ const TestPage = () => {
             location: event.location?.address,
             category: event.category
           })),
-        ...books
-          .filter((book: any) => book.rating && book.rating > 0)
-          .map((book: any) => ({
-            id: book.id,
-            type: 'book' as const,
-            title: book.title,
-            description: book.description || `Книга, объединяющая ${book.blogs?.length || 0} блогов`,
-            author: book.author_name || 'Неизвестно',
-            authorAvatar: book.author_avatar,
-            createdAt: book.created_at,
-            imageUrl: book.cover_image_url,
-            rating: book.rating || 0,
-            ratingCount: book.ratings_count || 0,
-            location: undefined,
-            category: book.category
-          }))
+
       ];
 
       // Сортируем по рейтингу (высокие рейтинги сверху)
@@ -196,7 +180,7 @@ const TestPage = () => {
                         <FaStar className="w-5 h-5 text-yellow-500" />
                         <h1 className="text-xl font-semibold text-slate-800">Рейтинговые элементы</h1>
                       </div>
-                      <span className="text-slate-500 text-sm">• Лучшие метки, маршруты, события и книги по рейтингу</span>
+                      <span className="text-slate-500 text-sm">• Лучшие метки, маршруты и события по рейтингу</span>
                     </div>
                   </div>
                 </div>
@@ -216,7 +200,7 @@ const TestPage = () => {
                             { key: 'markers', label: 'Метки', count: ratedItems.filter(a => a.type === 'marker').length },
                             { key: 'routes', label: 'Маршруты', count: ratedItems.filter(a => a.type === 'route').length },
                             { key: 'events', label: 'События', count: ratedItems.filter(a => a.type === 'event').length },
-                            { key: 'books', label: 'Книги', count: ratedItems.filter(a => a.type === 'book').length }
+
                           ].map(tab => (
                             <button
                               key={tab.key}

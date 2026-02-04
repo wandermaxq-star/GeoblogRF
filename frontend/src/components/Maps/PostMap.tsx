@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { projectManager } from '../../services/projectManager';
+import { mapFacade } from '../../services/map_facade/index';
 import { getRenderableRouteGeometry } from '../../services/routeGeometryUtil';
 import { getRoutePolyline } from '../../services/routingService';
 import MiniMarkerPopup from '../Map/MiniMarkerPopup';
@@ -60,6 +61,8 @@ export const PostMap: React.FC<PostMapProps> = ({
   const [selectedMarkerIdForPopup, setSelectedMarkerIdForPopup] = useState<string | null>(null);
   const [loadedMarkerData, setLoadedMarkerData] = useState<MarkerData | null>(null);
   const isLoadingMarkerRef = useRef<boolean>(false);
+  // NOTE: mapRef here is a DOM container ref only — do not use it to access the underlying map instance.
+  // For map operations prefer `mapFacade()` or add facade methods.
   const mapRef = useRef<any>(null);
   const popupCloseTimeoutRef = useRef<number | null>(null);
   const hasCenteredRef = useRef<boolean>(false);
@@ -124,20 +127,12 @@ export const PostMap: React.FC<PostMapProps> = ({
     return maxDeviation < THRESHOLD;
   }, []);
 
-  // Получаем ссылку на карту для обновления позиции попапа
+  // Получаем ссылку на карту для обновления позиции попапа (через фасад). Оставляем mapRef для обратной совместимости, но основной код использует фасад.
   useEffect(() => {
     if (!initializedRef.current) return;
-    const getMapInstance = () => {
-      try {
-        const mapApi = projectManager.getMapApi();
-        const provider = mapApi.providers?.[mapApi.currentProvider];
-        return provider?.map || null;
-      } catch {
-        return null;
-      }
-    };
     const timer = setTimeout(() => {
-      mapRef.current = getMapInstance();
+      // Backwards-compat assignment removed: use `mapFacade()` methods directly in consumers instead of relying on `mapRef`.
+      // If you need the raw map instance, call `mapFacade().getMap?.()` at the callsite.
     }, 200);
     return () => clearTimeout(timer);
   }, [initializedRef.current]);
@@ -245,12 +240,11 @@ export const PostMap: React.FC<PostMapProps> = ({
           // Fallback на координаты, если не получилось вычислить через DOM
           if (position) {
             setMiniPopup({ marker, position, markerElement: element });
-          } else if (mapRef.current) {
+          } else {
             try {
-              const map = mapRef.current;
               const [lon, lat] = [marker.longitude, marker.latitude];
-              const point = map.project([lon, lat]);
-              setMiniPopup({ marker, position: { x: point.x, y: point.y }, markerElement: element });
+              const p = mapFacade().project([lon, lat]);
+              setMiniPopup({ marker, position: { x: p.x, y: p.y }, markerElement: element });
             } catch {
               return;
             }
@@ -260,12 +254,11 @@ export const PostMap: React.FC<PostMapProps> = ({
         // Fallback, если элемент не передан
         if (position) {
           setMiniPopup({ marker, position });
-        } else if (mapRef.current) {
+        } else {
           try {
-            const map = mapRef.current;
             const [lon, lat] = [marker.longitude, marker.latitude];
-            const point = map.project([lon, lat]);
-            setMiniPopup({ marker, position: { x: point.x, y: point.y } });
+            const p = mapFacade().project([lon, lat]);
+            setMiniPopup({ marker, position: { x: p.x, y: p.y } });
           } catch {
             return;
           }
@@ -280,11 +273,9 @@ export const PostMap: React.FC<PostMapProps> = ({
     };
   }, []);
 
-  // Обновляем позицию попапа при изменении зума/движении карты
+  // Обновляем позицию попапа при изменении зума/движении карты (через фасад)
   useEffect(() => {
-    if (!miniPopup || !miniPopup.markerElement || !mapRef.current) return;
-
-    const map = mapRef.current;
+    if (!miniPopup || !miniPopup.markerElement) return;
 
     // Функция обновления позиции с throttling для производительности
     let rafId: number | null = null;
@@ -296,66 +287,40 @@ export const PostMap: React.FC<PostMapProps> = ({
       });
     };
 
-    // Подписываемся на события изменения карты
-    map.on?.('move', updatePosition);
-    map.on?.('zoom', updatePosition);
-    map.on?.('moveend', updatePosition);
-    map.on?.('zoomend', updatePosition);
+    try {
+      mapFacade().onMapMove(updatePosition);
+      mapFacade().onMapZoom(updatePosition);
+    } catch (e) { }
 
-    // Обновляем позицию при изменении DOM-элемента метки
     const markerElement = miniPopup.markerElement;
     if (markerElement) {
-      // Используем MutationObserver для отслеживания изменений позиции метки
-      const observer = new MutationObserver(() => {
-        updatePosition();
-      });
+      const observer = new MutationObserver(() => updatePosition());
+      observer.observe(markerElement, { attributes: true, attributeFilter: ['style', 'class'], childList: false, subtree: false });
 
-      // Наблюдаем за изменениями атрибутов и стилей
-      observer.observe(markerElement, {
-        attributes: true,
-        attributeFilter: ['style', 'class'],
-        childList: false,
-        subtree: false
-      });
-
-      // Также обновляем позицию периодически во время анимации
       const intervalId = setInterval(() => {
-        if (miniPopup && miniPopup.markerElement) {
-          updatePosition();
-        }
-      }, 16); // ~60fps
+        if (miniPopup && miniPopup.markerElement) updatePosition();
+      }, 16);
 
       return () => {
-        map.off?.('move', updatePosition);
-        map.off?.('zoom', updatePosition);
-        map.off?.('moveend', updatePosition);
-        map.off?.('zoomend', updatePosition);
+        try { mapFacade().offMapMove(updatePosition); } catch (e) { }
+        try { mapFacade().offMapZoom(updatePosition); } catch (e) { }
         observer.disconnect();
         clearInterval(intervalId);
-        if (rafId) {
-          cancelAnimationFrame(rafId);
-        }
+        if (rafId) cancelAnimationFrame(rafId);
       };
     }
 
     return () => {
-      map.off?.('move', updatePosition);
-      map.off?.('zoom', updatePosition);
-      map.off?.('moveend', updatePosition);
-      map.off?.('zoomend', updatePosition);
-      if (rafId) {
-        cancelAnimationFrame(rafId);
-      }
+      try { mapFacade().offMapMove(updatePosition); } catch (e) { }
+      try { mapFacade().offMapZoom(updatePosition); } catch (e) { }
+      if (rafId) cancelAnimationFrame(rafId);
     };
   }, [miniPopup, updateMiniPopupPosition]);
 
   // Обновляем позицию стандартного попапа при изменении зума/движении карты
   useEffect(() => {
-    if (!selectedMarkerIdForPopup || !standardPopupMarkerElementRef.current || !mapRef.current) return;
+    if (!selectedMarkerIdForPopup || !standardPopupMarkerElementRef.current) return;
 
-    const map = mapRef.current;
-
-    // Функция обновления позиции с throttling для производительности
     let rafId: number | null = null;
     const updatePosition = () => {
       if (rafId) return;
@@ -365,56 +330,33 @@ export const PostMap: React.FC<PostMapProps> = ({
       });
     };
 
-    // Подписываемся на события изменения карты
-    map.on?.('move', updatePosition);
-    map.on?.('zoom', updatePosition);
-    map.on?.('moveend', updatePosition);
-    map.on?.('zoomend', updatePosition);
+    try {
+      mapFacade().onMapMove(updatePosition);
+      mapFacade().onMapZoom(updatePosition);
+    } catch (e) { }
 
-    // Обновляем позицию при изменении DOM-элемента метки
     const markerElement = standardPopupMarkerElementRef.current;
     if (markerElement) {
-      // Используем MutationObserver для отслеживания изменений позиции метки
-      const observer = new MutationObserver(() => {
-        updatePosition();
-      });
+      const observer = new MutationObserver(() => updatePosition());
+      observer.observe(markerElement, { attributes: true, attributeFilter: ['style', 'class'], childList: false, subtree: false });
 
-      // Наблюдаем за изменениями атрибутов и стилей
-      observer.observe(markerElement, {
-        attributes: true,
-        attributeFilter: ['style', 'class'],
-        childList: false,
-        subtree: false
-      });
-
-      // Также обновляем позицию периодически во время анимации
       const intervalId = setInterval(() => {
-        if (selectedMarkerIdForPopup && standardPopupMarkerElementRef.current) {
-          updatePosition();
-        }
-      }, 16); // ~60fps
+        if (selectedMarkerIdForPopup && standardPopupMarkerElementRef.current) updatePosition();
+      }, 16);
 
       return () => {
-        map.off?.('move', updatePosition);
-        map.off?.('zoom', updatePosition);
-        map.off?.('moveend', updatePosition);
-        map.off?.('zoomend', updatePosition);
+        try { mapFacade().offMapMove(updatePosition); } catch (e) { }
+        try { mapFacade().offMapZoom(updatePosition); } catch (e) { }
         observer.disconnect();
         clearInterval(intervalId);
-        if (rafId) {
-          cancelAnimationFrame(rafId);
-        }
+        if (rafId) cancelAnimationFrame(rafId);
       };
     }
 
     return () => {
-      map.off?.('move', updatePosition);
-      map.off?.('zoom', updatePosition);
-      map.off?.('moveend', updatePosition);
-      map.off?.('zoomend', updatePosition);
-      if (rafId) {
-        cancelAnimationFrame(rafId);
-      }
+      try { mapFacade().offMapMove(updatePosition); } catch (e) { }
+      try { mapFacade().offMapZoom(updatePosition); } catch (e) { }
+      if (rafId) cancelAnimationFrame(rafId);
     };
   }, [selectedMarkerIdForPopup, updateStandardPopupPosition]);
 
@@ -466,22 +408,18 @@ export const PostMap: React.FC<PostMapProps> = ({
     }
   }, [miniPopup, selectedMarkerIdForPopup]);
 
-  // Закрытие попапов при начале движения/зума карты
+  // Закрытие попапов при начале движения/зума карты (через фасад)
   useEffect(() => {
-    if (!mapRef.current) return;
-
-    const map = mapRef.current;
-    const closeMiniPopup = () => {
-      setMiniPopup(null);
-      // Стандартный попап не закрываем при движении - только мини
-    };
-
-    map.on('movestart', closeMiniPopup);
-    map.on('zoomstart', closeMiniPopup);
-
+    const closeMiniPopup = () => { setMiniPopup(null); };
+    try {
+      mapFacade().onMapMoveStart(closeMiniPopup);
+      mapFacade().onMapZoomStart(closeMiniPopup);
+    } catch (e) { }
     return () => {
-      map.off('movestart', closeMiniPopup);
-      map.off('zoomstart', closeMiniPopup);
+      try {
+        mapFacade().offMapMoveStart(closeMiniPopup);
+        mapFacade().offMapZoomStart(closeMiniPopup);
+      } catch (e) { }
     };
   }, []);
 
@@ -521,11 +459,9 @@ export const PostMap: React.FC<PostMapProps> = ({
           markers: [],
           routes: []
         });
-        // Сохраняем ссылку на карту
+        // Backwards-compat assignment removed: consumers should use `mapFacade()` directly.
         setTimeout(() => {
-          const mapApi = projectManager.getMapApi();
-          const provider = mapApi.providers?.[mapApi.currentProvider];
-          mapRef.current = provider?.map || null;
+          // If access to raw map instance is required, use `mapFacade().getMap?.()` here instead of assigning to `mapRef`.
         }, 200);
       } catch (e) {
         initializedRef.current = false; // Разрешаем повторную попытку
@@ -588,7 +524,7 @@ export const PostMap: React.FC<PostMapProps> = ({
       try {
         // Очищаем карту перед добавлением новых элементов
         // Non-destructive clear to avoid removing preserved background renderer
-        projectManager.getMapApi().clear();
+        try { mapFacade().clear(); } catch (e) { }
         // Очищаем отслеживание добавленных меток
         addedMarkerIdsRef.current.clear();
 
@@ -635,7 +571,7 @@ export const PostMap: React.FC<PostMapProps> = ({
             route_data: { geometry: finalGeometry }
           };
 
-          projectManager.getMapApi().drawRoute(routeForDrawing);
+          try { mapFacade().drawRoute(routeForDrawing); } catch (e) { }
 
           // Берём маркеры из finalGeometry
           const geometryForMarkers = finalGeometry;
@@ -685,10 +621,7 @@ export const PostMap: React.FC<PostMapProps> = ({
 
               // Используем fitBounds для показа всего маршрута
               // fitBounds принимает массив координат [southWest, northEast]
-              projectManager.getMapApi().fitBounds({
-                southWest: [minLat - latPadding, minLng - lngPadding],
-                northEast: [maxLat + latPadding, maxLng + lngPadding]
-              }, 50); // padding 50px со всех сторон
+              try { mapFacade().fitBounds({ southWest: [minLat - latPadding, minLng - lngPadding], northEast: [maxLat + latPadding, maxLng + lngPadding] }, { padding: 50 }); } catch (e) { } // padding 50px со всех сторон
             }
           } catch (e) {
           }
@@ -698,26 +631,12 @@ export const PostMap: React.FC<PostMapProps> = ({
         if (shouldDrawRoute) {
           // Добавляем маркер начала маршрута с буквой A
           if (routeStartMarker) {
-            projectManager.getMapApi().addMarker({
-              id: routeStartMarker.id,
-              lat: routeStartMarker.lat,
-              lon: routeStartMarker.lon,
-              title: routeStartMarker.title,
-              routeMarker: 'start', // Специальный маркер начала маршрута с буквой A
-              iconSize: [34, 44]
-            });
+            try { mapFacade().addMarker({ id: routeStartMarker.id, position: { lat: routeStartMarker.lat, lon: routeStartMarker.lon }, title: routeStartMarker.title, category: 'route', }); } catch (e) { }
           }
 
           // Добавляем маркер конца маршрута с буквой B
           if (routeEndMarker) {
-            projectManager.getMapApi().addMarker({
-              id: routeEndMarker.id,
-              lat: routeEndMarker.lat,
-              lon: routeEndMarker.lon,
-              title: routeEndMarker.title,
-              routeMarker: 'end', // Специальный маркер конца маршрута с буквой B
-              iconSize: [34, 44]
-            });
+            try { mapFacade().addMarker({ id: routeEndMarker.id, position: { lat: routeEndMarker.lat, lon: routeEndMarker.lon }, title: routeEndMarker.title, category: 'route', }); } catch (e) { }
           }
         }
 
@@ -748,18 +667,8 @@ export const PostMap: React.FC<PostMapProps> = ({
               // Помечаем метку как добавленную
               addedMarkerIdsRef.current.add(markerId);
 
-              projectManager.getMapApi().addMarker({
-                id: markerId,
-                lat: lat,
-                lon: lon,
-                title: markerTitle,
-                category: markerCategory, // Передаём категорию для правильной иконки и попапа
-                description: a.description,
-                // Если есть категория, иконка будет взята из категории автоматически
-                // markerIconUrl используется только как fallback, если категории нет
-                iconUrl: markerCategory && markerCategory !== 'other' ? undefined : markerIconUrl,
-                iconSize: [34, 44]
-              });
+              try { mapFacade().addMarker({ id: markerId, position: { lat, lon }, title: markerTitle, category: markerCategory, description: a.description, }); } catch (e) { }
+
             }
           }
         });
@@ -817,10 +726,7 @@ export const PostMap: React.FC<PostMapProps> = ({
 
               try {
                 // fitBounds принимает массив координат [southWest, northEast]
-                projectManager.getMapApi().fitBounds({
-                  southWest: [minLat - latPadding, minLng - lngPadding],
-                  northEast: [maxLat + latPadding, maxLng + lngPadding]
-                }, 50);
+                try { mapFacade().fitBounds({ southWest: [minLat - latPadding, minLng - lngPadding], northEast: [maxLat + latPadding, maxLng + lngPadding] }, { padding: 50 }); } catch (e) { }
               } catch (e) {
                 // Игнорируем ошибки fitBounds
               }
@@ -997,12 +903,10 @@ export const PostMap: React.FC<PostMapProps> = ({
           } catch (e) {
             // Fallback на координаты, если не получилось через DOM
             try {
-              if (mapRef.current) {
-                const [lon, lat] = [marker.lon, marker.lat];
-                const point = mapRef.current.project([lon, lat]);
-                // Fallback: используем координаты напрямую (метка неподвижна)
-                standardPopupPositionRef.current = { x: point.x, y: point.y };
-              }
+              const [lon, lat] = [marker.lon, marker.lat];
+              const p = mapFacade().project([lon, lat]);
+              // Fallback: используем координаты напрямую (метка неподвижна)
+              standardPopupPositionRef.current = { x: p.x, y: p.y };
             } catch { }
           }
         }
@@ -1010,12 +914,10 @@ export const PostMap: React.FC<PostMapProps> = ({
         // Если позиция всё ещё не вычислена, используем fallback
         if (!standardPopupPositionRef.current) {
           try {
-            if (mapRef.current) {
-              const [lon, lat] = [marker.lon, marker.lat];
-              const point = mapRef.current.project([lon, lat]);
-              const markerDescentOffset = 20;
-              standardPopupPositionRef.current = { x: point.x, y: point.y + markerDescentOffset };
-            }
+            const [lon, lat] = [marker.lon, marker.lat];
+            const p = mapFacade().project([lon, lat]);
+            const markerDescentOffset = 20;
+            standardPopupPositionRef.current = { x: p.x, y: p.y + markerDescentOffset };
           } catch { }
         }
 

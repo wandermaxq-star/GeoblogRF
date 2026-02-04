@@ -71,7 +71,7 @@ const Sidebar: React.FC = () => {
   const auth = useAuth();
   const guest = useGuest();
   const [showAuthGate, setShowAuthGate] = useState(false);
-  const [authGateType, setAuthGateType] = useState<'marker' | 'route' | 'event' | 'post' | 'blog'>('marker');
+  const [authGateType, setAuthGateType] = useState<'marker' | 'route' | 'event' | 'post'>('marker');
   const [isExpanded, setIsExpanded] = useState(false);
   const { preloadRoute } = usePreload();
 

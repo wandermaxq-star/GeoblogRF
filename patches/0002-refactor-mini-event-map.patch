@@ -1,0 +1,213 @@
+From 1bdc8058957b323cf033397fd378fda8c3bc443f Mon Sep 17 00:00:00 2001
+From: Simamakis <Simamakis@Gmail.com>
+Date: Sun, 1 Feb 2026 13:00:07 +0300
+Subject: [PATCH] refactor(events): replace direct L.map with local
+ OSMMapRenderer in MiniEventMap; add smoke test
+
+---
+ .../components/Events/MiniEventMap.test.tsx   |  30 +++++
+ .../src/components/Events/MiniEventMap.tsx    | 125 +++++++++++-------
+ 2 files changed, 104 insertions(+), 51 deletions(-)
+ create mode 100644 frontend/src/components/Events/MiniEventMap.test.tsx
+
+diff --git a/frontend/src/components/Events/MiniEventMap.test.tsx b/frontend/src/components/Events/MiniEventMap.test.tsx
+new file mode 100644
+index 0000000..e61b6c0
+--- /dev/null
++++ b/frontend/src/components/Events/MiniEventMap.test.tsx
+@@ -0,0 +1,30 @@
++import React from 'react';
++import { render, cleanup } from '@testing-library/react';
++import { vi, describe, it, expect, afterEach, beforeEach } from 'vitest';
++
++// Mock OSMMapRenderer so tests don't require real Leaflet DOM behavior
++vi.mock('../../services/map_facade/adapters/OSMMapRenderer', () => ({
++  OSMMapRenderer: class {
++    init = async (_: string, __?: any) => { return; };
++    getMap = () => ({ on: () => {}, off: () => {}, getZoom: () => 13 });
++    destroy = () => {};
++    onMapClick = (_: Function) => {};
++    setView = (_: any, __?: any) => {};
++    getZoom = () => 13;
++  }
++}));
++
++import MiniEventMap from './MiniEventMap';
++
++describe('MiniEventMap', () => {
++  afterEach(() => {
++    cleanup();
++    vi.clearAllMocks();
++  });
++
++  it('renders container and does not crash', () => {
++    const { container } = render(<MiniEventMap />);
++    const el = container.querySelector('.mini-event-map');
++    expect(el).toBeTruthy();
++  });
++});
+\ No newline at end of file
+diff --git a/frontend/src/components/Events/MiniEventMap.tsx b/frontend/src/components/Events/MiniEventMap.tsx
+index 8a346c7..6aa6ad1 100644
+--- a/frontend/src/components/Events/MiniEventMap.tsx
++++ b/frontend/src/components/Events/MiniEventMap.tsx
+@@ -1,7 +1,7 @@
+ import React, { useEffect, useRef, useState, useCallback } from 'react';
+ import '../../utils/leafletInit';
+-// Leaflet инициализирован в leafletInit и доступен как глобальная переменная `L`
+-declare const L: any;
++import L from 'leaflet';
++import { OSMMapRenderer } from '../../services/map_facade/adapters/OSMMapRenderer';
+ 
+ interface MiniEventMapProps {
+   height?: string;
+@@ -26,59 +26,83 @@ const MiniEventMap: React.FC<MiniEventMapProps> = ({
+   const mapRef = useRef<HTMLDivElement>(null);
+   const mapInstanceRef = useRef<any | null>(null);
+   const markerRef = useRef<any | null>(null);
++  const rendererRef = useRef<OSMMapRenderer | null>(null);
+ 
+   useEffect(() => {
+     if (!mapRef.current || mapInstanceRef.current) return;
+-
+-    // Инициализация карты
+-    const map = L.map(mapRef.current, {
+-      center,
+-      zoom,
+-      zoomControl: true,
+-      attributionControl: false,
+-    });
+-
+-    // Добавляем тайлы OpenStreetMap
+-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+-      attribution: '© OpenStreetMap contributors',
+-      maxZoom: 19,
+-    }).addTo(map);
+-
+-    mapInstanceRef.current = map;
+-
+-    // Обработчик клика на карту
+-    map.on('click', (e: L.LeafletMouseEvent) => {
+-      const position: [number, number] = [e.latlng.lat, e.latlng.lng];
+-      
+-      // Обновляем позицию маркера
+-      if (markerRef.current) {
+-        markerRef.current.setLatLng(e.latlng);
+-      } else {
+-        // Создаем новый маркер
+-        const marker = L.marker(e.latlng, {
+-          draggable: true,
+-        }).addTo(map);
+-        
+-        marker.on('dragend', () => {
+-          const pos = marker.getLatLng();
+-          const newPosition: [number, number] = [pos.lat, pos.lng];
+-          onMarkerPositionChange?.(newPosition);
+-        });
+-        
+-        markerRef.current = marker;
++    let destroyed = false;
++
++    const renderer = new OSMMapRenderer();
++    rendererRef.current = renderer;
++
++    const containerEl = mapRef.current;
++    const containerId = containerEl.id || (containerEl.id = 'mini-event-map-' + Math.random().toString(36).slice(2, 9));
++
++    const init = async () => {
++      try {
++        await renderer.init(containerId, { center, zoom });
++        const map = renderer.getMap();
++        mapInstanceRef.current = map;
++
++        // Обработчик клика на карту через renderer
++        const clickHandler = (e: any) => {
++          try {
++            const position: [number, number] = [e.latlng.lat, e.latlng.lng];
++
++            // Обновляем позицию маркера
++            if (markerRef.current) {
++              try { markerRef.current.setLatLng(e.latlng); } catch (err) { }
++            } else {
++              // Создаем новый маркер локально
++              const marker = L.marker(e.latlng, {
++                draggable: true,
++              }).addTo(map);
++
++              marker.on('dragend', () => {
++                try {
++                  const pos = marker.getLatLng();
++                  const newPosition: [number, number] = [pos.lat, pos.lng];
++                  onMarkerPositionChange?.(newPosition);
++                } catch (err) { }
++              });
++
++              markerRef.current = marker;
++            }
++
++            onMarkerPositionChange?.(position);
++            onMapClick?.(position);
++          } catch (err) { }
++        };
++
++        // Подписываемся на клики. Если рендерер не поддерживает onMapClick, используем L hander.
++        try { renderer.onMapClick?.(clickHandler); } catch (e) { map.on('click', clickHandler); }
++        (renderer as any).__miniClickHandler = clickHandler;
++      } catch (err) {
++        console.warn('[MiniEventMap] Failed to initialize renderer', err);
+       }
+-      
+-      onMarkerPositionChange?.(position);
+-      onMapClick?.(position);
+-    });
++    };
++
++    init();
+ 
+     return () => {
+-      if (mapInstanceRef.current) {
+-        mapInstanceRef.current.remove();
++      destroyed = true;
++      try {
++        const clickHandler = (renderer as any).__miniClickHandler;
++        const map = mapInstanceRef.current;
++        if (map && clickHandler) {
++          try { map.off('click', clickHandler); } catch (e) { }
++        }
++
++        if (rendererRef.current) {
++          try { rendererRef.current.destroy(); } catch (e) { }
++          rendererRef.current = null;
++        }
++
+         mapInstanceRef.current = null;
+-      }
++        markerRef.current = null;
++      } catch (e) { }
+     };
+-  }, []);
++  }, [center, zoom, onMarkerPositionChange, onMapClick]);
+ 
+   // Обновление позиции маркера при изменении пропса
+   useEffect(() => {
+@@ -103,14 +127,13 @@ const MiniEventMap: React.FC<MiniEventMapProps> = ({
+       markerRef.current = marker;
+     }
+ 
+-    // Центрируем карту на маркере
+-    mapInstanceRef.current.setView(latlng, Math.max(mapInstanceRef.current.getZoom(), 13));
++    // Центрируем карту на маркере через рендерер
++    try { rendererRef.current?.setView([lat, lng], Math.max(rendererRef.current?.getZoom?.() ?? 13)); } catch (e) { try { mapInstanceRef.current?.setView(latlng, Math.max(mapInstanceRef.current?.getZoom?.() ?? 13)); } catch (err) {} }
+   }, [markerPosition, onMarkerPositionChange]);
+ 
+   // Обновление центра карты
+   useEffect(() => {
+-    if (!mapInstanceRef.current) return;
+-    mapInstanceRef.current.setView(center, zoom);
++    try { rendererRef.current?.setView(center, zoom); } catch (e) { try { mapInstanceRef.current?.setView(center, zoom); } catch (err) { } }
+   }, [center, zoom]);
+ 
+   return (
+-- 
+2.49.0.windows.1
+

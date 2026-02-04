@@ -18,7 +18,7 @@ import { projectManager } from '../../services/projectManager';
 
 interface ActivityItem {
   id: string;
-  type: 'marker' | 'route' | 'event' | 'blog';
+  type: 'marker' | 'route' | 'event' | 'post';
   title: string;
   description?: string;
   author: string;
@@ -39,7 +39,7 @@ interface ActivityItem {
 const RecentActivityFeedView: React.FC = () => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'markers' | 'routes' | 'events' | 'blogs'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'markers' | 'routes' | 'events' | 'posts'>('all');
 
   useEffect(() => {
     loadRecentActivities();
@@ -53,7 +53,7 @@ const RecentActivityFeedView: React.FC = () => {
         { id: '1', type: 'marker', title: 'Золотые ворота Владимира', description: 'Памятник архитектуры XII века, символ города Владимир', author: 'Иван Петров', createdAt: new Date().toISOString(), imageUrl: 'https://via.placeholder.com/80x80?text=Золотые+ворота', stats: { views: 1250, likes: 89, comments: 23, rating: 4.8, ratingCount: 45 }, location: 'Владимир, ул. Большая Московская, 1', category: 'Достопримечательность' },
         { id: '2', type: 'route', title: 'Исторический центр Владимира', description: 'Пешеходный маршрут по историческому центру города', author: 'Мария Сидорова', createdAt: new Date(Date.now() - 3600000).toISOString(), imageUrl: 'https://via.placeholder.com/80x80?text=Маршрут', stats: { views: 890, likes: 67, comments: 15, rating: 4.6, ratingCount: 32 }, location: 'Владимир, центр города', category: 'Пешеходный маршрут' },
         { id: '3', type: 'event', title: 'Фестиваль "Владимирская весна"', description: 'Ежегодный фестиваль народного творчества и ремесел', author: 'Культурный центр', createdAt: new Date(Date.now() - 7200000).toISOString(), imageUrl: 'https://via.placeholder.com/80x80?text=Фестиваль', stats: { views: 2100, likes: 156, comments: 42, rating: 4.9, ratingCount: 78 }, location: 'Владимир, парк Пушкина', category: 'Культурное событие' },
-        { id: '4', type: 'blog', title: 'Путешествие по Золотому кольцу', description: 'Подробный отчет о поездке по городам Золотого кольца России', author: 'Алексей Туристов', createdAt: new Date(Date.now() - 10800000).toISOString(), imageUrl: 'https://via.placeholder.com/80x80?text=Блог', stats: { views: 3400, likes: 234, comments: 67, rating: 4.7, ratingCount: 89 }, location: 'Золотое кольцо России', category: 'Путешествия' }
+        { id: '4', type: 'post', title: 'Путешествие по Золотому кольцу', description: 'Подробный отчет о поездке по городам Золотого кольца России', author: 'Алексей Туристов', createdAt: new Date(Date.now() - 10800000).toISOString(), imageUrl: 'https://via.placeholder.com/80x80?text=Пост', stats: { views: 3400, likes: 234, comments: 67, rating: 4.7, ratingCount: 89 }, location: 'Золотое кольцо России', category: 'Путешествия' }
       ];
       setActivities(testActivities);
 
@@ -70,7 +70,7 @@ const RecentActivityFeedView: React.FC = () => {
           ...markers.map((m: any) => ({ id: m.id, type: 'marker' as const, title: m.title, description: m.description, author: m.author_name || 'Неизвестно', authorAvatar: m.author_avatar, createdAt: m.created_at, imageUrl: m.photo_urls?.[0], stats: { views: m.views_count || 0, likes: m.likes_count || 0, comments: m.comments_count || 0, rating: m.rating || 0, ratingCount: m.rating_count || 0 }, location: m.address, category: m.category })),
           ...routes.map((r: any) => ({ id: r.id, type: 'route' as const, title: r.title || r.name || 'Без названия', description: r.description, author: r.author_name || 'Неизвестно', authorAvatar: r.author_avatar, createdAt: r.created_at || r.createdAt, imageUrl: r.cover_image_url, stats: { views: r.views_count || 0, likes: r.likes_count || 0, comments: r.comments_count || 0, rating: r.rating || 0, ratingCount: r.rating_count || 0 }, location: r.start_location, category: r.category })),
           ...events.map((e: any) => ({ id: e.id, type: 'event' as const, title: e.title, description: e.description, author: e.organizer || 'Неизвестно', authorAvatar: e.organizer_avatar, createdAt: e.start_date, imageUrl: e.image_url, stats: { views: e.views_count || 0, likes: e.likes_count || 0, comments: e.comments_count || 0, rating: e.rating || 0, ratingCount: e.rating_count || 0 }, location: e.location?.address, category: e.category })),
-          ...blogs.map((b: any) => ({ id: b.id, type: 'blog' as const, title: b.title, description: b.excerpt || b.preview, author: b.author_name || b.author || 'Неизвестно', authorAvatar: b.author_avatar, createdAt: b.created_at || b.date, imageUrl: b.cover_image_url || b.images?.[0], stats: { views: b.views_count || 0, likes: b.likes_count || 0, comments: b.comments_count || 0, rating: b.rating || 0, ratingCount: b.rating_count || 0 }, location: b.location, category: b.category }))
+
         ];
 
         if (realActivities.length > 0) {
@@ -90,7 +90,7 @@ const RecentActivityFeedView: React.FC = () => {
       case 'marker': return <MapPin className="w-4 h-4" />;
       case 'route': return <Navigation className="w-4 h-4" />;
       case 'event': return <Calendar className="w-4 h-4" />;
-      case 'blog': return <BookOpen className="w-4 h-4" />;
+      case 'post': return <BookOpen className="w-4 h-4" />;
       default: return <MapPin className="w-4 h-4" />;
     }
   };
@@ -100,7 +100,7 @@ const RecentActivityFeedView: React.FC = () => {
       case 'marker': return 'text-blue-500 bg-blue-50';
       case 'route': return 'text-green-500 bg-green-50';
       case 'event': return 'text-purple-500 bg-purple-50';
-      case 'blog': return 'text-orange-500 bg-orange-50';
+      case 'post': return 'text-orange-500 bg-orange-50';
       default: return 'text-gray-500 bg-gray-50';
     }
   };
@@ -110,7 +110,7 @@ const RecentActivityFeedView: React.FC = () => {
       case 'marker': return 'Метка';
       case 'route': return 'Маршрут';
       case 'event': return 'Событие';
-      case 'blog': return 'Блог';
+      case 'post': return 'Пост';
       default: return 'Активность';
     }
   };
@@ -126,7 +126,7 @@ const RecentActivityFeedView: React.FC = () => {
   };
 
   const filteredActivities = activities.filter(activity => 
-    activeTab === 'all' || activity.type === (activeTab.replace('s', '') as 'marker' | 'route' | 'event' | 'blog')
+    activeTab === 'all' || activity.type === (activeTab.replace('s', '') as 'marker' | 'route' | 'event' | 'post')
   );
 
   if (loading) {
@@ -153,7 +153,7 @@ const RecentActivityFeedView: React.FC = () => {
             { key: 'markers', label: 'Метки', count: activities.filter(a => a.type === 'marker').length },
             { key: 'routes', label: 'Маршруты', count: activities.filter(a => a.type === 'route').length },
             { key: 'events', label: 'События', count: activities.filter(a => a.type === 'event').length },
-            { key: 'blogs', label: 'Блоги', count: activities.filter(a => a.type === 'blog').length }
+            { key: 'posts', label: 'Посты', count: activities.filter(a => a.type === 'post').length },
           ].map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key as any)} className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${activeTab === tab.key ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
               {tab.label} ({tab.count})
@@ -253,8 +253,8 @@ const getTypeIcon = (type: string) => {
     case 'marker': return <MapPin className="w-4 h-4" />;
     case 'route': return <Navigation className="w-4 h-4" />;
     case 'event': return <Calendar className="w-4 h-4" />;
-    case 'blog': return <BookOpen className="w-4 h-4" />;
-    default: return <MapPin className="w-4 h-4" />;
+    case 'post': return <BookOpen className="w-4 h-4" />;
+    default: return <BookOpen className="w-4 h-4" />;
   }
 };
 
@@ -263,7 +263,7 @@ const getTypeColor = (type: string) => {
     case 'marker': return 'text-blue-500 bg-blue-50';
     case 'route': return 'text-green-500 bg-green-50';
     case 'event': return 'text-purple-500 bg-purple-50';
-    case 'blog': return 'text-orange-500 bg-orange-50';
+    case 'post': return 'text-orange-500 bg-orange-50';
     default: return 'text-gray-500 bg-gray-50';
   }
 };
@@ -273,7 +273,7 @@ const getTypeLabel = (type: string) => {
     case 'marker': return 'Метка';
     case 'route': return 'Маршрут';
     case 'event': return 'Событие';
-    case 'blog': return 'Блог';
+    case 'post': return 'Пост';
     default: return 'Активность';
   }
 };

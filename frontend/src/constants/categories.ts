@@ -39,6 +39,6 @@ export const CATEGORIES: Category[] = [
   { key: "ecotourism", label: "#экотуризм", icon: FaLeaf, color: "#00b894" },
   { key: "excursions", label: "#экскурсии", icon: FaLandmark, color: "#0984e3" },
   { key: "user_poi", label: "Пользовательские метки", icon: FaMapPin, color: "#e67e22" },
-  { key: "blog", label: "Блог", icon: FaBlog, color: "#2ecc71" },
+
   { key: "event", label: "Событие", icon: FaCalendarCheck, color: "#9b59b6" },
 ];

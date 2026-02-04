@@ -15,13 +15,12 @@ export interface FavoritePlace {
   categories: {
     personal: boolean;  // Всегда true (избранное)
     post: boolean;     // [ ] Посты
-    blog: boolean;     // [ ] Блоги
     event: boolean;    // [ ] События
   };
   
   // СТАРОЕ: оставляем для совместимости, но помечаем как deprecated
   /** @deprecated Используйте categories вместо purpose */
-  purpose?: 'personal' | 'blog' | 'post' | 'event' | 'shared' | 'draft';
+  purpose?: 'personal' | 'post' | 'event' | 'shared' | 'draft';
   category?: string; // Оставляем для совместимости
   
   tags: string[];
@@ -29,10 +28,9 @@ export interface FavoritePlace {
   lastUsed?: Date;
   usageCount: number;
   relatedContent?: {
-    blogs?: string[];
     events?: string[];
     posts?: string[];
-  };
+  }; 
 }
 
 export interface FavoriteRoute {
@@ -52,13 +50,12 @@ export interface FavoriteRoute {
   categories: {
     personal: boolean;  // Всегда true (избранное)
     post: boolean;     // [ ] Посты
-    blog: boolean;     // [ ] Блоги
     event: boolean;    // [ ] События
   };
   
   // СТАРОЕ: оставляем для совместимости, но помечаем как deprecated
   /** @deprecated Используйте categories вместо purpose */
-  purpose?: 'personal' | 'blog' | 'post' | 'event' | 'shared' | 'draft';
+  purpose?: 'personal' | 'post' | 'event' | 'shared' | 'draft';
   category?: string; // Оставляем для совместимости
   
   created_at: string;
@@ -76,7 +73,7 @@ export interface FavoriteEvent {
   longitude: number;
   participants?: string;
   category: string;
-  purpose: 'personal' | 'blog' | 'post' | 'event' | 'shared' | 'draft';
+  purpose: 'personal' | 'post' | 'event' | 'shared' | 'draft';
   created_at: string;
   updated_at: string;
 }

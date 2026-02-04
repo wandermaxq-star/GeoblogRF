@@ -32,15 +32,15 @@ ALTER TYPE activity_type ADD VALUE 'marker_rated';             -- Оценил �
 ALTER TYPE activity_type ADD VALUE 'marker_commented';         -- Прокомментировал метку
 ALTER TYPE activity_type ADD VALUE 'marker_visited';           -- Посетил метку
 
--- Блоги
-ALTER TYPE activity_type ADD VALUE 'blog_updated';             -- Обновил блог
-ALTER TYPE activity_type ADD VALUE 'blog_deleted';             -- Удалил блог
-ALTER TYPE activity_type ADD VALUE 'blog_favorited';           -- Добавил блог в избранное
-ALTER TYPE activity_type ADD VALUE 'blog_unfavorited';          -- Убрал блог из избранного
-ALTER TYPE activity_type ADD VALUE 'blog_rated';               -- Оценил блог
-ALTER TYPE activity_type ADD VALUE 'blog_commented';           -- Прокомментировал блог
-ALTER TYPE activity_type ADD VALUE 'blog_liked';               -- Лайкнул блог
-ALTER TYPE activity_type ADD VALUE 'blog_unliked';             -- Убрал лайк с блога
+-- Публикации (posts)
+ALTER TYPE activity_type ADD VALUE 'post_updated';             -- Обновил пост
+ALTER TYPE activity_type ADD VALUE 'post_deleted';             -- Удалил пост
+ALTER TYPE activity_type ADD VALUE 'post_favorited';           -- Добавил пост в избранное
+ALTER TYPE activity_type ADD VALUE 'post_unfavorited';         -- Убрал пост из избранного
+ALTER TYPE activity_type ADD VALUE 'post_rated';               -- Оценил пост
+ALTER TYPE activity_type ADD VALUE 'post_commented';           -- Прокомментировал пост
+ALTER TYPE activity_type ADD VALUE 'post_liked';               -- Лайкнул пост
+ALTER TYPE activity_type ADD VALUE 'post_unliked';             -- Убрал лайк с поста
 
 -- Пользователи и социальные взаимодействия
 ALTER TYPE activity_type ADD VALUE 'user_followed';            -- Подписался на пользователя

@@ -97,21 +97,8 @@ export const getPendingContent = async (req, res) => {
         `;
         break;
       
-      case 'blogs':
-// SONAR-AUTO-FIX (javascript:S1854): original: // SONAR-AUTO-FIX (javascript:S1854): original:         tableName = 'blog_posts';
-        query = `
-          SELECT b.*, u.username as creator_name 
-          FROM blog_posts b 
-          LEFT JOIN users u ON b.author_id = u.id 
-          WHERE b.status = 'pending'
-            AND NOT EXISTS (
-              SELECT 1 FROM ai_moderation_decisions amd 
-              WHERE amd.content_type = 'blogs' 
-                AND amd.content_id::text = b.id::text
-            )
-          ORDER BY b.created_at DESC
-        `;
-        break;
+      // Legacy 'blogs' removed — blogs migrated to posts and are handled by the 'posts' case above.
+      // case 'blogs': removed.
       
       case 'comments':
         // Проверяем наличие таблицы
@@ -215,10 +202,7 @@ export const approveContent = async (req, res) => {
         tableName = 'map_markers';
         authorIdColumn = 'creator_id';
         break;
-      case 'blogs':
-        tableName = 'blog_posts';
-        authorIdColumn = 'author_id';
-        break;
+      // Legacy 'blogs' support removed — handled via 'posts' case above.
       case 'comments':
         tableName = 'comments';
         authorIdColumn = 'user_id';
@@ -274,8 +258,6 @@ export const approveContent = async (req, res) => {
       'route': 'route_created',
       'markers': 'marker_created',
       'marker': 'marker_created',
-      'blogs': 'blog_created',
-      'blog': 'blog_created',
       'comments': 'comment_created',
       'comment': 'comment_created',
       'chats': 'chat_created',
@@ -302,7 +284,6 @@ export const approveContent = async (req, res) => {
           'posts': 50,
           'routes': 100,
           'markers': 30,
-          'blogs': 75,
           'comments': 10,
           'chats': 5
         }[contentTypeKey] || {
@@ -310,7 +291,6 @@ export const approveContent = async (req, res) => {
           'post': 50,
           'route': 100,
           'marker': 30,
-          'blog': 75,
           'comment': 10,
           'chat': 5
         }[contentType] || 50;

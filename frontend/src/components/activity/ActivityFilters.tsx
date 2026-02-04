@@ -110,7 +110,7 @@ const ActivityFilters: React.FC<ActivityFiltersProps> = ({ filters, onFiltersCha
 
   const activityTypeFilters = [
     { value: 'room_created', label: 'Комнаты' },
-    { value: 'blog_created', label: 'Блоги' },
+    { value: 'post_created', label: 'Посты' },
     { value: 'marker_created', label: 'Метки' },
     { value: 'route_created', label: 'Маршруты' },
     { value: 'event_created', label: 'События' },
@@ -120,7 +120,7 @@ const ActivityFilters: React.FC<ActivityFiltersProps> = ({ filters, onFiltersCha
 
   const targetTypeFilters = [
     { value: 'room', label: 'Комнаты' },
-    { value: 'blog', label: 'Блоги' },
+    { value: 'post', label: 'Посты' },
     { value: 'marker', label: 'Метки' },
     { value: 'route', label: 'Маршруты' },
     { value: 'event', label: 'События' },

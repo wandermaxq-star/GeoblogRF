@@ -3,7 +3,7 @@ import { FaFlag } from 'react-icons/fa';
 
 interface ReportButtonProps {
   contentId: string;
-  contentType: 'marker' | 'route' | 'blog' | 'event' | 'comment';
+  contentType: 'marker' | 'route' | 'post' | 'event' | 'comment';
   contentTitle: string;
   variant?: 'button' | 'icon' | 'text';
   size?: 'sm' | 'md' | 'lg';

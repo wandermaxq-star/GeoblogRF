@@ -11,7 +11,7 @@ export interface ModerationResult {
 
 export interface ContentData {
   text: string;
-  type: 'chat' | 'blog' | 'comment' | 'review';
+  type: 'chat' | 'post' | 'comment' | 'review';
   userId: string;
   location?: string;
   images?: string[];

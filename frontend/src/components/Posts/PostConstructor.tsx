@@ -216,107 +216,9 @@ const BottomButtons = styled.div`
   background: #f8fafc;
 `;
 
-// Модальное окно для выбора из избранного
-const FavoritesModal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-`;
-
-const FavoritesModalContent = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  max-width: 600px;
-  width: 100%;
-  max-height: 80vh;
-  overflow-y: auto;
-`;
-
-const FavoritesModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-`;
-
-const FavoritesModalTitle = styled.h3`
-  font-size: 18px;
-  font-weight: 600;
-  color: #1f2937;
-`;
-
-const FavoritesList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-`;
-
-const FavoritesItem = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-  
-  &:hover {
-    border-color: #3b82f6;
-    background: #f0f9ff;
-  }
-`;
-
-const FavoritesItemInfo = styled.div`
-  flex: 1;
-`;
-
-const FavoritesItemTitle = styled.div`
-  font-weight: 500;
-  color: #1f2937;
-  margin-bottom: 4px;
-`;
-
-const FavoritesItemDescription = styled.div`
-  font-size: 14px;
-  color: #6b7280;
-`;
-
-const FavoritesItemButton = styled.button`
-  padding: 8px 16px;
-  background: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.2s;
-  
-  &:hover {
-    background: #2563eb;
-  }
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #6b7280;
-  
-  &:hover {
-    color: #1f2937;
-  }
-`;
+/* Модальные стили перенесены в `frontend/src/styles/_components.css`.
+   Используйте классы: `.modal-overlay`, `.modal-content`, `.modal-header`, `.modal-title`, `.modal-list`,
+   а также утилиты `.image-remove-btn`, `.image-cover`, `.pc-section-heading`, `.pc-btn-row`, `.pc-section`. */
 
 type PostType = 'simple' | 'guide';
 
@@ -610,18 +512,18 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
           <PanelTitle>Создать пост</PanelTitle>
           
           {/* Переключатель типа поста */}
-          <div style={{ marginBottom: 20, display: 'flex', gap: 8 }}>
+          <div className="pc-toggle-group">
             <ControlButton
               active={postType === 'simple'}
               onClick={() => setPostType('simple')}
-              style={{ flex: 1, marginBottom: 0 }}
+              className="pc-btn-full"
             >
               📝 Простой
             </ControlButton>
             <ControlButton
               active={postType === 'guide'}
               onClick={() => setPostType('guide')}
-              style={{ flex: 1, marginBottom: 0 }}
+              className="pc-btn-full"
             >
               🗺️ Путеводитель
             </ControlButton>
@@ -681,16 +583,14 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
           {/* Кнопки для выбора из избранного */}
           {postData.map.visible && (
             <>
-              <div style={{ marginTop: 10 }}>
-                <div style={{ fontSize: 12, color: '#4b5563', marginBottom: 6 }}>Фон карты</div>
-                <div style={{ display: 'flex', gap: 8 }}>
+              <div className="pc-section">
+                <div className="pc-label-sm">Фон карты</div>
+                <div className="pc-btn-row">
                   <ControlButton active={postData.map.base === 'opentopo'} onClick={() => setPostData(prev => ({ ...prev, map: { ...prev.map, base: 'opentopo' } }))}>OpenTopoMap</ControlButton>
                   <ControlButton active={postData.map.base === 'alidade'} onClick={() => setPostData(prev => ({ ...prev, map: { ...prev.map, base: 'alidade' } }))}>Alidade Smooth</ControlButton>
                 </div>
               </div>
-              <h3 style={{ marginTop: '20px', marginBottom: '10px', fontSize: '14px', fontWeight: '600', color: '#374151' }}>
-                Добавить на карту
-              </h3>
+              <h3 className="pc-section-header">Добавить на карту</h3>
               
               <ControlButton onClick={() => openFavoritesModal('markers')}>
                 <MapPin size={16} />
@@ -709,15 +609,15 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
 
               {/* Список выбранных элементов с крестиками для удаления */}
               {(postData.map.elements.markers.length > 0 || postData.map.elements.routes.length > 0 || postData.map.elements.events.length > 0) && (
-                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div className="pc-selected-list">
                   {postData.map.elements.markers.length > 0 && (
                     <div>
-                      <div style={{ fontSize: 12, color: '#4b5563', marginBottom: 6 }}>Метки на карте</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div className="pc-label-sm">Метки на карте</div>
+                      <div className="pc-list-col">
                         {postData.map.elements.markers.map((m: any) => (
-                          <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 6 }}>
-                            <div style={{ fontSize: 13, color: '#111827' }}>{m.title}</div>
-                            <button onClick={() => removeMapElement('markers', m.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontWeight: 700, cursor: 'pointer' }}>×</button>
+                          <div key={m.id} className="pc-list-item">
+                            <div className="pc-text-muted-sm">{m.title}</div>
+                            <button onClick={() => removeMapElement('markers', m.id)} className="pc-btn-icon-sm pc-btn-icon-danger">×</button>
                           </div>
                         ))}
                       </div>
@@ -725,12 +625,12 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                   )}
                   {postData.map.elements.routes.length > 0 && (
                     <div>
-                      <div style={{ fontSize: 12, color: '#4b5563', marginBottom: 6 }}>Маршруты на карте</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div className="pc-label-sm">Маршруты на карте</div>
+                      <div className="pc-list-col">
                         {postData.map.elements.routes.map((r: any) => (
-                          <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 6 }}>
-                            <div style={{ fontSize: 13, color: '#111827' }}>{r.title}</div>
-                            <button onClick={() => removeMapElement('routes', r.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontWeight: 700, cursor: 'pointer' }}>×</button>
+                          <div key={r.id} className="pc-list-item">
+                            <div className="pc-text-muted-sm">{r.title}</div>
+                            <button onClick={() => removeMapElement('routes', r.id)} className="pc-btn-icon-sm pc-btn-icon-danger">×</button>
                           </div>
                         ))}
                       </div>
@@ -738,41 +638,41 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                   )}
                   {postData.map.elements.events.length > 0 && (
                     <div>
-                      <div style={{ fontSize: 12, color: '#4b5563', marginBottom: 6 }}>События на карте</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div className="pc-label-sm">События на карте</div>
+                      <div className="pc-list-col">
                         {postData.map.elements.events.map((e: any) => (
-                          <div key={e.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', border: '1px solid #e5e7eb', borderRadius: 6 }}>
-                            <div style={{ fontSize: 13, color: '#111827' }}>{e.title}</div>
-                            <button onClick={() => removeMapElement('events', e.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontWeight: 700, cursor: 'pointer' }}>×</button>
+                          <div key={e.id} className="pc-list-item">
+                            <div className="pc-text-muted-sm">{e.title}</div>
+                            <button onClick={() => removeMapElement('events', e.id)} className="pc-btn-icon-sm pc-btn-icon-danger">×</button>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
                 </div>
-              )}
+              )} 
             </>
           )}
           
           {/* Для путеводителя: список секций */}
           {postType === 'guide' && guideSections.length > 0 && (
-            <div style={{ marginTop: 20, marginBottom: 20 }}>
-              <div style={{ fontSize: 12, color: '#4b5563', marginBottom: 8, fontWeight: 600 }}>
+            <div className="pc-guide-wrapper">
+              <div className="pc-section-heading">
                 Секции путеводителя ({guideSections.length})
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
+              <div className="pc-guide-list">
                 {guideSections.map((section, idx) => (
-                  <div key={section.id} style={{ padding: 10, border: selectedBlock === `section-${section.id}` ? '2px solid #3b82f6' : '1px solid #e5e7eb', borderRadius: 6, background: selectedBlock === `section-${section.id}` ? '#f0f9ff' : 'white' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <div key={section.id} className={"pc-section-card " + (selectedBlock === `section-${section.id}` ? 'active' : '')}>
+                    <div className="pc-list-item">
                       <span 
                         onClick={() => setSelectedBlock(`section-${section.id}`)}
-                        style={{ fontSize: 12, fontWeight: 500, color: '#111827', cursor: 'pointer', flex: 1 }}
+                        className="pc-text-muted-sm pc-clickable"
                       >
                         {section.title || `Секция ${idx + 1}`}
                       </span>
                       <button
                         onClick={() => setGuideSections(guideSections.filter(s => s.id !== section.id))}
-                        style={{ background: 'transparent', border: 'none', color: '#ef4444', fontWeight: 700, cursor: 'pointer', fontSize: 16, padding: '0 4px' }}
+                        className="pc-btn-icon-sm pc-btn-icon-danger"
                         title="Удалить секцию"
                       >
                         ×
@@ -780,7 +680,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                     </div>
                     
                     {/* Чекбокс для карты в секции */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <div className="pc-checkbox-row">
                       <input
                         type="checkbox"
                         checked={section.hasMap}
@@ -794,16 +694,17 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                           }
                           setGuideSections(newSections);
                         }}
-                        style={{ width: 14, height: 14 }}
+                        id={`map-check-${section.id}`}
+                        className="pc-checkbox-sm"
                       />
-                      <label style={{ fontSize: 11, color: '#6b7280', cursor: 'pointer' }}>
+                      <label htmlFor={`map-check-${section.id}`} className="pc-label-sm">
                         Добавить карту
                       </label>
                     </div>
                     
                     {/* Выбор элемента для карты */}
                     {section.hasMap && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+                      <div className="pc-map-actions">
                         <button
                           onClick={() => {
                             setFavoritesType('routes');
@@ -811,7 +712,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                             // Сохраняем ID секции для добавления
                             (window as any).__currentGuideSectionId = section.id;
                           }}
-                          style={{ padding: '4px 8px', fontSize: 10, background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 4, cursor: 'pointer' }}
+                          className="pc-btn-action-sm"
                         >
                           Выбрать маршрут
                         </button>
@@ -821,7 +722,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                             setShowFavoritesModal(true);
                             (window as any).__currentGuideSectionId = section.id;
                           }}
-                          style={{ padding: '4px 8px', fontSize: 10, background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 4, cursor: 'pointer' }}
+                          className="pc-btn-action-sm"
                         >
                           Выбрать метку
                         </button>
@@ -831,17 +732,17 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                             setShowFavoritesModal(true);
                             (window as any).__currentGuideSectionId = section.id;
                           }}
-                          style={{ padding: '4px 8px', fontSize: 10, background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 4, cursor: 'pointer' }}
+                          className="pc-btn-action-sm"
                         >
                           Выбрать событие
                         </button>
                         {(section.routeId || section.markerId || section.eventId) && (
-                          <div style={{ fontSize: 10, color: '#6b7280', marginTop: 4, padding: 4, background: '#f0f9ff', borderRadius: 4 }}>
+                          <div className="pc-status-badge">
                             {section.routeId ? '✓ Маршрут добавлен' : section.markerId ? '✓ Метка добавлена' : section.eventId ? '✓ Событие добавлено' : ''}
                           </div>
                         )}
                       </div>
-                    )}
+                    )} 
                   </div>
                 ))}
               </div>
@@ -849,12 +750,12 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
           )}
           
           {/* Кнопки действий */}
-          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className="pc-bottom-actions">
             <ActionButton variant="secondary">
               <Save size={16} />
               Сохранить в черновик
             </ActionButton>
-          </div>
+          </div> 
         </LeftPanel>
         
         {/* Правая панель - 75% */}
@@ -955,9 +856,9 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
             {/* Изображения */}
             {postData.images.visible && (
               <ContentBlock onClick={() => setSelectedBlock('images')}>
-                <div style={{ marginBottom: '16px' }}>
-                  <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px' }}>Фотографии</h3>
-                  <p style={{ fontSize: '12px', color: '#666', marginBottom: '16px' }}>
+                <div className="pc-images-header">
+                  <h3 className="pc-images-title">Фотографии</h3>
+                  <p className="pc-images-hint">
                     Нажмите на фото или перетащите файл для загрузки
                   </p>
                 </div>
@@ -969,37 +870,21 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                         key={image.id}
                         onDrop={(e) => handleImageDrop(e, image.id)}
                         onDragOver={(e) => e.preventDefault()}
-                        style={{ position: 'relative' }}
+                        className="image-item"
                       >
                         {image.src ? (
                           <>
                             <img 
                               src={image.src} 
                               alt={image.alt} 
-                              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '6px' }} 
+                              className="image-cover" 
                             />
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 removeImage(image.id);
                               }}
-                              style={{
-                                position: 'absolute',
-                                top: '4px',
-                                right: '4px',
-                                background: 'rgba(239, 68, 68, 0.9)',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '50%',
-                                width: '24px',
-                                height: '24px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '16px',
-                                lineHeight: '1'
-                              }}
+                              className="image-remove-btn"
                             >
                               ×
                             </button>
@@ -1013,30 +898,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                               style={{ display: 'none' }}
                               onChange={(e) => handleImageFileSelect(e, image.id)}
                             />
-                            <label
-                              htmlFor={imageId}
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                border: '2px dashed #cbd5e1',
-                                borderRadius: '6px',
-                                padding: '8px',
-                                transition: 'all 0.2s'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = '#3b82f6';
-                                e.currentTarget.style.backgroundColor = '#f8fafc';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = '#cbd5e1';
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                              }}
-                            >
+                            <label htmlFor={imageId} className="pc-img-placeholder">
                               {uploadingImages[image.id] ? (
                                 <div style={{ textAlign: 'center' }}>
                                   <div style={{ fontSize: '12px', color: '#666' }}>Загрузка...</div>
@@ -1060,23 +922,8 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                   })}
                   
                   {postData.images.items.length < 10 && (
-                    <ImageItem 
-                      onClick={addImage}
-                      style={{
-                        cursor: 'pointer',
-                        border: '2px dashed #cbd5e1',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = '#3b82f6';
-                        e.currentTarget.style.backgroundColor = '#f8fafc';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = '#cbd5e1';
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                      }}
-                    >
-                      <div style={{ textAlign: 'center' }}>
+                    <ImageItem onClick={addImage}>
+                      <div className="pc-img-placeholder" style={{ textAlign: 'center' }}>
                         <Plus size={32} color="#94a3b8" />
                         <div style={{ fontSize: '12px', marginTop: '5px', color: '#64748b' }}>Добавить</div>
                       </div>
@@ -1089,7 +936,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
             {/* Для путеводителя: секции */}
             {postType === 'guide' && guideSections.map((section, idx) => (
               <ContentBlock key={section.id} onClick={() => setSelectedBlock(`section-${section.id}`)}>
-                <div style={{ padding: 20 }}>
+                <div className="pc-section-preview-content">
                   <TitleBlock
                     contentEditable
                     suppressContentEditableWarning
@@ -1099,7 +946,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                       setGuideSections(newSections);
                     }}
                     data-placeholder={`Заголовок секции ${idx + 1}`}
-                    style={{ marginBottom: 15 }}
+                    className="pc-mb-md"
                   />
                   <TextBlock
                     contentEditable
@@ -1128,7 +975,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                     }
                     
                     return (
-                      <div style={{ marginTop: 15 }}>
+                      <div className="pc-mt-md">
                         <MapBlock>
                           <MapContainer>
                             <PostMap
@@ -1187,58 +1034,51 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
       
       {/* Модальное окно для выбора из избранного */}
       {showFavoritesModal && (
-        <FavoritesModal onClick={() => setShowFavoritesModal(false)}>
-          <FavoritesModalContent onClick={(e) => e.stopPropagation()}>
-            <FavoritesModalHeader>
-              <FavoritesModalTitle>
+        <div className="modal-overlay" onClick={() => setShowFavoritesModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">
                 Выбрать {favoritesType === 'markers' ? 'метки' : favoritesType === 'routes' ? 'маршруты' : 'события'}
-              </FavoritesModalTitle>
-              <CloseButton onClick={() => setShowFavoritesModal(false)}>×</CloseButton>
-            </FavoritesModalHeader>
-            
-            <FavoritesList>
+              </h3>
+              <button className="modal-close-btn" onClick={() => setShowFavoritesModal(false)}>&times;</button>
+            </div>
+
+            <div className="modal-list">
               {favoritesType === 'markers' && favorites?.favoritePlaces?.map(place => (
-                <FavoritesItem key={place.id}>
-                  <FavoritesItemInfo>
-                    <FavoritesItemTitle>{place.name}</FavoritesItemTitle>
-                    <FavoritesItemDescription>{place.description || place.location}</FavoritesItemDescription>
-                  </FavoritesItemInfo>
-                  <FavoritesItemButton onClick={() => {
-                    // Нормализуем категорию из type или category в ключ категории
-                    const categoryKey = normalizeCategoryKey(
-                      (place as any).category || place.type || undefined
-                    );
+                <div key={place.id} className="pc-list-item">
+                  <div className="pc-fill-flex">
+                    <div className="pc-text-muted-sm">{place.name}</div>
+                    <div className="pc-label-sm">{place.description || place.location}</div>
+                  </div>
+                  <button className="pc-btn-action-sm" onClick={() => {
+                    const categoryKey = normalizeCategoryKey((place as any).category || place.type || undefined);
                     addFromFavorites('markers', {
-                    id: place.id,
-                      // Сохраняем координаты в формате [lat, lon] + явные поля для надёжности
+                      id: place.id,
                       coordinates: place.coordinates || [place.latitude, place.longitude],
                       latitude: place.latitude,
                       longitude: place.longitude,
                       lat: place.latitude,
                       lon: place.longitude,
-                    title: place.name,
+                      title: place.name,
                       description: place.description || place.location,
-                      category: categoryKey // НОРМАЛИЗОВАННАЯ КАТЕГОРИЯ!
+                      category: categoryKey
                     });
-                  }}>
-                    Добавить
-                  </FavoritesItemButton>
-                </FavoritesItem>
+                  }}>Добавить</button>
+                </div>
               ))}
-              
+
               {favoritesType === 'routes' && favorites?.favoriteRoutes
                 ?.filter((route: any) => {
                   const tags = Array.isArray(route?.tags) ? route.tags : [];
                   return route?.categories?.post || route?.purpose === 'post' || route?.category === 'post' || tags.includes('post');
                 })
                 .map(route => (
-                <FavoritesItem key={route.id}>
-                  <FavoritesItemInfo>
-                    <FavoritesItemTitle>{route.title}</FavoritesItemTitle>
-                    <FavoritesItemDescription>{route.description}</FavoritesItemDescription>
-                  </FavoritesItemInfo>
-                  <FavoritesItemButton onClick={() => {
-                    // Извлекаем координаты: сначала из waypoints, иначе из points
+                <div key={route.id} className="pc-list-item">
+                  <div className="pc-fill-flex">
+                    <div className="pc-text-muted-sm">{route.title}</div>
+                    <div className="pc-label-sm">{route.description}</div>
+                  </div>
+                  <button className="pc-btn-action-sm" onClick={() => {
                     const toNum = (v: any) => (v === null || v === undefined ? NaN : Number(v));
                     const norm = (a: any, b: any): [number, number] | null => {
                       const x = toNum(a); const y = toNum(b);
@@ -1249,11 +1089,9 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                     };
                     let coordinates: [number, number][] = [];
                     
-                    // Сначала проверяем наличие сохраненной геометрии в route_data (приоритет)
                     if ((route as any).route_data?.geometry && Array.isArray((route as any).route_data.geometry)) {
                       coordinates = (route as any).route_data.geometry
                         .map((coord: any) => {
-                          // Поддерживаем оба формата: [lat, lon] и [lon, lat]
                           if (Array.isArray(coord) && coord.length >= 2) {
                             return norm(coord[0], coord[1]);
                           }
@@ -1261,7 +1099,6 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                         })
                         .filter((c: any): c is [number, number] => Array.isArray(c));
                     } else if ((route as any).route_data?.polyline && Array.isArray((route as any).route_data.polyline)) {
-                      // Фолбэк на polyline (старый формат)
                       coordinates = (route as any).route_data.polyline
                         .map((coord: any) => norm(coord[0], coord[1]))
                         .filter((c: any): c is [number, number] => Array.isArray(c));
@@ -1274,38 +1111,32 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                         .map((p: any) => norm(p.longitude ?? p.lng ?? (p.coordinates?.[1]), p.latitude ?? p.lat ?? (p.coordinates?.[0])))
                         .filter((c: any): c is [number, number] => Array.isArray(c));
                     }
-                    // Конвертируем в формат [lat, lon] для нашего фасада
                     const latlon: [number, number][] = coordinates
                       .map((c: any) => Array.isArray(c) && c.length === 2 ? [c[1], c[0]] as [number, number] : c)
                       .filter((c: any): c is [number, number] => Array.isArray(c));
-                    // Сохраняем маршрут с геометрией (если она была сохранена)
                     const routeWithGeometry: any = {
                       id: route.id,
                       coordinates: latlon,
                       title: route.title,
                       description: route.description,
-                      // Сохраняем route_data с геометрией для правильного отображения
                       route_data: {
-                        geometry: (route as any).route_data?.geometry || latlon, // Используем сохранённую geometry если есть
+                        geometry: (route as any).route_data?.geometry || latlon,
                         points: latlon
                       }
                     };
                     addFromFavorites('routes', routeWithGeometry);
-                  }}>
-                    Добавить
-                  </FavoritesItemButton>
-                </FavoritesItem>
+                  }}>Добавить</button>
+                </div>
               ))}
-              
+
               {favoritesType === 'events' && favorites?.favoriteEvents?.map(event => (
-                <FavoritesItem key={event.id}>
-                  <FavoritesItemInfo>
-                    <FavoritesItemTitle>{event.title}</FavoritesItemTitle>
-                    <FavoritesItemDescription>{event.description}</FavoritesItemDescription>
-                  </FavoritesItemInfo>
-                  <FavoritesItemButton onClick={() => addFromFavorites('events', {
+                <div key={event.id} className="pc-list-item">
+                  <div className="pc-fill-flex">
+                    <div className="pc-text-muted-sm">{event.title}</div>
+                    <div className="pc-label-sm">{event.description || event.location}</div>
+                  </div>
+                  <button className="pc-btn-action-sm" onClick={() => addFromFavorites('events', {
                     id: event.id,
-                    // Сохраняем координаты в формате [lat, lon] + явные поля
                     coordinates: (event as any).coordinates || [event.latitude, event.longitude],
                     latitude: event.latitude,
                     longitude: event.longitude,
@@ -1316,15 +1147,13 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                     date: event.date,
                     time: '12:00',
                     location: event.location,
-                    category: (event as any).category || (event as any).type || 'event' // КАТЕГОРИЯ для событий
-                  })}>
-                    Добавить
-                  </FavoritesItemButton>
-                </FavoritesItem>
+                    category: (event as any).category || (event as any).type || 'event'
+                  })}>Добавить</button>
+                </div>
               ))}
-            </FavoritesList>
-          </FavoritesModalContent>
-        </FavoritesModal>
+            </div>
+          </div>
+        </div>
       )}
     </PageContainer>
   );

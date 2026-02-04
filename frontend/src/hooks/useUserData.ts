@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserBlogs } from '../api/blogs';
 import { getRoutes } from '../api/routes';
 import { listPosts } from '../services/postsService';
 import { ContentCardData } from '../components/Profile/ContentCards/ContentCard';
 
 interface UserData {
   posts: ContentCardData[];
-  blogs: ContentCardData[];
   routes: ContentCardData[];
   places: ContentCardData[];
   loading: boolean;
@@ -18,7 +16,6 @@ export const useUserData = (userId?: string): UserData => {
   const auth = useAuth();
   const [data, setData] = useState<UserData>({
     posts: [],
-    blogs: [],
     routes: [],
     places: [],
     loading: true,
@@ -38,7 +35,6 @@ export const useUserData = (userId?: string): UserData => {
       if (userId && userId !== auth.user?.id) {
         setData({
           posts: generateTestPosts(userId),
-          blogs: [],
           routes: generateTestRoutes(userId),
           places: generateTestPlaces(userId),
           loading: false,
@@ -48,40 +44,12 @@ export const useUserData = (userId?: string): UserData => {
       }
 
       try {
-        // Загружаем данные параллельно
-        const [blogsData, routesData, postsData] = await Promise.allSettled([
-          getUserBlogs(),
+        // Загружаем данные параллельно (без блогов)
+        const [routesData, postsData] = await Promise.allSettled([
           getRoutes(),
           listPosts({ limit: 50 })
         ]);
 
-        // Обрабатываем блоги
-        const blogs: ContentCardData[] = blogsData.status === 'fulfilled' 
-          ? blogsData.value.map(blog => ({
-              id: blog.id.toString(),
-              type: 'blog' as const,
-              title: blog.title,
-              preview: blog.content.substring(0, 100) + '...',
-              rating: blog.rating || 0,
-              stats: {
-                views: (blog as any).views || 0,
-                likes: (blog as any).likes || 0,
-                comments: blog.comments_count || 0,
-                shares: 0
-              },
-              metadata: {
-                createdAt: new Date(blog.created_at || new Date()),
-                updatedAt: new Date(blog.updated_at || new Date()),
-                category: blog.category || 'путешествие',
-                tags: blog.tags || []
-              },
-              interactive: {
-                canRead: true,
-                canEdit: true,
-                canShare: true
-              }
-            }))
-          : [];
 
         // Обрабатываем маршруты
         const routes: ContentCardData[] = routesData.status === 'fulfilled'
@@ -144,7 +112,6 @@ export const useUserData = (userId?: string): UserData => {
 
         setData({
           posts,
-          blogs,
           routes,
           places,
           loading: false,

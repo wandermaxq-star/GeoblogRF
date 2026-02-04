@@ -7,7 +7,7 @@ interface CategoryOption {
   description: string;
   icon: React.ReactNode;
   color: string;
-  purpose: 'personal' | 'blog' | 'post' | 'event' | 'shared' | 'draft';
+  purpose: 'personal' | 'post' | 'event' | 'shared' | 'draft';
 }
 
 const CATEGORY_OPTIONS: CategoryOption[] = [
@@ -19,14 +19,7 @@ const CATEGORY_OPTIONS: CategoryOption[] = [
     color: 'blue',
     purpose: 'personal'
   },
-  {
-    id: 'blog',
-    name: 'Для блога',
-    description: 'Маршрут для публикации в блоге',
-    icon: <FaEdit className="text-gray-600" size={20} />,
-    color: 'green',
-    purpose: 'blog'
-  },
+
   {
     id: 'post',
     name: 'Для поста',

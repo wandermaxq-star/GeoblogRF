@@ -21,18 +21,15 @@ const ActivityHeader = React.memo(() => {
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center space-x-2">
           <FaBell className="w-5 h-5 text-slate-400" />
-          <h1 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Лента активности</h1>
-        </div>
-        
-        {/* Статус активности - стабилизирован */}
-        <div className="flex items-center space-x-2 px-3 py-1 rounded-full" style={{ background: 'var(--glass-bg)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', border: '1px solid var(--border-light)' }}>
+          <h1 className="text-lg font-semibold activity-title">Лента активности</h1>        </div>        {/* Статус активности - стабилизирован */}
+        <div className="activity-header-status">
           <span className="text-lg">⚡</span>
-          <span className="text-sm font-medium" style={{ color: 'var(--text-accent)' }}>Активный участник</span>
+          <span className="text-sm font-medium activity-status-text">Активный участник</span>
         </div>
       </div>
       
       {/* Вдохновляющее сообщение - стабилизировано */}
-      <div className="text-sm italic text-center mt-2" style={{ color: 'var(--text-secondary)' }}>
+      <div className="text-sm italic text-center mt-2 activity-subtitle">
         "Будьте в курсе всех событий сообщества"
       </div>
     </div>
@@ -45,11 +42,11 @@ const ActivityStatsBlocks = React.memo(() => {
   
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="stat-grid">
         {[1, 2, 3, 4].map(i => (
-          <div key={i} className="rounded-lg shadow-md p-4 animate-pulse" style={{ background: 'var(--surface-card)', border: '1px solid var(--border-card)' }}>
-            <div className="h-8 bg-gray-200 rounded mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded"></div>
+          <div key={i} className="stat-card" style={{ background: 'var(--surface-card)', border: '1px solid var(--border-card)' }}>
+            <div className="stat-skeleton"></div>
+            <div className="stat-skeleton sm"></div>
           </div>
         ))}
       </div>
@@ -57,49 +54,41 @@ const ActivityStatsBlocks = React.memo(() => {
   }
   
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div className="stat-grid">
       {/* Общая активность */}
-      <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-4 text-white hover:shadow-xl transition-shadow">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-2xl font-bold">{stats?.total_activities || 0}</div>
-            <div className="text-blue-100 text-sm">Всего событий</div>
-          </div>
-          <FaBell className="text-2xl text-blue-200" />
+      <div className="stat-card blue">
+        <div>
+          <div className="text-2xl font-bold">{stats?.total_activities || 0}</div>
+          <div className="text-blue-100 text-sm">Всего событий</div>
         </div>
+        <FaBell className="text-2xl text-blue-200" />
       </div>
       
       {/* Непрочитанные */}
-      <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg shadow-lg p-4 text-white hover:shadow-xl transition-shadow">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-2xl font-bold">{stats?.unread_activities || 0}</div>
-            <div className="text-orange-100 text-sm">Непрочитанных</div>
-          </div>
-          <FaComment className="text-2xl text-orange-200" />
+      <div className="stat-card orange">
+        <div>
+          <div className="text-2xl font-bold">{stats?.unread_activities || 0}</div>
+          <div className="text-orange-100 text-sm">Непрочитанных</div>
         </div>
+        <FaComment className="text-2xl text-orange-200" />
       </div>
       
       {/* Сообщения */}
-      <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow-lg p-4 text-white hover:shadow-xl transition-shadow">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-2xl font-bold">{stats?.message_activities || 0}</div>
-            <div className="text-green-100 text-sm">Сообщений</div>
-          </div>
-          <FaComment className="text-2xl text-green-200" />
+      <div className="stat-card green">
+        <div>
+          <div className="text-2xl font-bold">{stats?.message_activities || 0}</div>
+          <div className="text-green-100 text-sm">Сообщений</div>
         </div>
+        <FaComment className="text-2xl text-green-200" />
       </div>
       
       {/* Системные уведомления */}
-      <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow-lg p-4 text-white hover:shadow-xl transition-shadow">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-2xl font-bold">{stats?.system_activities || 0}</div>
-            <div className="text-purple-100 text-sm">Системных</div>
-          </div>
-          <FaHeart className="text-2xl text-purple-200" />
+      <div className="stat-card purple">
+        <div>
+          <div className="text-2xl font-bold">{stats?.system_activities || 0}</div>
+          <div className="text-purple-100 text-sm">Системных</div>
         </div>
+        <FaHeart className="text-2xl text-purple-200" />
       </div>
     </div>
   );
@@ -136,19 +125,7 @@ const Activity: React.FC<ActivityProps> = ({ compact = false }) => {
         <div className="page-content-wrapper">
           <div className="page-main-panel relative">
             {/* Кнопки управления по бокам - с рамками и позиционированием */}
-            <div
-              className="page-side-buttons left"
-              style={{
-                '--left-button-size': '47px',
-                '--left-button-border-width': '2px',
-                '--left-button-border-color': '#8E9093',
-                '--left-button-bg': '#FFFFFF',
-                '--left-top': '53%',
-                '--left-translateY': '-50%',
-                '--left-offset': '5px',
-                '--left-gap': '15px',
-              } as React.CSSProperties}
-            >
+            <div className="page-side-buttons left activity-side-buttons">
               <button
                 className="page-side-button left"
                 onClick={() => setLeftPanelOpen(true)}
@@ -157,19 +134,7 @@ const Activity: React.FC<ActivityProps> = ({ compact = false }) => {
                 <FaFilter className="text-gray-600" size={20} />
               </button>
             </div>
-            <div
-              className="page-side-buttons right"
-              style={{
-                '--right-top': '55%',
-                '--right-translateY': '-50%',
-                '--right-offset': '5px',
-                '--right-gap': '15px',
-                '--right-button-size': '47px',
-                '--right-button-border-width': '2px',
-                '--right-button-border-color': '#8E9093',
-                '--right-button-bg': '#ffffff',
-              } as React.CSSProperties}
-            >
+            <div className="page-side-buttons right activity-side-buttons">
               <button
                 className="page-side-button right"
                 onClick={() => setRightPanelOpen(true)}
@@ -192,15 +157,7 @@ const Activity: React.FC<ActivityProps> = ({ compact = false }) => {
                     {!compact && <ActivityStatsBlocks />}
 
                     {/* Лента активности */}
-                    <div
-                      className={`rounded-lg shadow-lg ${compact ? 'activity-compact' : ''}`}
-                      style={{
-                        background: 'rgba(255,255,255,0.06)',
-                        backdropFilter: 'blur(14px) saturate(160%)',
-                        WebkitBackdropFilter: 'blur(14px) saturate(160%)',
-                        border: '1px solid rgba(255,255,255,0.08)'
-                      }}
-                    >
+                    <div className={`activity-feed-wrapper ${compact ? 'activity-compact' : ''}`}>
                       <Suspense fallback={<div className="text-center p-8">Загрузка ленты активности...</div>}>
                         <LazySimpleActivityFeed filters={filters} compact={compact} />
                       </Suspense>

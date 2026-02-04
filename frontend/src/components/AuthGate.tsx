@@ -8,7 +8,7 @@ import PasswordReset from './PasswordReset';
 interface AuthGateProps {
   isOpen: boolean;
   onClose: () => void;
-  contentType: 'marker' | 'route' | 'event' | 'post' | 'blog';
+  contentType: 'marker' | 'route' | 'event' | 'post';
   contentPreview?: any;
 }
 
@@ -84,14 +84,7 @@ const AuthGate: React.FC<AuthGateProps> = ({ isOpen, onClose, contentType, conte
       bgColor: 'bg-orange-50',
       borderColor: 'border-orange-200'
     },
-    blog: {
-      icon: FaBook,
-      title: 'Блог',
-      description: 'Ваш блог готов к публикации!',
-      color: 'text-indigo-600',
-      bgColor: 'bg-indigo-50',
-      borderColor: 'border-indigo-200'
-    }
+
   };
 
   const config = contentTypeConfig[contentType];

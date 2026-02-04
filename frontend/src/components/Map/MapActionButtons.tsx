@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Settings, Heart, Layers, MapPin, Search, Navigation } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
-import './MapActionButtons.css';
 
 interface MapActionButtonsProps {
   onSettingsClick: () => void;
@@ -125,7 +124,7 @@ const MapActionButtons: React.FC<MapActionButtonsProps> = ({
             onMouseLeave={() => setHoveredButton(null)}
           >
             <button
-              className={`map-action-button ${isDarkMode ? 'dark' : ''} ${isActive ? 'active' : ''}`}
+              className={`btn btn-glass btn-circle ${isDarkMode ? 'btn-dark' : ''} ${isActive ? 'btn-active' : ''}`}
               onClick={button.onClick}
               onKeyDown={(e) => handleKeyDown(e, button.onClick)}
               aria-label={button.ariaLabel}
@@ -134,7 +133,7 @@ const MapActionButtons: React.FC<MapActionButtonsProps> = ({
             >
               <Icon size={20} />
               {button.badge && (
-                <span className="map-action-badge" aria-label={`${favoritesCount} избранных мест`}>
+                <span className="btn-badge" aria-label={`${favoritesCount} избранных мест`}>
                   {button.badge}
                 </span>
               )}

@@ -168,7 +168,7 @@ const updatePrivacySettings = async (req, res) => {
     const validVisibilityOptions = ['public', 'friends', 'private', 'anonymous'];
     const visibilityFields = [
       'room_created_visibility', 'room_joined_visibility',
-      'blog_created_visibility', 'blog_published_visibility',
+      'post_created_visibility', 'post_published_visibility',
       'marker_created_visibility', 'route_created_visibility',
       'route_shared_visibility', 'event_created_visibility',
       'event_joined_visibility', 'achievement_earned_visibility',

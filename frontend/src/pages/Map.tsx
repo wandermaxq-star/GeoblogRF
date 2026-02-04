@@ -166,11 +166,10 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
       } as MarkerData));
       setAllMarkers(restoredMarkers);
 
-      // Также повторно передаём в фасад
-      if (INTERNAL) {
-        INTERNAL.externalMarkers = cachedMarkers;
-        console.log('[MapPage] Restored markers passed to facade');
-      }
+      // Previously we passed restored markers to the facade here. That caused duplicate markers
+      // to be shown when both the facade renderer and the Map component added markers to the map.
+      // To avoid duplicates, we no longer update the facade from this page — Map is the source
+      // of truth for rendering markers via the `markers` prop.
     }
   }, [markersLoaded, cachedMarkers.length]); // Не зависим от allMarkers чтобы избежать циклов
 
@@ -384,21 +383,10 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
       mapStateHelpers.setMarkers(markers);
       console.log('[MapPage] Markers saved to central store');
 
-      // Проверяем, что INTERNAL доступен и пытаемся передать маркеры
-      const tryPassMarkers = (attempt = 0) => {
-        if (INTERNAL) {
-          INTERNAL.externalMarkers = markers;
-          console.log('[MapPage] Markers passed to facade successfully');
-        } else if (attempt < 5) {
-          // Если фасад не готов, пробуем снова через 200ms (до 5 попыток)
-          console.warn(`[MapPage] Facade not ready, retry ${attempt + 1}/5`);
-          setTimeout(() => tryPassMarkers(attempt + 1), 200);
-        } else {
-          console.error('[MapPage] Facade not ready after 5 attempts, markers not passed');
-        }
-      };
-
-      tryPassMarkers();
+      // NOTE: Do not write directly into INTERNAL from render-time.
+      // We let the final, filtered effect sync markers into the facade to avoid conflicts.
+      // If early synchronization is required, use `mapFacade().updateExternalMarkers(markers)` here.
+      // mapFacade().updateExternalMarkers(markers); // optional
     }
   }, [allMarkers]);
 
@@ -942,8 +930,14 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
   // Используем только отфильтрованные маркеры (без модерации на карте)
   const allMarkersWithModeration = filteredMarkers;
 
-  // Синхронизируем метки с mapFacade
-  INTERNAL.externalMarkers = allMarkersWithModeration;
+  // NOTE: Previously we synchronized markers to the facade here via `mapFacade().updateExternalMarkers()`.
+  // That produced duplicate markers in cases where both the facade renderer and the Map component
+  // would add markers to the map (facade.renderMarkers + Map.useMapMarkers). To avoid duplicates
+  // the Map component is now the single source of truth for marker rendering and we do NOT
+  // update the facade here automatically. If external components need to push markers into
+  // the facade for other contexts, they should call `mapFacade().updateExternalMarkers(...)` explicitly.
+  // (intentionally left blank)
+
 
   // Раньше здесь автоматически открывалась левая панель с картой при монтировании
   // страницы, что приводило к нежелательной предзагрузке карты. Оставляем

@@ -11,7 +11,7 @@ async function ensureTable() {
       CREATE TABLE IF NOT EXISTS ratings (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        target_type VARCHAR(32) NOT NULL CHECK (target_type IN ('marker','route','event','blog')),
+        target_type VARCHAR(32) NOT NULL CHECK (target_type IN ('marker','route','event','post')),
         target_id UUID NOT NULL,
         value INTEGER NOT NULL CHECK (value >= 1 AND value <= 5),
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -65,7 +65,7 @@ router.post('/ratings', authenticateToken, async (req, res) => {
     const targetType = String(target_type || '').toLowerCase();
     const targetId = String(target_id || '');
 
-    if (!['marker','route','event','blog'].includes(targetType)) {
+    if (!['marker','route','event','post'].includes(targetType)) {
       return res.status(400).json({ ok: false, message: 'Invalid target_type' });
     }
     const intValue = Number(value);
@@ -111,7 +111,7 @@ router.get('/ratings/summary', async (req, res) => {
       return res.status(400).json({ ok: false, message: 'Missing required params: type and id' });
     }
     
-    if (!['marker','route','event','blog'].includes(targetType)) {
+    if (!['marker','route','event','post'].includes(targetType)) {
       return res.status(400).json({ ok: false, message: 'Invalid target_type' });
     }
     
@@ -147,7 +147,7 @@ router.get('/ratings/user', authenticateToken, async (req, res) => {
       return res.status(400).json({ ok: false, message: 'Missing required params: type and id' });
     }
     
-    if (!['marker','route','event','blog'].includes(targetType)) {
+    if (!['marker','route','event','post'].includes(targetType)) {
       return res.status(400).json({ ok: false, message: 'Invalid target_type' });
     }
     

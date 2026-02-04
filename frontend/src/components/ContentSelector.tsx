@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type ContentType = 'map' | 'calendar' | 'planner' | 'chat' | 'feed' | 'blogs';
+export type ContentType = 'map' | 'calendar' | 'planner' | 'chat' | 'feed' | 'posts';
 
 interface ContentSelectorProps {
   position: 'left' | 'right';
@@ -24,7 +24,7 @@ const ContentSelector: React.FC<ContentSelectorProps> = ({
       : [
           { value: 'chat', label: 'Чат', icon: 'fa-comments' },
           { value: 'feed', label: 'Лента', icon: 'fa-stream' },
-          { value: 'blogs', label: 'Блоги', icon: 'fa-blog' },
+          { value: 'posts', label: 'Посты', icon: 'fa-edit' },
         ];
 
   return (

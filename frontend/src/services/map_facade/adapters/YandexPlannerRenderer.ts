@@ -1,4 +1,5 @@
 import type { IMapRenderer, MapConfig, UnifiedMarker, PersistedRoute, GeoPoint } from '../IMapRenderer';
+import type { DomainGeoPoint, PolylineStyle, IMapObjectHandle, DomainGeoBounds } from '../types';
 import { yandexMapsService } from '../../yandexMapsService';
 
 export class YandexPlannerRenderer implements IMapRenderer {
@@ -7,6 +8,17 @@ export class YandexPlannerRenderer implements IMapRenderer {
   private routeObject: any = null;
   private routeGeometryHandler: ((coords: Array<[number, number]>) => void) | null = null;
   private clickHandlers: Array<(coords: [number, number]) => void> = [];
+
+  // Полилинии, добавленные через фасад
+  private polylines: Map<string, any> = new Map();
+
+  // Хранение пользовательских обработчиков, чтобы можно было отписаться
+  // Key format: `${event}::${handlerId}` where handlerId is assigned to the handler function
+  private eventHandlerWrappers: Map<string, (...args: any[]) => void> = new Map();
+  private handlerIdCounter = 0;
+
+  // Слои/объекты, добавленные вручную
+  private customLayers: any[] = [];
 
   async init(containerId: string | HTMLElement, config?: MapConfig): Promise<any> {
     // Ensure ymaps is loaded
@@ -195,6 +207,132 @@ export class YandexPlannerRenderer implements IMapRenderer {
     }
   }
 
+  // Дополнительные фасадные методы
+  setCenter(center: DomainGeoPoint, zoom?: number): void {
+    if (!this.map) return;
+    try { this.map.setCenter([center[0], center[1]], zoom); } catch (e) { /* ignore */ }
+  }
+
+  getCenter(): DomainGeoPoint {
+    if (!this.map) return [0, 0];
+    try {
+      const c = this.map.getCenter();
+      return [c[0], c[1]];
+    } catch (e) {
+      return [0, 0];
+    }
+  }
+
+  setBounds(bounds: DomainGeoBounds, options?: any): void {
+    if (!this.map) return;
+    try {
+      let southWest: DomainGeoPoint | null = null;
+      let northEast: DomainGeoPoint | null = null;
+      if (Array.isArray(bounds)) {
+        southWest = bounds[0];
+        northEast = bounds[1];
+      } else if ((bounds as any).southWest && (bounds as any).northEast) {
+        southWest = (bounds as any).southWest;
+        northEast = (bounds as any).northEast;
+      }
+      if (southWest && northEast) {
+        // Yandex expects [[lng, lat], [lng, lat]]
+        const yandexBounds: [[number, number], [number, number]] = [
+          [southWest[1], southWest[0]],
+          [northEast[1], northEast[0]]
+        ];
+        try { this.map.setBounds(yandexBounds, options || { checkZoomRange: true }); } catch (e) { /* ignore */ }
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  createPolyline(points: DomainGeoPoint[], style?: PolylineStyle): IMapObjectHandle {
+    if (!this.map) return { id: 'noop', remove: () => {} };
+    try {
+      const ymaps = (window as any).ymaps;
+      const yandexPoints = points.map(p => [p[1], p[0]]);
+      const polyline = new ymaps.Polyline(yandexPoints, {}, {
+        strokeColor: style?.color || '#2196F3',
+        strokeWidth: style?.weight ?? 4,
+        opacity: style?.opacity ?? 0.8
+      });
+      this.map.geoObjects.add(polyline);
+      const id = `poly-${crypto.randomUUID()}`;
+      this.polylines.set(id, polyline);
+      return {
+        id,
+        remove: () => {
+          try {
+            const obj = this.polylines.get(id);
+            if (obj && this.map) {
+              this.map.geoObjects.remove(obj);
+            }
+            this.polylines.delete(id);
+          } catch (e) { /* ignore */ }
+        }
+      };
+    } catch (e) {
+      return { id: 'error', remove: () => {} };
+    }
+  }
+
+  on(event: string, handler: (...args: any[]) => void): void {
+    if (!this.map) return;
+    try {
+      const handlerId = (handler as any).__handlerId ?? (((handler as any).__handlerId = ++this.handlerIdCounter));
+      const key = `${event}::${handlerId}`;
+      const wrapper = (...args: any[]) => { try { handler(...args); } catch (e) { /* ignore */ } };
+      this.map.events.add(event, wrapper);
+      this.eventHandlerWrappers.set(key, wrapper);
+    } catch (e) { /* ignore */ }
+  }
+
+  off(event: string, handler: (...args: any[]) => void): void {
+    if (!this.map) return;
+    try {
+      const handlerId = (handler as any).__handlerId;
+      const key = handlerId ? `${event}::${handlerId}` : null;
+      const wrapper = key ? this.eventHandlerWrappers.get(key) : undefined;
+      if (wrapper) {
+        this.map.events.remove(event, wrapper);
+        if (key) this.eventHandlerWrappers.delete(key);
+      } else {
+        try { this.map.events.remove(event, handler); } catch (e) { /* ignore */ }
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  addLayer(layer: any): void {
+    if (!this.map) return;
+    try {
+      this.map.geoObjects.add(layer);
+      this.customLayers.push(layer);
+    } catch (e) { /* ignore */ }
+  }
+
+  removeLayer(layer: any): void {
+    if (!this.map) return;
+    try {
+      this.map.geoObjects.remove(layer);
+      const idx = this.customLayers.indexOf(layer);
+      if (idx >= 0) this.customLayers.splice(idx, 1);
+    } catch (e) { /* ignore */ }
+  }
+
+  getMap(): unknown {
+    return this.map;
+  }
+
+  enableBehavior(id: string): void {
+    if (!this.map || !this.map.behaviors) return;
+    try { this.map.behaviors.enable(id); } catch (e) { /* ignore */ }
+  }
+
+  disableBehavior(id: string): void {
+    if (!this.map || !this.map.behaviors) return;
+    try { this.map.behaviors.disable(id); } catch (e) { /* ignore */ }
+  }
+
   clear(): void {
     if (!this.map) return;
     try { this.map.geoObjects.removeAll(); } catch (e) { /* ignore */ }
@@ -214,12 +352,19 @@ export class YandexPlannerRenderer implements IMapRenderer {
         if (container && (container as any).__yandexMap) {
           delete (container as any).__yandexMap;
         }
+        // Удаляем пользовательские слои/объекты
+        this.customLayers.forEach(l => { try { this.map.geoObjects.remove(l); } catch (e) { /* ignore */ } });
+        // Удаляем полилинии
+        this.polylines.forEach(p => { try { this.map.geoObjects.remove(p); } catch (e) { /* ignore */ } });
         this.map.destroy();
       }
     } catch (e) { /* ignore */ }
     this.map = null;
     this.markersCollection = null;
     this.routeObject = null;
+    this.polylines.clear();
+    this.eventHandlerWrappers.clear();
+    this.customLayers = [];
   }
 
   onClick(handler: (coords: [number, number]) => void): void {

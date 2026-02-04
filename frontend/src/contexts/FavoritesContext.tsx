@@ -29,13 +29,12 @@ export interface FavoriteRoute {
   categories: {
     personal: boolean;  // Всегда true (избранное)
     post: boolean;     // [ ] Посты
-    blog: boolean;     // [ ] Блоги
     event: boolean;    // [ ] События
   };
   
   // СТАРОЕ: оставляем для совместимости, но помечаем как deprecated
   /** @deprecated Используйте categories вместо purpose */
-  purpose?: 'personal' | 'blog' | 'post' | 'event' | 'shared' | 'draft';
+  purpose?: 'personal' | 'post' | 'event' | 'shared' | 'draft';
   category?: string; // Оставляем для совместимости
   
   tags: string[]; // Теги для поиска и фильтрации
@@ -68,13 +67,12 @@ export interface FavoritePlace {
   categories: {
     personal: boolean;  // Всегда true (избранное)
     post: boolean;     // [ ] Посты
-    blog: boolean;     // [ ] Блоги
     event: boolean;    // [ ] События
   };
   
   // СТАРОЕ: оставляем для совместимости, но помечаем как deprecated
   /** @deprecated Используйте categories вместо purpose */
-  purpose?: 'personal' | 'blog' | 'post' | 'event' | 'draft';
+  purpose?: 'personal' | 'post' | 'event' | 'draft';
   
   tags: string[]; // Теги для поиска и фильтрации
   description?: string; // Описание места
@@ -104,7 +102,7 @@ export interface FavoriteEvent {
   updated_at: string;
   
   // Новые поля для категоризации
-  purpose: 'personal' | 'blog' | 'post' | 'event' | 'draft';
+  purpose: 'personal' | 'post' | 'event' | 'draft';
   tags: string[]; // Теги для поиска и фильтрации
   visibility: 'private' | 'public' | 'friends'; // Видимость события
   lastUsed?: Date; // Последнее использование
@@ -116,18 +114,7 @@ export interface FavoriteEvent {
   };
 }
 
-export interface FavoriteBlog {
-  id: string;
-  title: string;
-  publishedAt: Date;
-  views: number;
-  likes: number;
-  comments: number;
-  rating: number;
-  tags: string[];
-  relatedRoutes?: string[]; // ID связанных маршрутов
-  relatedPlaces?: string[]; // ID связанных мест
-}
+// FavoriteBlog removed during cleanup
 
 interface FavoritesContextType {
   // Маршруты
@@ -153,17 +140,13 @@ interface FavoritesContextType {
   isEventFavorite: (id: string) => boolean;
   
   // Блоги
-  favoriteBlogs: FavoriteBlog[];
-  addFavoriteBlog: (blog: Omit<FavoriteBlog, 'publishedAt'>) => void;
-  removeFavoriteBlog: (id: string) => void;
-  isBlogFavorite: (id: string) => boolean;
+  // Removed: blog favorites removed during cleanup
   
   // Статистика
   getFavoritesStats: () => {
     totalRoutes: number;
     totalPlaces: number;
     totalEvents: number;
-    totalBlogs: number;
     totalItems: number;
   };
 
@@ -189,8 +172,6 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [favoritePlaces, setFavoritePlaces] = useState<FavoritePlace[]>([]);
   const [favoriteEvents, setFavoriteEvents] = useState<FavoriteEvent[]>([]);
 
-  const [favoriteBlogs, setFavoriteBlogs] = useState<FavoriteBlog[]>([]);
-
   // Миграция: при монтировании переносим данные из localStorage в IndexedDB и загружаем
   useEffect(() => {
     (async () => {
@@ -201,9 +182,10 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           const routes = items.filter((i: any) => i.type === 'route');
           const events = items.filter((i: any) => i.type === 'event');
           const places = items.filter((i: any) => i.type !== 'route' && i.type !== 'event');
+          const normalizePurpose = (value: any): FavoriteEvent['purpose'] => (value === 'post' || value === 'event' || value === 'draft') ? value : 'personal';
           setFavoriteRoutes(routes.map((r: any) => ({ ...r, addedAt: r.addedAt ? new Date(r.addedAt) : new Date() })));
-          setFavoriteEvents(events.map((e: any) => ({ ...e, addedAt: e.addedAt ? new Date(e.addedAt) : new Date() })));
-          setFavoritePlaces(places.map((p: any) => ({ ...p, coordinates: p.coordinates || [], addedAt: p.addedAt ? new Date(p.addedAt) : new Date() })));
+          setFavoriteEvents(events.map((e: any) => ({ ...e, purpose: normalizePurpose(e.purpose), addedAt: e.addedAt ? new Date(e.addedAt) : new Date() })));
+          setFavoritePlaces(places.map((p: any) => ({ ...p, coordinates: p.coordinates || [], addedAt: p.addedAt ? new Date(p.addedAt) : new Date() }))); 
         }
       } catch (e) {
         // ignore
@@ -218,15 +200,14 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const combined = [
           ...favoritePlaces,
           ...favoriteRoutes,
-          ...favoriteEvents,
-          ...favoriteBlogs
+          ...favoriteEvents
         ];
         await storageService.setFavorites(combined as any[]);
       } catch (e) {
         // noop
       }
     })();
-  }, [favoritePlaces, favoriteRoutes, favoriteEvents, favoriteBlogs]);
+  }, [favoritePlaces, favoriteRoutes, favoriteEvents]);
 
   // Глобальное состояние выбранных чекбоксов избранных меток (не сохраняем между сессиями)
   const [selectedMarkerIds, _setSelectedMarkerIds] = useState<string[]>([]);
@@ -301,13 +282,11 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const inferredPurpose = incoming.purpose
       || incoming.category
       || (tags.includes('post') ? 'post'
-          : tags.includes('blog') ? 'blog'
           : tags.includes('event') ? 'event'
           : 'personal');
     const categories = incoming.categories || {
       personal: true,
       post: inferredPurpose === 'post' || tags.includes('post'),
-      blog: inferredPurpose === 'blog' || tags.includes('blog'),
       event: inferredPurpose === 'event' || tags.includes('event')
     };
     const safePoints = Array.isArray(incoming.points) ? incoming.points : [];
@@ -381,22 +360,10 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return favoriteEvents.some(event => event.id === id);
   };
 
-  // Функции для блогов
-  const addFavoriteBlog = (blog: Omit<FavoriteBlog, 'publishedAt'>) => {
-    const newBlog: FavoriteBlog = {
-      ...blog,
-      publishedAt: new Date()
-    };
-    setFavoriteBlogs(prev => [...prev, newBlog]);
-  };
-
-  const removeFavoriteBlog = (id: string) => {
-    setFavoriteBlogs(prev => prev.filter(blog => blog.id !== id));
-  };
-
-  const isBlogFavorite = (id: string) => {
-    return favoriteBlogs.some(blog => blog.id === id);
-  };
+  // Blog favorites removed — functions are no-ops
+  const addFavoriteBlog = (_blog: any) => { /* no-op */ };
+  const removeFavoriteBlog = (_id: string) => { /* no-op */ };
+  const isBlogFavorite = (_id: string) => false;
 
   // Статистика
   const getFavoritesStats = () => {
@@ -404,8 +371,7 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       totalRoutes: favoriteRoutes.length,
       totalPlaces: favoritePlaces.length,
       totalEvents: favoriteEvents.length,
-      totalBlogs: favoriteBlogs.length,
-      totalItems: favoriteRoutes.length + favoritePlaces.length + favoriteEvents.length + favoriteBlogs.length
+      totalItems: favoriteRoutes.length + favoritePlaces.length + favoriteEvents.length
     };
   };
 
@@ -429,10 +395,6 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         addFavoriteEvent,
         removeFavoriteEvent,
         isEventFavorite,
-        favoriteBlogs,
-        addFavoriteBlog,
-        removeFavoriteBlog,
-        isBlogFavorite,
         getFavoritesStats,
         // Совместимый API для Map.tsx и FavoritesPanel
         favorites: favoritePlaces.map(place => ({
@@ -502,7 +464,6 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 categories: {
                   personal: true,
                   post: false,
-                  blog: false,
                   event: false
                 },
                 purpose: 'personal',
@@ -532,7 +493,6 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               categories: {
                 personal: true,
                 post: false,
-                blog: false,
                 event: false
               },
               purpose: 'personal', // Оставляем для совместимости
@@ -567,6 +527,7 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           }
           
           // Создаем новое место из метки
+          const normalizedPurpose = (category === 'post' || category === 'event' || category === 'draft') ? category : 'personal';
           const newPlace: FavoritePlace = {
             id: marker.id,
             name: marker.title || marker.author_name || 'Без названия',
@@ -583,11 +544,10 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             // Новые поля для категоризации
             categories: {
               personal: true,
-              post: category === 'post',
-              blog: category === 'blog',
-              event: category === 'event'
+              post: normalizedPurpose === 'post',
+              event: normalizedPurpose === 'event'
             },
-            purpose: category as 'personal' | 'blog' | 'post' | 'event' | 'draft', // Оставляем для совместимости
+            purpose: normalizedPurpose, // Оставляем для совместимости
             tags: [],
             description: marker.description || '',
             visibility: 'private',
@@ -618,7 +578,6 @@ export const useFavorites = () => {
       favoriteRoutes: [],
       favoritePlaces: [],
       favoriteEvents: [],
-      favoriteBlogs: [],
       addFavoriteRoute: () => {},
       removeFavoriteRoute: () => {},
       updateFavoriteRoute: () => {},
@@ -631,14 +590,10 @@ export const useFavorites = () => {
       addFavoriteEvent: () => {},
       removeFavoriteEvent: () => {},
       isEventFavorite: () => false,
-      addFavoriteBlog: () => {},
-      removeFavoriteBlog: () => {},
-      isBlogFavorite: () => false,
       getFavoritesStats: () => ({ 
         routes: 0, 
         places: 0, 
         events: 0, 
-        blogs: 0,
         totalItems: 0,
         totalRoutes: 0,
         totalPlaces: 0,

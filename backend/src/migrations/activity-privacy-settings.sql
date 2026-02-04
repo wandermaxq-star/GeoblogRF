@@ -6,8 +6,8 @@ CREATE TABLE IF NOT EXISTS activity_privacy_settings (
     -- Настройки видимости по типам активности
     room_created_visibility VARCHAR(20) DEFAULT 'public' CHECK (room_created_visibility IN ('public', 'friends', 'private', 'anonymous')),
     room_joined_visibility VARCHAR(20) DEFAULT 'public' CHECK (room_joined_visibility IN ('public', 'friends', 'private', 'anonymous')),
-    blog_created_visibility VARCHAR(20) DEFAULT 'public' CHECK (blog_created_visibility IN ('public', 'friends', 'private', 'anonymous')),
-    blog_published_visibility VARCHAR(20) DEFAULT 'public' CHECK (blog_published_visibility IN ('public', 'friends', 'private', 'anonymous')),
+    post_created_visibility VARCHAR(20) DEFAULT 'public' CHECK (post_created_visibility IN ('public', 'friends', 'private', 'anonymous')),
+    post_published_visibility VARCHAR(20) DEFAULT 'public' CHECK (post_published_visibility IN ('public', 'friends', 'private', 'anonymous')),
     marker_created_visibility VARCHAR(20) DEFAULT 'public' CHECK (marker_created_visibility IN ('public', 'friends', 'private', 'anonymous')),
     route_created_visibility VARCHAR(20) DEFAULT 'public' CHECK (route_created_visibility IN ('public', 'friends', 'private', 'anonymous')),
     route_shared_visibility VARCHAR(20) DEFAULT 'public' CHECK (route_shared_visibility IN ('public', 'friends', 'private', 'anonymous')),

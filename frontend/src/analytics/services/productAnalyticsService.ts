@@ -82,7 +82,10 @@ class ProductAnalyticsService {
     try {
       const token = storageService.getItem('token');
       if (!token) {
-        console.warn('Отсутствует токен для трекинга');
+        // В тестовой среде токена обычно нет — избегаем лишнего шума в логах
+        if (process.env.NODE_ENV !== 'test') {
+          console.warn('Отсутствует токен для трекинга');
+        }
         return;
       }
       await apiClient.post('/analytics/track', {
@@ -94,7 +97,9 @@ class ProductAnalyticsService {
         headers: { Authorization: `Bearer ${token}` }
       });
     } catch (error) {
-      console.error('Ошибка трекинга конверсии:', error);
+      if (process.env.NODE_ENV !== 'test') {
+        console.error('Ошибка трекинга конверсии:', error);
+      }
     }
   }
 

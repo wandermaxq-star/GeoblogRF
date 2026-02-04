@@ -4,8 +4,8 @@
 CREATE TYPE activity_type AS ENUM (
     'room_created',           -- Создание комнаты
     'room_joined',            -- Присоединение к комнате
-    'blog_created',           -- Создание блога
-    'blog_published',         -- Публикация блога
+    'post_created',           -- Создание поста
+    'post_published',         -- Публикация поста
     'marker_created',         -- Создание метки
     'route_created',          -- Создание маршрута
     'route_shared',           -- Поделился маршрутом
@@ -23,7 +23,7 @@ CREATE TYPE activity_type AS ENUM (
 -- Типы целей
 CREATE TYPE target_type AS ENUM (
     'room',                   -- Комната
-    'blog',                   -- Блог
+    'post',                   -- Пост
     'marker',                 -- Метка
     'route',                  -- Маршрут
     'event',                  -- Событие

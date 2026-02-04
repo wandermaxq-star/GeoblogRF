@@ -14,8 +14,9 @@ export const LazyPlanner = lazy(() => {
 export const LazyCalendar = lazy(() => import('../pages/Calendar'));
 // Posts загружается СТАТИЧЕСКИ в PageLayer.tsx для немедленной загрузки при открытии проекта
 // export const LazyPosts = lazy(() => import('../pages/Posts')); // УДАЛЕНО: теперь статический импорт
-export const LazyBlog = lazy(() => import('../pages/Blog'));
-export const LazyChat = lazy(() => import('../pages/Chat'));
+// Blog page removed — export harmless placeholder
+export const LazyBlog = lazy(() => Promise.resolve({ default: () => null }));
+export const LazyChat = lazy(() => import('../pages/ChatDisabled'));
 export const LazyActivity = lazy(() => import('../pages/Activity'));
 export const LazyCentrePage = lazy(() => import('../pages/CentrePage'));
 export const LazyFriends = lazy(() => import('../pages/Friends'));
@@ -35,9 +36,10 @@ export const LazyUserAgreement = lazy(() => import('../pages/UserAgreement'));
 export const LazyPrivacyPolicy = lazy(() => import('../pages/PrivacyPolicy'));
 
 // Lazy loading для тяжелых компонентов
-export const LazyBlogConstructor = lazy(() => import('../components/Blog/BlogConstructor'));
-export const LazyBlogEditor = lazy(() => import('../components/Blog/BlogEditor'));
-export const LazyBookView = lazy(() => import('../components/Blog/BookView'));
+// Blog/Book components were removed — provide harmless placeholders to avoid import errors.
+export const LazyBlogConstructor = lazy(() => Promise.resolve({ default: () => null }));
+export const LazyBlogEditor = lazy(() => Promise.resolve({ default: () => null }));
+export const LazyBookView = lazy(() => Promise.resolve({ default: () => null }));
 export const LazyTravelCalendar = lazy(() => import('../components/TravelCalendar/TravelCalendar'));
 export const LazyPerformanceMonitor = lazy(() => import('../components/PerformanceMonitor'));
 

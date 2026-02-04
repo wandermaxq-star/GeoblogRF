@@ -13,12 +13,15 @@ DECLARE
     v_privacy_setting VARCHAR(20);
 BEGIN
     -- Получаем настройки приватности пользователя
+    -- Сравниваем как текст, чтобы избежать ошибок при несовпадении значений enum в разных базах
     SELECT 
-        CASE p_activity_type
+        CASE p_activity_type::text
             WHEN 'room_created' THEN room_created_visibility
             WHEN 'room_joined' THEN room_joined_visibility
-            WHEN 'blog_created' THEN blog_created_visibility
-            WHEN 'blog_published' THEN blog_published_visibility
+            WHEN 'chat_created' THEN room_created_visibility
+            WHEN 'chat_joined' THEN room_joined_visibility
+            WHEN 'post_created' THEN post_created_visibility
+            WHEN 'post_published' THEN post_published_visibility
             WHEN 'marker_created' THEN marker_created_visibility
             WHEN 'route_created' THEN route_created_visibility
             WHEN 'route_shared' THEN route_shared_visibility
@@ -130,8 +133,8 @@ BEGIN
          LEFT JOIN activity_read_status ars ON af.id = ars.activity_id AND ars.user_id = p_user_id
          WHERE af.is_public = true AND (ars.is_read = false OR ars.is_read IS NULL)) as unread_activities,
         (SELECT COUNT(*) FROM activity_feed 
-         WHERE is_public = true AND activity_type IN ('room_created', 'room_joined', 'friend_added')) as messages_count,
+         WHERE is_public = true AND activity_type::text IN ('room_created', 'room_joined', 'friend_added', 'chat_created', 'chat_joined')) as messages_count,
         (SELECT COUNT(*) FROM activity_feed 
-         WHERE is_public = true AND activity_type IN ('system_update', 'system_announcement')) as system_count;
+         WHERE is_public = true AND activity_type::text IN ('system_update', 'system_announcement', 'system_update_available', 'system_maintenance')) as system_count;
 END;
 $$ LANGUAGE plpgsql;

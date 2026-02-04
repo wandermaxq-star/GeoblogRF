@@ -11,7 +11,7 @@ interface ModerationResult {
 
 interface ContentModeratorProps {
   content: string;
-  type: 'chat' | 'blog' | 'comment' | 'review';
+  type: 'chat' | 'post' | 'comment' | 'review';
   userId: string;
   location?: string;
   onModerationResult?: (result: ModerationResult) => void;

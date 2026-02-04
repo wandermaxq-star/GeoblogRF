@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { CalendarPlus, Settings, HelpCircle } from 'lucide-react';
-import './CalendarActionButtons.css';
 
 interface CalendarActionButtonsProps {
   onAddEventClick: () => void;
@@ -47,7 +46,7 @@ const CalendarActionButtons: React.FC<CalendarActionButtonsProps> = ({
         >
           <button
             type="button"
-            className="calendar-action-button"
+            className="btn btn-glass btn-circle"
             onClick={onClick}
             aria-label={label}
           >

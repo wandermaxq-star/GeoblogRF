@@ -1,0 +1,94 @@
+From 45499dd174923ea19d4223ca71269ff198c5de22 Mon Sep 17 00:00:00 2001
+From: Simamakis <Simamakis@Gmail.com>
+Date: Sun, 1 Feb 2026 12:22:13 +0300
+Subject: [PATCH] chore(map): add guidance comments around mapRef usages
+ (DOM-only; prefer mapFacade)
+
+---
+ frontend/src/components/Blog/SimplifiedMap.tsx  | 1 +
+ frontend/src/components/Events/MiniEventMap.tsx | 1 +
+ frontend/src/components/InteractiveMapDemo.tsx  | 2 ++
+ frontend/src/components/Map/Map.tsx             | 2 ++
+ frontend/src/components/Maps/PostMap.tsx        | 2 ++
+ frontend/src/components/YandexMap/YandexMap.tsx | 2 ++
+ 6 files changed, 10 insertions(+)
+
+diff --git a/frontend/src/components/Blog/SimplifiedMap.tsx b/frontend/src/components/Blog/SimplifiedMap.tsx
+index fae100f..6c1768c 100644
+--- a/frontend/src/components/Blog/SimplifiedMap.tsx
++++ b/frontend/src/components/Blog/SimplifiedMap.tsx
+@@ -59,6 +59,7 @@ const SimplifiedMap: React.FC<SimplifiedMapProps> = ({
+   markerId, 
+   className 
+ }) => {
++  // NOTE: mapRef is only the DOM container for ephemeral maps. Use `mapFacade()` for map API interactions.
+   const mapRef = useRef<HTMLDivElement>(null);
+   const mapInstanceRef = useRef<L.Map | null>(null);
+   const markersRef = useRef<L.Marker[]>([]);
+diff --git a/frontend/src/components/Events/MiniEventMap.tsx b/frontend/src/components/Events/MiniEventMap.tsx
+index a298417..8a346c7 100644
+--- a/frontend/src/components/Events/MiniEventMap.tsx
++++ b/frontend/src/components/Events/MiniEventMap.tsx
+@@ -22,6 +22,7 @@ const MiniEventMap: React.FC<MiniEventMapProps> = ({
+   onMapClick,
+   className = '',
+ }) => {
++  // NOTE: mapRef is a DOM container for the small map — prefer facade API for map operations when possible.
+   const mapRef = useRef<HTMLDivElement>(null);
+   const mapInstanceRef = useRef<any | null>(null);
+   const markerRef = useRef<any | null>(null);
+diff --git a/frontend/src/components/InteractiveMapDemo.tsx b/frontend/src/components/InteractiveMapDemo.tsx
+index b495288..a534581 100644
+--- a/frontend/src/components/InteractiveMapDemo.tsx
++++ b/frontend/src/components/InteractiveMapDemo.tsx
+@@ -31,6 +31,8 @@ const InteractiveMapDemo: React.FC = () => {
+   const [routeProgress, setRouteProgress] = useState(0);
+   const [showComments, setShowComments] = useState(false);
+   const [isPlaying, setIsPlaying] = useState(false);
++  // NOTE: mapRef is a DOM container ref used for measurements — avoid using it for map API calls.
++  // Use `mapFacade()` for map interactions.
+   const mapRef = useRef<HTMLDivElement>(null);
+   const animationRef = useRef<number>();
+ 
+diff --git a/frontend/src/components/Map/Map.tsx b/frontend/src/components/Map/Map.tsx
+index b90aae4..ff04922 100644
+--- a/frontend/src/components/Map/Map.tsx
++++ b/frontend/src/components/Map/Map.tsx
+@@ -149,6 +149,8 @@ function Map(props: MapProps) {
+ 
+     // --- REFS ---
+     // Use `any` for internal Leaflet instances to avoid direct Leaflet types in components
++    // NOTE: mapRef is a DOM container ref only — do NOT rely on it to access the map instance.
++    // Use `mapFacade()` or `mapFacade().getMap?.()` to access map APIs instead.
+     const mapRef = useRef<any | null>(null);
+     const mapContainerRef = useRef<HTMLDivElement | null>(null);
+ 
+diff --git a/frontend/src/components/Maps/PostMap.tsx b/frontend/src/components/Maps/PostMap.tsx
+index f8c259e..153022d 100644
+--- a/frontend/src/components/Maps/PostMap.tsx
++++ b/frontend/src/components/Maps/PostMap.tsx
+@@ -61,6 +61,8 @@ export const PostMap: React.FC<PostMapProps> = ({
+   const [selectedMarkerIdForPopup, setSelectedMarkerIdForPopup] = useState<string | null>(null);
+   const [loadedMarkerData, setLoadedMarkerData] = useState<MarkerData | null>(null);
+   const isLoadingMarkerRef = useRef<boolean>(false);
++  // NOTE: mapRef here is a DOM container ref only — do not use it to access the underlying map instance.
++  // For map operations prefer `mapFacade()` or add facade methods.
+   const mapRef = useRef<any>(null);
+   const popupCloseTimeoutRef = useRef<number | null>(null);
+   const hasCenteredRef = useRef<boolean>(false);
+diff --git a/frontend/src/components/YandexMap/YandexMap.tsx b/frontend/src/components/YandexMap/YandexMap.tsx
+index bbd63c2..e132387 100644
+--- a/frontend/src/components/YandexMap/YandexMap.tsx
++++ b/frontend/src/components/YandexMap/YandexMap.tsx
+@@ -120,6 +120,8 @@ const YandexMap: React.FC<YandexMapProps> = ({
+       default: return '#10b981';
+     }
+   };
++  // NOTE: mapRef is only the DOM container for Yandex map. Do NOT assign the map instance to this ref.
++  // Use `mapFacade()` where map APIs are needed.
+   const mapRef = useRef<HTMLDivElement>(null);
+   const mapInstanceRef = useRef<any>(null);
+   const markersRef = useRef<any[]>([]);
+-- 
+2.49.0.windows.1
+

@@ -1,10 +1,10 @@
 /* Оранжевая рамка ТОЛЬКО для избранных меток через меню избранного */
 .custom-marker-popup.selected {
-  border: 2px solid #ff9800 !important;
-  box-shadow: 0 0 12px 2px #ff9800, 0 0 20px 4px rgba(255, 152, 0, 0.3) !important;
+  border: 2px solid var(--state-favorite) !important;
+  box-shadow: 0 0 12px 2px var(--state-favorite), 0 0 20px 4px rgba(255, 152, 0, 0.3) !important;
   background: #fffbe6;
   animation: glowing 2s ease-in-out infinite alternate;
-}
+} 
 
 /* Стандартный попап всегда с белой рамкой */
 .custom-marker-popup:not(.selected) {
@@ -24,10 +24,10 @@
 
 @keyframes glowing {
   from {
-    box-shadow: 0 0 12px 2px #ff9800, 0 0 20px 4px rgba(255, 152, 0, 0.3);
+    box-shadow: 0 0 12px 2px var(--state-favorite), 0 0 20px 4px rgba(255, 152, 0, 0.3);
   }
   to {
-    box-shadow: 0 0 16px 3px #ff9800, 0 0 30px 6px rgba(255, 152, 0, 0.5);
+    box-shadow: 0 0 16px 3px var(--state-favorite), 0 0 30px 6px rgba(255, 152, 0, 0.5);
   }
 }
 
@@ -97,17 +97,17 @@
 .marker-favorite,
 .route-favorite,
 .event-favorite {
-  border: 2px solid #ff9800 !important;
-  box-shadow: 0 0 12px 2px #ff9800, 0 0 20px 4px rgba(255, 152, 0, 0.3) !important;
+  border: 2px solid var(--state-favorite) !important;
+  box-shadow: 0 0 12px 2px var(--state-favorite), 0 0 20px 4px rgba(255, 152, 0, 0.3) !important;
   animation: favoriteGlowing 2s ease-in-out infinite alternate !important;
 }
 
 @keyframes favoriteGlowing {
   from {
-    box-shadow: 0 0 12px 2px #ff9800, 0 0 20px 4px rgba(255, 152, 0, 0.3);
+    box-shadow: 0 0 12px 2px var(--state-favorite), 0 0 20px 4px rgba(255, 152, 0, 0.3);
   }
   to {
-    box-shadow: 0 0 16px 3px #ff9800, 0 0 30px 6px rgba(255, 152, 0, 0.5);
+    box-shadow: 0 0 16px 3px var(--state-favorite), 0 0 30px 6px rgba(255, 152, 0, 0.5);
   }
 }
 
@@ -115,17 +115,17 @@
 .marker-user-modified,
 .route-user-modified,
 .event-user-modified {
-  border: 2px solid #00ffff !important;
-  box-shadow: 0 0 15px 3px #00ffff, 0 0 25px 5px rgba(0, 255, 255, 0.4) !important;
+  border: 2px solid var(--state-user-modified) !important;
+  box-shadow: 0 0 15px 3px var(--state-user-modified), 0 0 25px 5px rgba(0, 255, 255, 0.4) !important;
   animation: neonGlowing 1.5s ease-in-out infinite alternate !important;
 }
 
 @keyframes neonGlowing {
   from {
-    box-shadow: 0 0 15px 3px #00ffff, 0 0 25px 5px rgba(0, 255, 255, 0.4);
+    box-shadow: 0 0 15px 3px var(--state-user-modified), 0 0 25px 5px rgba(0, 255, 255, 0.4);
   }
   to {
-    box-shadow: 0 0 20px 4px #00ffff, 0 0 35px 7px rgba(0, 255, 255, 0.6);
+    box-shadow: 0 0 20px 4px var(--state-user-modified), 0 0 35px 7px rgba(0, 255, 255, 0.6);
   }
 }
 
@@ -133,41 +133,41 @@
 .marker-used-in-blogs,
 .route-used-in-blogs,
 .event-used-in-blogs {
-  border: 2px solid #ffd700 !important;
-  box-shadow: 0 0 12px 2px #ffd700, 0 0 20px 4px rgba(255, 215, 0, 0.3) !important;
+  border: 2px solid var(--state-used-in-blog) !important;
+  box-shadow: 0 0 12px 2px var(--state-used-in-blog), 0 0 20px 4px rgba(255, 215, 0, 0.3) !important;
   animation: goldGlowing 2.5s ease-in-out infinite alternate !important;
 }
 
 @keyframes goldGlowing {
   from {
-    box-shadow: 0 0 12px 2px #ffd700, 0 0 20px 4px rgba(255, 215, 0, 0.3);
+    box-shadow: 0 0 12px 2px var(--state-used-in-blog), 0 0 20px 4px rgba(255, 215, 0, 0.3);
   }
   to {
-    box-shadow: 0 0 18px 3px #ffd700, 0 0 30px 6px rgba(255, 215, 0, 0.5);
+    box-shadow: 0 0 18px 3px var(--state-used-in-blog), 0 0 30px 6px rgba(255, 215, 0, 0.5);
   }
-}
+} 
 
 /* Комбинированные состояния - приоритет: золотистая > неоновая > горящая */
 .marker-used-in-blogs.marker-user-modified,
 .route-used-in-blogs.route-user-modified,
 .event-used-in-blogs.event-user-modified {
-  border: 2px solid #ffd700 !important;
-  box-shadow: 0 0 12px 2px #ffd700, 0 0 20px 4px rgba(255, 215, 0, 0.3) !important;
+  border: 2px solid var(--state-used-in-blog) !important; /* Было #ffd700 */
+  box-shadow: 0 0 12px 2px var(--state-used-in-blog), 0 0 20px 4px rgba(255, 215, 0, 0.3) !important;
   animation: goldGlowing 2.5s ease-in-out infinite alternate !important;
 }
 
 .marker-used-in-blogs.marker-favorite,
 .route-used-in-blogs.route-favorite,
 .event-used-in-blogs.event-favorite {
-  border: 2px solid #ffd700 !important;
-  box-shadow: 0 0 12px 2px #ffd700, 0 0 20px 4px rgba(255, 215, 0, 0.3) !important;
+  border: 2px solid var(--state-used-in-blog) !important; /* Было #ffd700 */
+  box-shadow: 0 0 12px 2px var(--state-used-in-blog), 0 0 20px 4px rgba(255, 215, 0, 0.3) !important;
   animation: goldGlowing 2.5s ease-in-out infinite alternate !important;
 }
 
 .marker-user-modified.marker-favorite,
 .route-user-modified.route-favorite,
 .event-user-modified.event-favorite {
-  border: 2px solid #ff9800 !important;
-  box-shadow: 0 0 12px 2px #ff9800, 0 0 20px 4px rgba(255, 152, 0, 0.3) !important;
+  border: 2px solid var(--state-favorite) !important; /* Было #ff9800 */
+  box-shadow: 0 0 12px 2px var(--state-favorite), 0 0 20px 4px rgba(255, 152, 0, 0.3) !important;
   animation: favoriteGlowing 2s ease-in-out infinite alternate !important;
 } 

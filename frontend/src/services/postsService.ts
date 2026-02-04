@@ -126,60 +126,25 @@ export const listPosts = async (params: {
   status?: string; // Фильтр по статусу (для админа)
 }): Promise<ListPostsResponse> => {
   try {
-    // Загружаем посты и блоги параллельно
-    const [postsResponse, blogsResponse] = await Promise.allSettled([
-      apiClient.get('/posts', {
-        params: {
-          limit: params.limit || 50,
-          offset: params.offset || 0,
-          search: params.search,
-          sort: params.sort,
-          status: params.status // Передаём статус для админа
-        }
-      }),
-      apiClient.get('/blogs', {
+    // Загружаем только посты (блоги удалены)
+    const postsResponse = await apiClient.get('/posts', {
       params: {
         limit: params.limit || 50,
         offset: params.offset || 0,
         search: params.search,
-        sort: params.sort
+        sort: params.sort,
+        status: params.status // Передаём статус для админа
       }
-      }).catch(() => ({ data: { data: [] } })) // Игнорируем ошибки загрузки блогов
-    ]);
+    });
 
     // Собираем посты
-    const posts: PostDTO[] = postsResponse.status === 'fulfilled' 
-      ? (postsResponse.value.data?.data || postsResponse.value.data || []).map((post: any) => ({
-          ...post,
-          content_type: post.content_type || 'post' as const
-        }))
-      : [];
+    const posts: PostDTO[] = (postsResponse.data?.data || postsResponse.data || []).map((post: any) => ({
+      ...post,
+      content_type: post.content_type || 'post' as const
+    }));
 
-    // Собираем блоги и преобразуем их в формат PostDTO
-    const blogs: PostDTO[] = blogsResponse.status === 'fulfilled'
-      ? (blogsResponse.value.data?.data || blogsResponse.value.data || []).map((blog: any) => ({
-          id: blog.id,
-          title: blog.title,
-          body: blog.content || blog.body || '',
-          author_id: blog.author_id || blog.author || '',
-          author_name: blog.author_name || blog.author || 'Неизвестно',
-          created_at: blog.created_at || new Date().toISOString(),
-          updated_at: blog.updated_at || blog.created_at || new Date().toISOString(),
-          likes_count: blog.likes_count || 0,
-          comments_count: blog.comments_count || 0,
-          is_liked: false,
-          reactions: blog.reactions || [],
-          route_id: blog.related_route_id,
-          marker_id: blog.related_markers?.[0],
-          event_id: blog.related_events?.[0],
-          photo_urls: blog.cover_image_url ? [blog.cover_image_url] : [],
-          content_type: 'guide' as const,
-          constructor_data: blog.constructor_data
-        }))
-      : [];
-
-    // Объединяем посты и блоги
-    let allContent = [...posts, ...blogs];
+    // Объединяем посты (только посты теперь)
+    let allContent = [...posts];
 
     // Применяем фильтр по типу контента
     if (params.content_type && params.content_type !== 'all') {
@@ -387,10 +352,12 @@ export const createPost = async (data: CreatePostRequest): Promise<PostDTO> => {
         constructor_data: data.constructor_data,
       };
       
-      // Показываем сообщение пользователю о том, что пост отправлен на модерацию
-      setTimeout(() => {
-        alert('✅ Пост создан и отправлен на модерацию. После одобрения администратором он будет опубликован.');
-      }, 100);
+      // Non-blocking notification: emit content-pending event so UI/notifications handle it
+      try {
+        if (typeof window !== 'undefined' && window.dispatchEvent) {
+          window.dispatchEvent(new CustomEvent('content-pending', { detail: { contentType: 'post', contentId: pendingId, title: data.title || 'Пост', showOnce: true } }));
+        }
+      } catch (e) { /* ignore */ }
       
       return pendingPost;
     }

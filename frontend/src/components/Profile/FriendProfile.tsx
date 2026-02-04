@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaMapMarkedAlt, FaBlog, FaEdit, FaStar, FaCalendarAlt, FaComments, FaHandshake, FaArchive, FaUsers, FaCrown, FaGem, FaMedal, FaAward, FaRocket, FaFire, FaHeart, FaCamera } from 'react-icons/fa';
+import { FaMapMarkedAlt, FaEdit, FaStar, FaCalendarAlt, FaComments, FaHandshake, FaArchive, FaUsers, FaCrown, FaGem, FaMedal, FaAward, FaRocket, FaFire, FaHeart, FaCamera } from 'react-icons/fa';
 import { useUserData } from '../../hooks/useUserData';
 import { useAchievements } from '../../hooks/useAchievements';
 import StarRating from '../Common/StarRating';
@@ -30,7 +30,6 @@ const FriendProfile: React.FC<FriendProfileProps> = ({ friend, onClose }) => {
   // Цвета орбит (те же, что в ProfileCenter)
   const orbitColors = {
     routes: 'from-green-400 to-green-500',
-    blogs: 'from-red-400 to-red-500',
     posts: 'from-purple-400 to-purple-500',
     places: 'from-orange-400 to-orange-500',
     events: 'from-blue-400 to-blue-500',
@@ -53,7 +52,6 @@ const FriendProfile: React.FC<FriendProfileProps> = ({ friend, onClose }) => {
     // Используем реальные данные друга
     const realData = {
       routes: userData.routes,
-      blogs: userData.blogs,
       posts: userData.posts,
       places: userData.places,
       events: [], // Пока пустой массив
@@ -79,7 +77,6 @@ const FriendProfile: React.FC<FriendProfileProps> = ({ friend, onClose }) => {
   const getOrbitTitle = (orbitType: string): string => {
     const titles = {
       routes: 'Маршруты',
-      blogs: 'Блоги',
       posts: 'Посты',
       places: 'Места',
       events: 'События',
@@ -95,7 +92,6 @@ const FriendProfile: React.FC<FriendProfileProps> = ({ friend, onClose }) => {
   const getOrbitCount = (orbitType: string): number => {
     const counts = {
       routes: userData.routes.length,
-      blogs: userData.blogs.length,
       posts: userData.posts.length,
       places: userData.places.length,
       events: 0, // Пока 0
@@ -111,7 +107,6 @@ const FriendProfile: React.FC<FriendProfileProps> = ({ friend, onClose }) => {
   const getOrbitIcon = (orbitType: string) => {
     const icons = {
       routes: FaMapMarkedAlt,
-      blogs: FaBlog,
       posts: FaEdit,
       places: FaStar,
       events: FaCalendarAlt,
@@ -308,7 +303,7 @@ const FriendProfile: React.FC<FriendProfileProps> = ({ friend, onClose }) => {
           {/* Статистика */}
           <div className="mt-6 grid grid-cols-2 gap-4 text-center">
             <div className="bg-gray-50 rounded-lg p-3">
-              <div className="text-lg font-bold text-gray-800">{userData.routes.length + userData.blogs.length + userData.posts.length}</div>
+              <div className="text-lg font-bold text-gray-800">{userData.routes.length + userData.posts.length}</div>
               <div className="text-xs text-gray-600">Всего контента</div>
             </div>
             <div className="bg-gray-50 rounded-lg p-3">

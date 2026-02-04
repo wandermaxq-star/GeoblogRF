@@ -322,6 +322,7 @@ export const PopupHeader = styled.div`
 
 export const PhotoBlock = styled.div`
   flex-shrink: 0; // Фото не должно сжиматься
+  position: relative;
 `;
 
 export const Photo = styled.img`

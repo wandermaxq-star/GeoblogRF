@@ -3,8 +3,8 @@
  * Вынесено из Map.tsx для улучшения читаемости
  */
 
-import * as LeafletModule from 'leaflet';
-const L = (LeafletModule as any).default || (LeafletModule as any);
+// Use facade for creating layers instead of importing Leaflet directly
+import { mapFacade } from '../../services/map_facade/index';
 
 /**
  * Получает URL и attribution для базового слоя карты
@@ -39,19 +39,40 @@ export function getAdditionalLayers(showTraffic: boolean, showBikeLanes: boolean
     const layers: any[] = [];
 
     if (showTraffic) {
-        const trafficLayer = L.tileLayer('https://tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey=YOUR_API_KEY', {
-            attribution: '&copy; <a href="https://www.thunderforest.com/">Thunderforest</a>',
-            opacity: 0.5
-        });
-        layers.push(trafficLayer);
+        // return a lightweight wrapper that will create and add a proper tile layer via the facade when addTo() is called
+        const trafficWrapper = (() => {
+            let created: any = null;
+            return {
+                addTo: (map: any) => {
+                    created = mapFacade().addTileLayer('https://tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey=YOUR_API_KEY', {
+                        attribution: '&copy; <a href="https://www.thunderforest.com/">Thunderforest</a>',
+                        opacity: 0.5,
+                        className: 'traffic-layer'
+                    });
+                    return created;
+                },
+                getContainer: () => created?.getContainer?.()
+            };
+        })();
+        layers.push(trafficWrapper);
     }
 
     if (showBikeLanes) {
-        const bikeLanesLayer = L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Rendering: <a href="https://www.cyclosm.org/">CyclOSM</a>',
-            opacity: 0.6
-        });
-        layers.push(bikeLanesLayer);
+        const bikeWrapper = (() => {
+            let created: any = null;
+            return {
+                addTo: (map: any) => {
+                    created = mapFacade().addTileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Rendering: <a href="https://www.cyclosm.org/">CyclOSM</a>',
+                        opacity: 0.6,
+                        className: 'bike-lanes-layer'
+                    });
+                    return created;
+                },
+                getContainer: () => created?.getContainer?.()
+            };
+        })();
+        layers.push(bikeWrapper);
     }
 
     return layers;
@@ -83,10 +104,16 @@ export function createLayerIndicator(layerType: 'traffic' | 'bike') {
  * @param latlng - географические координаты
  * @returns {x, y} пиксельные координаты относительно контейнера
  */
-export function latLngToContainerPoint(map: L.Map | null, latlng: L.LatLng) {
-    if (!map) return { x: 0, y: 0 };
-    const point = map.latLngToContainerPoint(latlng);
-    return { x: point.x, y: point.y };
+// Вариант с использованием фасада (если фасад доступен глобально или передается)
+export function latLngToContainerPoint(mapFacade: any, latlng: any) {
+    if (!mapFacade) return { x: 0, y: 0 };
+    // Вызываем метод фасада, который абстрагирует доступ к инстансу карты
+    try {
+        const point = mapFacade().latLngToContainerPoint(latlng);
+        return { x: point.x, y: point.y };
+    } catch (e) {
+        return { x: 0, y: 0 };
+    }
 }
 
 /**

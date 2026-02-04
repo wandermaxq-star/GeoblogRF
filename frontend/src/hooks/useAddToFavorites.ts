@@ -39,7 +39,7 @@ export const useAddToFavorites = () => {
           latitude: 0,
           longitude: 0,
           category: category, // Используем выбранную категорию
-          purpose: category as 'personal' | 'blog' | 'post' | 'event' | 'draft', // Используем выбранную категорию
+          purpose: category as 'personal' | 'post' | 'event' | 'draft', // Используем выбранную категорию
           tags: [],
           visibility: 'private',
           usageCount: 0,
@@ -61,11 +61,10 @@ export const useAddToFavorites = () => {
           categories: {
             personal: true,
             post: category === 'post',
-            blog: category === 'blog',
             event: category === 'event'
           },
           category: category, // Используем выбранную категорию
-          purpose: category as 'personal' | 'blog' | 'post' | 'event' | 'shared' | 'draft', // Используем выбранную категорию
+          purpose: category as 'personal' | 'post' | 'event' | 'shared' | 'draft', // Используем выбранную категорию
           tags: [],
           description: currentItem.data.description,
           visibility: 'private',

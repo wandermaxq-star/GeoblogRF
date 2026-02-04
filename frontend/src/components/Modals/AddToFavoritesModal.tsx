@@ -19,7 +19,6 @@ const AddToFavoritesModal: React.FC<AddToFavoritesModalProps> = ({
 
   const categories = [
     { id: 'post', name: 'Посты' },
-    { id: 'blog', name: 'Блоги' },
     { id: 'event', name: 'События' },
     { id: 'personal', name: 'Избранное' }
   ];

@@ -1173,11 +1173,11 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onPo
               {contentHookType === 'routes' && (
                 <>
                   {(favorites?.favoriteRoutes && (() => {
-                    const blogRoutes = favorites.favoriteRoutes.filter((r: any) => 
-                      r.categories?.blog || r.purpose === 'blog' || 
-                      (Array.isArray(r.tags) && r.tags.includes('blog'))
+                    const postRoutes = favorites.favoriteRoutes.filter((r: any) => 
+                      r.categories?.post || r.purpose === 'post' || 
+                      (Array.isArray(r.tags) && r.tags.includes('post'))
                     );
-                    const routesToShow = blogRoutes.length > 0 ? blogRoutes : favorites.favoriteRoutes;
+                    const routesToShow = postRoutes.length > 0 ? postRoutes : favorites.favoriteRoutes;
                     return routesToShow.map((route: any) => (
                       <button
                         key={route.id}
@@ -1200,11 +1200,11 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onPo
               {contentHookType === 'markers' && (
                 <>
                   {(favorites?.favoritePlaces && (() => {
-                    const blogPlaces = favorites.favoritePlaces.filter((p: any) => 
-                      (p as any).categories?.blog || (p as any).purpose === 'blog' ||
-                      (Array.isArray((p as any).tags) && (p as any).tags.includes('blog'))
+                    const postPlaces = favorites.favoritePlaces.filter((p: any) => 
+                      (p as any).categories?.post || (p as any).purpose === 'post' ||
+                      (Array.isArray((p as any).tags) && (p as any).tags.includes('post'))
                     );
-                    const placesToShow = blogPlaces.length > 0 ? blogPlaces : favorites.favoritePlaces;
+                    const placesToShow = postPlaces.length > 0 ? postPlaces : favorites.favoritePlaces;
                     return placesToShow.map((place: any) => (
                       <button
                         key={place.id}
@@ -1227,11 +1227,11 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onPo
               {contentHookType === 'events' && (
                 <>
                   {(favorites?.favoriteEvents && (() => {
-                    const blogEvents = favorites.favoriteEvents.filter((e: any) => 
-                      e.categories?.blog || e.purpose === 'blog' ||
-                      (Array.isArray(e.tags) && e.tags.includes('blog'))
+                    const postEvents = favorites.favoriteEvents.filter((e: any) => 
+                      e.categories?.post || e.purpose === 'post' ||
+                      (Array.isArray(e.tags) && e.tags.includes('post'))
                     );
-                    const eventsToShow = blogEvents.length > 0 ? blogEvents : favorites.favoriteEvents;
+                    const eventsToShow = postEvents.length > 0 ? postEvents : favorites.favoriteEvents;
                     return eventsToShow.map((event: any) => (
                       <button
                         key={event.id}

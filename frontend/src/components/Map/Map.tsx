@@ -3,20 +3,24 @@
 import '../../utils/leafletInit';
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { OSMMapRenderer } from '../../services/map_facade/adapters/OSMMapRenderer';
 import CircularProgressBar from '../ui/CircularProgressBar';
-import * as Leaflet from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import 'leaflet.markercluster';
+
+// Leaflet и его стили инициализируются в `../../utils/leafletInit`.
+// Используем `mapFacade` и глобальный `window.L` вместо прямых импортов.
+// (импорты 'leaflet', 'leaflet/dist/leaflet.css' и 'leaflet.markercluster' удалены)
 
 // Объявляем L как глобальную переменную (устанавливается в leafletInit.ts)
 declare const L: any;
+
+// Хук для рендеринга маркеров (кластеризация, события, попапы)
+import { useMapMarkers } from './useMapMarkers.tsx';
 
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useMapStyle } from '../../hooks/useMapStyle';
 import { MapContainer, MapWrapper, LoadingOverlay, ErrorMessage, GlobalLeafletPopupStyles } from './Map.styles';
-import { createRoot } from 'react-dom/client';
-import type { Root } from 'react-dom/client';
+
 import { createPortal } from 'react-dom';
 import MarkerPopup from './MarkerPopup';
 import { MarkerData } from '../../types/marker';
@@ -31,15 +35,15 @@ import { projectManager } from '../../services/projectManager';
 import { activityService } from '../../services/activityService';
 import { useRussiaRestrictions } from '../../hooks/useRussiaRestrictions';
 import { canCreateMarker } from '../../services/zoneService';
-import { useContentStore } from '../../stores/contentStore';
+import { useContentStore, ContentState } from '../../stores/contentStore';
 import { useMapDisplayMode } from '../../hooks/useMapDisplayMode';
 import { FEATURES } from '../../config/features';
 import { getDistanceFromLatLonInKm } from '../../utils/russiaBounds';
 import { getMarkerIconPath, getCategoryColor, getFontAwesomeIconName } from '../../constants/markerCategories';
-import { mapFacade } from '../../services/map_facade/index';
+import { mapFacade, INTERNAL } from '../../services/map_facade/index';
 import type { MapConfig } from '../../services/map_facade/index';
 import { useMapStateStore } from '../../stores/mapStateStore';
-import { useEventsStore } from '../../stores/eventsStore';
+import { useEventsStore, EventsState } from '../../stores/eventsStore';
 import { MockEvent } from '../TravelCalendar/mockEvents';
 import { getCategoryById } from '../TravelCalendar/TravelCalendar';
 import { markerService } from '../../services/markerService';
@@ -47,7 +51,8 @@ import {
     getTileLayer,
     getAdditionalLayers,
     createLayerIndicator,
-    markerCategoryStyles
+    markerCategoryStyles,
+    latLngToContainerPoint
 } from './mapUtils';
 
 const MapMessage = styled.div`
@@ -55,7 +60,7 @@ const MapMessage = styled.div`
   top: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: var(--glass-bg-dark);
   color: white;
   padding: 15px 25px;
   border-radius: 8px;
@@ -113,12 +118,13 @@ interface MapProps {
     } | null;
 }
 
-const Map: React.FC<MapProps> = ({
-    center, zoom, markers, onMapClick, onHashtagClickFromPopup,
-    flyToCoordinates, selectedMarkerIdForPopup, setSelectedMarkerIdForPopup, onAddToFavorites, onAddToBlog, isFavorite,
-    onFavoritesClick, favoritesCount, mapSettings, filters, searchRadiusCenter, onSearchRadiusCenterChange, selectedMarkerIds, onBoundsChange, zones = [], routeData, isAddingMarkerMode: externalIsAddingMarkerMode, onAddMarkerModeChange, legendOpen: externalLegendOpen, onLegendOpenChange,
-    onRemoveFromFavorites, setSelectedMarkerIds
-}) => {
+function Map(props: MapProps) {
+    const {
+        center, zoom, markers, onMapClick, onHashtagClickFromPopup,
+        flyToCoordinates, selectedMarkerIdForPopup, setSelectedMarkerIdForPopup, onAddToFavorites, onAddToBlog, isFavorite,
+        onFavoritesClick, favoritesCount, mapSettings, filters, searchRadiusCenter, onSearchRadiusCenterChange, selectedMarkerIds, onBoundsChange, zones = [], routeData, isAddingMarkerMode: externalIsAddingMarkerMode, onAddMarkerModeChange, legendOpen: externalLegendOpen, onLegendOpenChange,
+        onRemoveFromFavorites, setSelectedMarkerIds
+    } = props;
 
     // --- СОСТОЯНИЕ ДЛЯ МАРКЕРОВ ---
     const [localMarkers, setLocalMarkers] = useState<MarkerData[]>([]);
@@ -142,12 +148,15 @@ const Map: React.FC<MapProps> = ({
     }, [markers]);
 
     // --- REFS ---
-    const mapRef = useRef<L.Map | null>(null);
+    // Use `any` for internal Leaflet instances to avoid direct Leaflet types in components
+    // NOTE: mapRef is a DOM container ref only — do NOT rely on it to access the map instance.
+    // Use `mapFacade()` or `mapFacade().getMap?.()` to access map APIs instead.
+    const mapRef = useRef<any | null>(null);
     const mapContainerRef = useRef<HTMLDivElement | null>(null);
-    const activePopupRoots = useRef<Record<string, Root>>({});
-    const tempMarkerRef = useRef<L.Marker | null>(null);
+
+    const tempMarkerRef = useRef<any | null>(null);
     const markerClusterGroupRef = useRef<any | null>(null);
-    const tileLayerRef = useRef<L.TileLayer | null>(null);
+    const tileLayerRef = useRef<any | null>(null);
     const isAddingMarkerModeRef = useRef(false);
     const initRetryRef = useRef<number>(0);
 
@@ -170,12 +179,12 @@ const Map: React.FC<MapProps> = ({
     const { isDarkMode } = useTheme();
     const mapStyle = useMapStyle();
     const russiaRestrictions = useRussiaRestrictions();
-    const leftContent = useContentStore((state) => state.leftContent);
-    const rightContent = useContentStore((state) => state.rightContent);
+    const leftContent = useContentStore((state: ContentState) => state.leftContent);
+    const rightContent = useContentStore((state: ContentState) => state.rightContent);
     const isTwoPanelMode = rightContent !== null;
-    const openEvents = useEventsStore((state) => state.openEvents);
-    const selectedEvent = useEventsStore((state) => state.selectedEvent);
-    const setSelectedEvent = useEventsStore((state) => state.setSelectedEvent);
+    const openEvents = useEventsStore((state: EventsState) => state.openEvents);
+    const selectedEvent = useEventsStore((state: EventsState) => state.selectedEvent);
+    const setSelectedEvent = useEventsStore((state: EventsState) => state.setSelectedEvent);
 
     // --- STATE ---
     const [isLoading, setIsLoading] = useState(true);
@@ -183,7 +192,7 @@ const Map: React.FC<MapProps> = ({
     const [error, setError] = useState<string | null>(null);
     const [isMapReady, setIsMapReady] = useState(false);
     const [coordsForNewMarker, setCoordsForNewMarker] = useState<[number, number] | null>(null);
-    const [tempMarker, setTempMarker] = useState<L.Marker | null>(null);
+    const [tempMarker, setTempMarker] = useState<any | null>(null);
     const [mapMessage, setMapMessage] = useState<string | null>(null);
     const [showCultureMessage, setShowCultureMessage] = useState<boolean>(true);
     const [discoveredPlace, setDiscoveredPlace] = useState<DiscoveredPlace | null>(null);
@@ -290,10 +299,10 @@ const Map: React.FC<MapProps> = ({
         }
         
         // Инвалидируем размер карты при изменении режима
-        if (mapRef.current && mapDisplayMode.shouldShowFullscreen) {
+        if (mapDisplayMode.shouldShowFullscreen) {
             setTimeout(() => {
                 try {
-                    mapRef.current?.invalidateSize();
+                    mapFacade()?.invalidateSize();
                 } catch (e) {}
             }, 100);
         }
@@ -309,13 +318,9 @@ const Map: React.FC<MapProps> = ({
                 const topValue = mapDisplayMode.shouldShowFullscreen ? `${h}px` : `${h}px`;
                 document.documentElement.style.setProperty('--facade-map-top', topValue);
                 
-                if (mapRef.current) {
-                    setTimeout(() => {
-                        try {
-                            mapRef.current?.invalidateSize();
-                        } catch (e) { }
-                    }, 120);
-                }
+                setTimeout(() => {
+                    try { mapFacade()?.invalidateSize(); } catch (e) { }
+                }, 120);
             } catch (e) { }
         };
 
@@ -326,39 +331,37 @@ const Map: React.FC<MapProps> = ({
 
     // --- CENTER/ZOOM FROM PROPS (only if no saved state) ---
     useEffect(() => {
-        if (!mapRef.current) return;
+        const mapInstance = mapFacade().getMap?.();
+        if (!mapInstance) return;
 
         const savedState = useMapStateStore.getState().contexts.osm;
         if (savedState.initialized) {
             try {
-                mapRef.current.setView(savedState.center, savedState.zoom, { animate: false });
+                mapFacade()?.setView(savedState.center, savedState.zoom);
             } catch (e) { }
             return;
         }
 
         try {
-            mapRef.current.setView(center, zoom, { animate: false });
+            mapFacade()?.setView(center, zoom);
         } catch (e) { }
     }, [center, zoom]);
 
     // --- UNIFIED RESIZE HANDLER ---
     useEffect(() => {
-        if (!mapRef.current) return;
+        const mapInstance = mapFacade().getMap?.();
+        if (!mapInstance) return;
 
         let timeoutId: NodeJS.Timeout | null = null;
 
         const handleResize = () => {
             if (timeoutId) clearTimeout(timeoutId);
             timeoutId = setTimeout(() => {
-                try {
-                    mapRef.current?.invalidateSize();
-                } catch (e) { }
+                try { mapFacade()?.invalidateSize(); } catch (e) { }
             }, 350);
         };
 
-        try {
-            mapRef.current.invalidateSize();
-        } catch (e) { }
+        try { mapFacade()?.invalidateSize(); } catch (e) { }
 
         handleResize();
 
@@ -369,7 +372,8 @@ const Map: React.FC<MapProps> = ({
 
     // --- INTERSECTION OBSERVER FOR VISIBILITY ---
     useEffect(() => {
-        if (!mapRef.current || !mapContainerRef.current) return;
+        const mapInstance = mapFacade().getMap?.();
+        if (!mapInstance || !mapContainerRef.current) return;
 
         if ('IntersectionObserver' in window) {
             const observer = new IntersectionObserver(
@@ -378,7 +382,7 @@ const Map: React.FC<MapProps> = ({
                         if (entry.isIntersecting && entry.intersectionRatio > 0) {
                             setTimeout(() => {
                                 try {
-                                    mapRef.current?.invalidateSize();
+                                    try { mapFacade()?.invalidateSize(); } catch (e) { }
                                 } catch (e) { }
                             }, 100);
                         }
@@ -405,7 +409,8 @@ const Map: React.FC<MapProps> = ({
             }
         })();
 
-        if (mapRef.current) {
+        const existingMap = mapFacade().getMap?.();
+        if (existingMap) {
             setError(null);
             return;
         }
@@ -421,6 +426,9 @@ const Map: React.FC<MapProps> = ({
             return style.visibility !== 'hidden' && style.display !== 'none' &&
                 element.offsetWidth > 0 && element.offsetHeight > 0;
         };
+
+        // Will collect cleanup callbacks registered during init
+        let registeredHandlers: Array<() => void> = [];
 
         const initMapAndLoadMarkers = async () => {
             setIsLoading(true);
@@ -468,7 +476,7 @@ const Map: React.FC<MapProps> = ({
 
                 let initResult: any = null;
                 try {
-                    const registeredApi = (mapFacade as any).getRegisteredApi ? (mapFacade as any).getRegisteredApi() : (mapFacade as any).INTERNAL?.api;
+                    const registeredApi = typeof mapFacade().getRegisteredApi === 'function' ? mapFacade().getRegisteredApi() : (INTERNAL as any)?.api;
                     if (registeredApi && (registeredApi.map || registeredApi.mapInstance)) {
                         initResult = registeredApi;
                     }
@@ -491,79 +499,80 @@ const Map: React.FC<MapProps> = ({
                     }
                 }
 
-                const facadeApi = (mapFacade as any)?.INTERNAL?.api || initResult || {};
-                if (facadeApi && (facadeApi as any).map) {
-                    mapRef.current = (facadeApi as any).map as L.Map;
-                } else if (facadeApi && (facadeApi as any).mapInstance) {
-                    mapRef.current = (facadeApi as any).mapInstance as L.Map;
-                } else if (initResult && (initResult as any).map) {
-                    mapRef.current = (initResult as any).map as L.Map;
-                } else if ((window as any).L) {
+                const facadeApi = (INTERNAL as any)?.api || initResult || {};
+                let mapInstance: any = facadeApi?.map ?? facadeApi?.mapInstance ?? initResult?.map ?? initResult?.mapInstance ?? mapFacade().getMap?.();
+                if (!mapInstance) {
+                    // FACADE: Попытка инициализировать через фасад как последний вариант
                     try {
-                        const maybeMap = (window as any).L.map(mapContainer, { center, zoom });
-                        (window as any).L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(maybeMap);
-                        mapRef.current = maybeMap;
-                        try {
-                            (mapFacade as any).INTERNAL = (mapFacade as any).INTERNAL || {};
-                            (mapFacade as any).INTERNAL.api = (mapFacade as any).INTERNAL.api || {};
-                            (mapFacade as any).INTERNAL.api.map = maybeMap;
-                        } catch (e) { }
-                    } catch (err) { }
+                        await mapFacade().initialize(mapContainer, { ...config, preserveState: true });
+                        mapInstance = mapFacade().getMap?.();
+                    } catch (e) {
+                        console.error('Ошибка инициализации карты через фасад', e);
+                    }
                 }
 
-                if (!mapRef.current) {
+                if (!mapInstance) {
                     throw new Error('Фасад не вернул карту после инициализации.');
                 }
 
-                const map = mapRef.current;
+                // NOTE: We no longer assign the internal map instance to `mapRef.current`.
+                // Consumers should use `mapFacade()` or `mapFacade().getMap?.()` when raw access is required.
+                let map: any = mapInstance;
 
-                if (mapRef.current && typeof (mapRef.current as any).addLayer !== 'function') {
+                if (map && typeof map.addLayer !== 'function') {
                     const possibleInner = (facadeApi as any)?.map || (facadeApi as any)?.mapInstance || (initResult && (initResult as any).map);
                     if (possibleInner && typeof possibleInner.addLayer === 'function') {
-                        mapRef.current = possibleInner as L.Map;
+                        // Use the inner map directly when needed; do not rely on `mapRef` assignment.
+                        map = possibleInner;
                     }
                 }
 
                 const tileLayerInfo = getTileLayer(mapSettings.mapType);
                 let hasTileLayer = false;
                 map.eachLayer((layer: any) => {
-                    if (layer instanceof L.TileLayer && layer._url === 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png') {
+                    // Avoid direct instanceof check against Leaflet classes; rely on layer properties instead
+                    if ((layer as any)?._url === 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png') {
                         hasTileLayer = true;
                         tileLayerRef.current = layer;
                     }
                 });
 
                 if (!hasTileLayer) {
-                    const tileLayer = L.tileLayer(tileLayerInfo.url, {
+                    // Use facade to add tile layer so we keep Leaflet usage centralized
+                    const tileLayer = mapFacade().addTileLayer(tileLayerInfo.url, {
                         attribution: tileLayerInfo.attribution,
                         maxZoom: 19,
                         subdomains: 'abc',
-                    }).addTo(map);
+                    });
                     tileLayerRef.current = tileLayer;
                 }
 
                 const additionalLayers = getAdditionalLayers(mapSettings.showTraffic, mapSettings.showBikeLanes);
-                additionalLayers.forEach(layer => layer.addTo(map));
+                additionalLayers.forEach(layer => {
+                    // layers may be L.TileLayer instances, add them using facade when map is managed by facade
+                    try { (layer as any).addTo(map); } catch (e) { }
+                });
 
                 if (!map.zoomControl) {
-                    L.control.zoom({ position: 'bottomright' }).addTo(map);
+                    mapFacade().setZoomControl('bottomright');
                 }
 
                 setTimeout(() => {
-                    if (mapRef.current) {
-                        try { mapRef.current.invalidateSize(); } catch (e) { }
-                    }
+                    try { mapFacade()?.invalidateSize(); } catch (e) { }
                 }, 100);
 
-                mapRef.current!.eachLayer((layer: any) => {
+                mapFacade()?.eachLayer((layer: any) => {
                     if (layer && typeof layer.getLayers === 'function' && layer !== markerClusterGroupRef.current) {
-                        try { mapRef.current!.removeLayer(layer); } catch (e) { }
+                        try { mapFacade()?.removeLayer(layer); } catch (e) { }
                     }
                 });
 
-                mapRef.current!.on('moveend', () => {
-                    if (onBoundsChange && mapRef.current) {
-                        const bounds = mapRef.current.getBounds();
+                // Подписываемся на событие завершения перемещения через фасад
+                const boundsHandler = () => {
+                    try {
+                        const mapInstance = mapFacade().getMap?.();
+                        if (!mapInstance || !onBoundsChange) return;
+                        const bounds = mapInstance.getBounds();
                         if (bounds && typeof bounds.getNorth === 'function') {
                             onBoundsChange({
                                 north: bounds.getNorth(),
@@ -572,50 +581,70 @@ const Map: React.FC<MapProps> = ({
                                 west: bounds.getWest()
                             });
                         }
+                    } catch (err) {
+                        console.debug('[Map] boundsHandler error:', err);
                     }
-                });
+                };
 
-                mapRef.current!.on('click', async (e: L.LeafletMouseEvent) => {
-                    if (isAddingMarkerModeRef.current) {
-                        if (tempMarkerRef.current) {
-                            mapRef.current!.removeLayer(tempMarkerRef.current);
+                mapFacade().onMapMove(boundsHandler);
+
+                // Подписываемся на клик карты через фасад
+                const handleMapClick = async (e: any) => {
+                    try {
+                        const mapInstance = mapFacade().getMap?.() ?? null;
+                        if (!mapInstance) return; // Guard to avoid crashes if map is gone
+                        if (isAddingMarkerModeRef.current) {
+                            if (tempMarkerRef.current) {
+                                try { mapFacade().removeLayer(tempMarkerRef.current); } catch (err) { }
+                            }
+
+                            const clickedLatLng = e.latlng;
+                            const zoom = mapFacade().getZoom();
+                            const mapSize = mapFacade().getSize();
+                            const targetScreenY = mapSize.y * 0.25;
+                            const screenCenterY = mapSize.y / 2;
+                            const offsetY = targetScreenY - screenCenterY;
+                            const projectedClick = mapFacade().project([clickedLatLng.lat, clickedLatLng.lng]);
+                            const targetCenterPoint = mapFacade().point(projectedClick.x, projectedClick.y - offsetY);
+                            const targetCenterLatLng = mapFacade().unproject({ x: targetCenterPoint.x, y: targetCenterPoint.y }, zoom);
+                            try { mapFacade().setView(targetCenterLatLng, zoom); } catch (err) { }
+
+                            const tempIcon = mapFacade().createDivIcon({
+                                className: 'temp-marker-icon',
+                                html: '<div style="background-color: red; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 3000;"></div>',
+                                iconSize: [20, 20],
+                                iconAnchor: [10, 10],
+                            });
+
+                            const newTempMarker = mapFacade().createMarker([clickedLatLng.lat, clickedLatLng.lng], { icon: tempIcon });
+                            setTempMarker(newTempMarker);
+
+                            const placeFound = await handlePlaceDiscovery(clickedLatLng.lat, clickedLatLng.lng);
+                            setCoordsForNewMarker([clickedLatLng.lat, clickedLatLng.lng]);
+
+                            if (!placeFound) {
+                                setMapMessage('ℹ️ Место не найдено, можно добавить вручную');
+                                setTimeout(() => setMapMessage(null), 3000);
+                            }
+
+                            setIsAddingMarkerMode(false);
+                            setMapMessage(null);
+                        } else if (onMapClick) {
+                            onMapClick([e.latlng.lat, e.latlng.lng]);
                         }
-
-                        const clickedLatLng = e.latlng;
-                        const zoom = mapRef.current!.getZoom();
-                        const mapSize = mapRef.current!.getSize();
-                        const targetScreenY = mapSize.y * 0.25;
-                        const screenCenterY = mapSize.y / 2;
-                        const offsetY = targetScreenY - screenCenterY;
-                        const projectedClick = mapRef.current!.project(clickedLatLng, zoom);
-                        const targetCenterPoint = L.point(projectedClick.x, projectedClick.y - offsetY);
-                        const targetCenterLatLng = mapRef.current!.unproject(targetCenterPoint, zoom);
-                        mapRef.current!.setView(targetCenterLatLng, zoom, { animate: true });
-
-                        const tempIcon = L.divIcon({
-                            className: 'temp-marker-icon',
-                            html: '<div style="background-color: red; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 3000;"></div>',
-                            iconSize: [20, 20],
-                            iconAnchor: [10, 10],
-                        });
-
-                        const newTempMarker = L.marker(clickedLatLng, { icon: tempIcon }).addTo(mapRef.current!);
-                        setTempMarker(newTempMarker);
-
-                        const placeFound = await handlePlaceDiscovery(clickedLatLng.lat, clickedLatLng.lng);
-                        setCoordsForNewMarker([clickedLatLng.lat, clickedLatLng.lng]);
-
-                        if (!placeFound) {
-                            setMapMessage('ℹ️ Место не найдено, можно добавить вручную');
-                            setTimeout(() => setMapMessage(null), 3000);
-                        }
-
-                        setIsAddingMarkerMode(false);
-                        setMapMessage(null);
-                    } else if (onMapClick) {
-                        onMapClick([e.latlng.lat, e.latlng.lng]);
+                    } catch (err) {
+                        console.debug('[Map] handleMapClick error:', err);
                     }
-                });
+                };
+
+                mapFacade().onMapClick(handleMapClick);
+
+                // Сохраняем функции для последующего удаления при unmount
+                registeredHandlers.push(() => mapFacade().offMapMove(boundsHandler));
+                registeredHandlers.push(() => mapFacade().offMapClick(handleMapClick));
+
+                // Attach to local cleanup via closure: ensure we remove handlers when component unmounts
+                // We'll call these in the main effect cleanup below (see return).
 
                 setIsLoading(false);
                 setIsMapReady(true);
@@ -629,13 +658,14 @@ const Map: React.FC<MapProps> = ({
                     errMsg.includes('Failed to fetch') ||
                     errMsg.includes('NetworkError');
 
-                if (isNonCriticalError && mapRef.current) {
+                const mapInstance = mapFacade().getMap?.() ?? null;
+                if (isNonCriticalError && mapInstance) {
                     setIsLoading(false);
                     setError(null);
                     return;
                 }
 
-                if (!isNonCriticalError && !mapRef.current) {
+                if (!isNonCriticalError && !mapInstance) {
                     setError(t('map.error.initialization') || 'Ошибка инициализации карты');
                 } else {
                     setError(null);
@@ -647,83 +677,84 @@ const Map: React.FC<MapProps> = ({
         initMapAndLoadMarkers();
 
         return () => {
-            if (mapRef.current) {
-                Object.values(activePopupRoots.current).forEach((root) => {
-                    try { root.unmount(); } catch (err) { }
-                });
-                activePopupRoots.current = {};
-
-                if (tempMarkerRef.current) {
-                    try { mapRef.current.removeLayer(tempMarkerRef.current); } catch (e) { }
-                    tempMarkerRef.current = null;
-                }
+            if (tempMarkerRef.current) {
+                try { mapFacade()?.removeLayer(tempMarkerRef.current); } catch (e) { }
+                tempMarkerRef.current = null;
             }
+
+            // Call any registered facade handler removers
+            try {
+                if (registeredHandlers && Array.isArray(registeredHandlers)) {
+                    registeredHandlers.forEach(fn => {
+                        try { fn(); } catch (e) { }
+                    });
+                }
+            } catch (e) { }
         };
     }, [leftContent, center, zoom, mapSettings.mapType, onBoundsChange, onMapClick]);
 
     // --- MAP STATE SAVING ---
     useEffect(() => {
-        if (!mapRef.current || !isMapReady) return;
-
-        const map = mapRef.current;
+        if (!isMapReady) return;
 
         const saveState = () => {
             try {
-                const currentCenter = map.getCenter();
-                const currentZoom = map.getZoom();
-                useMapStateStore.getState().saveCurrentState('osm', [currentCenter.lat, currentCenter.lng], currentZoom);
+                const currentCenter = mapFacade().getCenter?.();
+                const currentZoom = mapFacade().getZoom?.() ?? 0;
+                if (!currentCenter) return;
+                useMapStateStore.getState().saveCurrentState('osm', [currentCenter[0], currentCenter[1]], currentZoom);
             } catch (e) { }
         };
 
-        map.on('moveend', saveState);
-        map.on('zoomend', saveState);
+        // Register saveState via facade (moveend/zoomend semantics are implemented in renderer)
+        mapFacade().onMapMove(saveState);
+        mapFacade().onMapZoom(saveState);
         saveState();
 
         return () => {
             try {
-                map.off('moveend', saveState);
-                map.off('zoomend', saveState);
+                mapFacade().offMapMove(saveState);
+                mapFacade().offMapZoom(saveState);
             } catch (e) { }
         };
     }, [isMapReady]);
 
     // --- MAP TYPE CHANGE ---
     useEffect(() => {
-        if (!mapRef.current) return;
-        const map = mapRef.current;
+        const map = mapFacade().getMap?.();
+        if (!map) return;
         const tileLayerInfo = getTileLayer(mapSettings.mapType);
 
         if (tileLayerRef.current) {
-            map.removeLayer(tileLayerRef.current);
+            try { mapFacade().removeLayer(tileLayerRef.current); } catch (e) { }
         }
 
-        const newTileLayer = L.tileLayer(tileLayerInfo.url, {
+        const newTileLayer = mapFacade().addTileLayer(tileLayerInfo.url, {
             attribution: tileLayerInfo.attribution,
             maxZoom: 19,
             subdomains: 'abc',
-        }).addTo(map);
+        });
         tileLayerRef.current = newTileLayer;
     }, [mapSettings.mapType]);
 
     // --- TRAFFIC & BIKE LANES ---
     useEffect(() => {
-        if (!mapRef.current) return;
-        const map = mapRef.current;
-
-        map.eachLayer((layer: any) => {
-            if (layer instanceof L.TileLayer &&
-                ((layer as any).getContainer?.()?.className?.includes('traffic-layer') ||
-                    (layer as any).getContainer?.()?.className?.includes('bike-lanes-layer'))) {
-                map.removeLayer(layer);
+        // Remove any existing traffic/bike layers via facade
+        mapFacade()?.eachLayer((layer: any) => {
+            // Avoid instanceof checks against Leaflet classes; rely on properties instead
+            const containerClass = (layer as any).getContainer?.()?.className || '';
+            if (((layer as any)?._url || containerClass.includes('traffic-layer') || containerClass.includes('bike-lanes-layer'))) {
+                try { mapFacade()?.removeLayer(layer); } catch (e) { }
             }
         });
 
         document.querySelectorAll('.layer-indicator').forEach(indicator => indicator.remove());
 
-        if (L) {
+        if (typeof (window as any).L !== 'undefined') {
+            const map = mapFacade().getMap?.();
             const additionalLayers = getAdditionalLayers(mapSettings.showTraffic, mapSettings.showBikeLanes);
             additionalLayers.forEach((layer) => {
-                layer.addTo(map);
+                try { (layer as any).addTo(map); } catch (e) { }
                 const layerType = (layer as any).getContainer?.()?.className?.includes('traffic-layer') ? 'traffic' : 'bike';
                 const indicator = createLayerIndicator(layerType);
                 map.getContainer().appendChild(indicator);
@@ -731,312 +762,46 @@ const Map: React.FC<MapProps> = ({
         }
     }, [mapSettings.showTraffic, mapSettings.showBikeLanes]);
 
-    // --- MARKERS RENDER ---
-    useEffect(() => {
-        if (!mapRef.current || !L) return;
-        if (!markersData || markersData.length === 0) return;
+    // --- MARKERS RENDER (moved to hook) ---
+    useMapMarkers({
+      mapRef,
+      markerClusterGroupRef,
+      tileLayerRef,
+      markersData,
+      isDarkMode,
+      filters,
+      searchRadiusCenter,
+      mapSettings,
+      openEvents,
+      selectedEvent,
+      leftContent,
+      rightContent,
+      isMapReady,
+      setMiniPopup,
+      setEventMiniPopup,
+      setSelectedMarkerIdForPopup,
+      setSelectedMarkerIds,
+      isFavorite,
+      onHashtagClickFromPopup,
+      onAddToFavorites,
+      onRemoveFromFavorites,
+      onAddToBlog
+    });
 
-        const { radiusOn, radius } = filters;
-        const { themeColor, showHints } = mapSettings;
-        const [searchRadiusCenterLat, searchRadiusCenterLng] = searchRadiusCenter;
 
-        if (markerClusterGroupRef.current) {
-            mapRef.current.removeLayer(markerClusterGroupRef.current);
-            markerClusterGroupRef.current = null;
-        }
 
-        mapRef.current.eachLayer((layer: any) => {
-            if (L && layer instanceof L.Marker && layer !== tempMarkerRef.current) {
-                mapRef.current?.removeLayer(layer);
-            }
-        });
 
-        if (!(L as any).markerClusterGroup) return;
 
-        const markerClusterGroup = (L as any).markerClusterGroup({
-            showCoverageOnHover: false,
-            maxClusterRadius: 50,
-            spiderfyOnMaxZoom: true,
-            animate: true,
-            iconCreateFunction: function (cluster: any) {
-                const count = cluster.getChildCount();
-                return L.divIcon({
-                    html: `<div class="marker-cluster"><span>${count}</span></div>`,
-                    className: 'marker-cluster-custom',
-                    iconSize: [40, 40]
-                });
-            }
-        });
 
-        markersData.forEach((markerData) => {
-            const lat = parseFloat(markerData.latitude as any);
-            const lng = parseFloat(markerData.longitude as any);
 
-            if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-                const markerCategory = markerData.category || 'other';
-                const isHot = (markerData.rating || 0) >= 4.5;
-                const isPending = markerData.status === 'pending' || (markerData as any).is_pending || false;
 
-                const isInRadius = radiusOn
-                    ? getDistanceFromLatLonInKm(searchRadiusCenterLat, searchRadiusCenterLng, markerData.latitude, markerData.longitude) <= radius
-                    : false;
 
-                const [iconWidth, iconHeight] = isInRadius ? [44, 58] : [34, 44];
-                const markerIconUrl = getMarkerIconPath(markerCategory);
-                const markerCategoryStyle = markerCategoryStyles[markerCategory] || markerCategoryStyles.default;
-                const iconColor = isPending ? '#ff9800' : (isInRadius ? themeColor : (getCategoryColor(markerCategory) || markerCategoryStyle.color));
-                const faIconName = getFontAwesomeIconName(markerCategory);
 
-                const customIcon = new L.Icon({
-                    iconUrl: markerIconUrl,
-                    iconSize: [iconWidth, iconHeight],
-                    iconAnchor: [iconWidth / 2, iconHeight],
-                    popupAnchor: [0, -iconHeight],
-                    className: `marker-category-${markerCategory}${isHot ? ' marker-hot' : ''}${markerCategory === 'user_poi' ? ' marker-user-poi' : ''}${isPending ? ' marker-pending' : ''}`,
-                });
 
-                const leafletMarker = L.marker([lat, lng], { icon: customIcon });
 
-                const img = new Image();
-                img.onerror = () => {
-                    const divIcon = L.divIcon({
-                        className: `marker-icon marker-category-${markerCategory}${isHot ? ' marker-hot' : ''}`,
-                        html: `<div class="marker-base" style="background-color: ${iconColor};"><i class="fas ${faIconName}"></i></div>`,
-                        iconSize: [iconWidth, iconHeight],
-                        iconAnchor: [iconWidth / 2, iconHeight],
-                    });
-                    leafletMarker.setIcon(divIcon);
-                };
-                img.src = markerIconUrl;
-                (leafletMarker as any).markerData = markerData;
 
-                const popupOptions = {
-                    className: `custom-marker-popup ${isDarkMode ? 'dark' : 'light'}`,
-                    autoPan: true,
-                    autoPanPadding: [50, 50],
-                    closeButton: false,
-                    maxWidth: 441,
-                    maxHeight: 312,
-                    offset: L.point(0, -10),
-                };
 
-                leafletMarker.bindPopup('', popupOptions);
 
-                leafletMarker.on('popupopen', (e: L.PopupEvent) => {
-                    try {
-                        if (!mapRef.current) {
-                            setTimeout(() => {
-                                if (leafletMarker.getPopup() && leafletMarker.isPopupOpen()) {
-                                    leafletMarker.openPopup();
-                                }
-                            }, 100);
-                            return;
-                        }
-
-                        let hasTileLayer = false;
-                        mapRef.current.eachLayer((layer: any) => {
-                            if (layer instanceof L.TileLayer) hasTileLayer = true;
-                        });
-
-                        if (!hasTileLayer) {
-                            setTimeout(() => {
-                                if (leafletMarker.getPopup() && leafletMarker.isPopupOpen()) {
-                                    leafletMarker.openPopup();
-                                }
-                            }, 200);
-                            return;
-                        }
-
-                        const popupElement = e.popup?.getElement();
-                        if (!popupElement) return;
-
-                        const popupContentDiv = popupElement.querySelector('.leaflet-popup-content');
-                        if (!popupContentDiv || !popupContentDiv.parentElement || !document.body.contains(popupElement)) {
-                            return;
-                        }
-
-                        let root = activePopupRoots.current[markerData.id];
-                        if (!root) {
-                            try {
-                                root = createRoot(popupContentDiv);
-                                activePopupRoots.current[markerData.id] = root;
-                            } catch (err) { return; }
-                        }
-
-                        const fullMarkerData: MarkerData = markerData;
-                        const isSelected = !!(selectedMarkerIdForPopup && selectedMarkerIdForPopup === markerData.id);
-                        const shouldShowSelected = isSelected && isFavorite(markerData) && Array.isArray(selectedMarkerIds) && selectedMarkerIds.includes(markerData.id);
-
-                        if (shouldShowSelected) {
-                            popupElement.classList.add('selected');
-                        } else {
-                            popupElement.classList.remove('selected');
-                        }
-
-                        try {
-                            root.render(
-                                <MarkerPopup
-                                    key={markerData.id}
-                                    marker={fullMarkerData}
-                                    onClose={() => {
-                                        try {
-                                            if (leafletMarker.getPopup()) {
-                                                leafletMarker.closePopup();
-                                            }
-                                        } catch (err) { }
-                                    }}
-                                    onHashtagClick={onHashtagClickFromPopup}
-                                    onMarkerUpdate={() => { }}
-                                    onAddToFavorites={onAddToFavorites}
-                                    onRemoveFromFavorites={onRemoveFromFavorites}
-                                    setSelectedMarkerIds={setSelectedMarkerIds}
-                                    onAddToBlog={onAddToBlog}
-                                    isFavorite={isFavorite(markerData)}
-                                    isSelected={shouldShowSelected}
-                                />
-                            );
-                        } catch (err) {
-                            popupContentDiv.innerHTML = '<div style="padding: 10px;">Ошибка загрузки попапа</div>';
-                        }
-                    } catch (err) { }
-                });
-
-                leafletMarker.on('popupclose', () => {
-                    const root = activePopupRoots.current[markerData.id];
-                    if (root) {
-                        root.unmount();
-                        delete activePopupRoots.current[markerData.id];
-                    }
-                });
-
-                leafletMarker.on('mouseover', () => {
-                    setMiniPopup({
-                        marker: markerData,
-                        position: latLngToContainerPoint(L.latLng(Number(markerData.latitude), Number(markerData.longitude)))
-                    });
-                });
-
-                leafletMarker.on('click', (e: any) => {
-                    e.originalEvent.stopPropagation();
-                    setMiniPopup(null);
-                    setSelectedMarkerIdForPopup(markerData.id);
-                });
-
-                if (showHints) {
-                    leafletMarker.bindTooltip(markerData.title, { direction: 'top', offset: [0, -10] });
-                }
-
-                markerClusterGroup.addLayer(leafletMarker);
-            }
-        });
-
-        // Event markers
-        const isEventPanelMode = leftContent && rightContent;
-        const shouldShowEventMarkers = isEventPanelMode && selectedEvent !== null;
-
-        if (shouldShowEventMarkers) {
-            openEvents.forEach((event: MockEvent) => {
-                const lat = event.latitude;
-                const lng = event.longitude;
-
-                if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-                    const category = getCategoryById(event.categoryId);
-                    const colorMap: { [key: string]: string } = {
-                        'bg-red-500': '#ef4444', 'bg-orange-500': '#f97316', 'bg-sky-500': '#0ea5e9',
-                        'bg-emerald-500': '#10b981', 'bg-violet-500': '#8b5cf6', 'bg-amber-500': '#f59e0b',
-                        'bg-pink-500': '#ec4899', 'bg-fuchsia-500': '#d946ef', 'bg-indigo-500': '#6366f1',
-                        'bg-lime-500': '#84cc16', 'bg-cyan-500': '#06b6d4', 'bg-yellow-400': '#facc15',
-                        'bg-rose-500': '#f43f5e', 'bg-purple-600': '#9333ea', 'bg-purple-500': '#a855f7',
-                        'bg-orange-400': '#fb923c', 'bg-teal-500': '#14b8a6', 'bg-blue-400': '#60a5fa',
-                        'bg-neutral-800': '#262626'
-                    };
-                    const categoryColor = category?.color ? (colorMap[category.color] || '#6b7280') : '#6b7280';
-
-                    const categoryIconMap: { [key: string]: string } = {
-                        'festival': 'fa-bullhorn', 'concert': 'fa-music', 'exhibition': 'fa-image',
-                        'sport': 'fa-trophy', 'market': 'fa-store', 'holiday': 'fa-gift',
-                        'fishing': 'fa-fish', 'oktoberfest': 'fa-beer', 'parade': 'fa-flag',
-                        'theater': 'fa-theater-masks', 'heritage': 'fa-landmark', 'kids': 'fa-child',
-                        'nightlife': 'fa-moon'
-                    };
-                    const categoryIcon = categoryIconMap[event.categoryId] || 'fa-calendar';
-
-                    const isSelected = selectedEvent?.id === event.id;
-                    const iconSize = isSelected ? 50 : 40;
-
-                    const eventIcon = L.divIcon({
-                        className: `event-marker-icon ${isSelected ? 'event-marker-selected' : ''}`,
-                        html: `<div class="event-marker-base" style="width: ${iconSize}px; height: ${iconSize}px; background-color: ${categoryColor}; border: 2px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); ${isSelected ? 'animation: eventMarkerPulse 2s ease-in-out infinite;' : ''}"><i class="fas ${categoryIcon}" style="color: #ffffff; font-size: ${iconSize * 0.4}px;"></i></div>`,
-                        iconSize: [iconSize, iconSize],
-                        iconAnchor: [iconSize / 2, iconSize],
-                        popupAnchor: [0, -iconSize],
-                    });
-
-                    const eventMarker = L.marker([lat, lng], { icon: eventIcon });
-                    (eventMarker as any).eventData = event;
-
-                    eventMarker.on('click', (e: any) => {
-                        e.originalEvent.stopPropagation();
-                        setSelectedEvent(event);
-                    });
-
-                    eventMarker.on('mouseover', () => {
-                        setEventMiniPopup({
-                            event: event,
-                            position: latLngToContainerPoint(L.latLng(lat, lng))
-                        });
-                    });
-
-                    eventMarker.on('click', (e: any) => {
-                        e.originalEvent.stopPropagation();
-                        setEventMiniPopup(null);
-                        setSelectedEvent(event);
-                    });
-
-                    markerClusterGroup.addLayer(eventMarker);
-                }
-            });
-        }
-
-        // Cluster styles
-        const style = document.createElement('style');
-        style.innerHTML = `
-      .marker-cluster-custom { background: ${themeColor} !important; color: #fff !important; border: 2px solid #fff; border-radius: 50% !important; width: 40px !important; height: 40px !important; display: flex !important; align-items: center; justify-content: center; }
-      .marker-cluster-custom span { color: #fff !important; font-size: 1.2em; }
-      .leaflet-popup-content-wrapper, .leaflet-popup-content, .leaflet-popup-tip { border-radius: 8px !important; overflow: hidden !important; }
-      .event-marker-base { transition: transform 0.2s ease; }
-      .event-marker-selected .event-marker-base { transform: scale(1.1); }
-      @keyframes eventMarkerPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-    `;
-        document.head.appendChild(style);
-
-        let hasTileLayer = false;
-        mapRef.current.eachLayer((layer: any) => {
-            if (layer instanceof L.TileLayer) hasTileLayer = true;
-        });
-
-        if (!hasTileLayer) {
-            setTimeout(() => {
-                if (mapRef.current && !markerClusterGroupRef.current) {
-                    markerClusterGroup.addTo(mapRef.current);
-                    markerClusterGroupRef.current = markerClusterGroup;
-                }
-            }, 100);
-        } else {
-            markerClusterGroup.addTo(mapRef.current);
-            markerClusterGroupRef.current = markerClusterGroup;
-        }
-
-        const highPriorityStyle = document.createElement('style');
-        highPriorityStyle.setAttribute('data-high-priority', 'true');
-        highPriorityStyle.innerHTML = `.leaflet-popup-content-wrapper, .leaflet-popup-content, .leaflet-popup-tip { border-radius: 8px !important; overflow: hidden !important; }`;
-        document.head.appendChild(highPriorityStyle);
-
-        return () => {
-            if (style && document.head.contains(style)) document.head.removeChild(style);
-            if (highPriorityStyle && document.head.contains(highPriorityStyle)) document.head.removeChild(highPriorityStyle);
-        };
-    }, [markersData, isDarkMode, filters, searchRadiusCenter, mapSettings, openEvents, selectedEvent, leftContent, rightContent, isMapReady]);
 
     // --- UNIFIED POPUP HANDLER ---
     useEffect(() => {
@@ -1070,7 +835,7 @@ const Map: React.FC<MapProps> = ({
 
     // --- EVENT MARKER CENTERING ---
     useEffect(() => {
-        if (!mapRef.current || !selectedEvent) return;
+        if (!selectedEvent) return;
         if (selectedEvent.latitude == null || selectedEvent.longitude == null) return;
 
         const lat = selectedEvent.latitude;
@@ -1078,22 +843,22 @@ const Map: React.FC<MapProps> = ({
         if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
 
         try {
-            mapRef.current.setView([lat, lng], 14, { animate: true, duration: 0.5 });
+            mapFacade()?.setView([lat, lng], 14);
         } catch (error) { }
     }, [selectedEvent]);
 
     // --- ROUTE RENDER ---
     useEffect(() => {
-        if (!mapRef.current || !routeData) return;
+        if (!routeData) return;
 
-        mapRef.current.eachLayer((layer: L.Layer) => {
+        mapFacade()?.eachLayer((layer: any) => {
             if ((layer as any).isRouteLayer) {
-                mapRef.current?.removeLayer(layer);
+                try { mapFacade()?.removeLayer(layer); } catch (e) { }
             }
         });
 
-        let routePolyline: L.Polyline | null = null;
-        let allLatLngs: L.LatLng[] = [];
+        let routePolyline: any = null;
+        let allLatLngs: any[] = [];
 
         const hasPolyline = routeData.polyline && Array.isArray(routeData.polyline) && routeData.polyline.length > 1;
         if (hasPolyline) {
@@ -1104,7 +869,7 @@ const Map: React.FC<MapProps> = ({
             );
 
             if (validPolyline.length >= 2) {
-                routePolyline = L.polyline(validPolyline, {
+                routePolyline = mapFacade().createPolyline(validPolyline, {
                     color: '#ff3b3b',
                     weight: 4,
                     opacity: 0.9,
@@ -1113,9 +878,8 @@ const Map: React.FC<MapProps> = ({
                 });
                 if (routePolyline) {
                     (routePolyline as any).isRouteLayer = true;
-                    routePolyline.addTo(mapRef.current);
                 }
-                allLatLngs = validPolyline.map(([lat, lng]) => L.latLng(lat, lng));
+                allLatLngs = validPolyline.map(([lat, lng]) => mapFacade().latLng(lat, lng));
             }
         }
 
@@ -1124,7 +888,7 @@ const Map: React.FC<MapProps> = ({
                 .map((m: any) => [Number(m.latitude), Number(m.longitude)] as [number, number])
                 .filter(([lat, lng]) => !isNaN(lat) && !isNaN(lng));
             if (fallback.length > 1) {
-                routePolyline = L.polyline(fallback, {
+                routePolyline = mapFacade().createPolyline(fallback, {
                     color: '#ff3b3b',
                     weight: 4,
                     opacity: 0.9,
@@ -1133,9 +897,8 @@ const Map: React.FC<MapProps> = ({
                 });
                 if (routePolyline) {
                     (routePolyline as any).isRouteLayer = true;
-                    routePolyline.addTo(mapRef.current);
                 }
-                allLatLngs = fallback.map(([lat, lng]) => L.latLng(lat, lng));
+                allLatLngs = fallback.map(([lat, lng]) => mapFacade().latLng(lat, lng));
             }
         }
 
@@ -1149,34 +912,33 @@ const Map: React.FC<MapProps> = ({
                 const lat = parseFloat(marker.latitude);
                 const lng = parseFloat(marker.longitude);
                 if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-                    const routeIcon = L.divIcon({
+                    const routeIcon = mapFacade().createDivIcon({
                         className: 'route-marker-icon',
                         html: `<div class="route-marker-base"><div class="route-marker-number">${index + 1}</div><div class="route-marker-icon-inner"><i class="fas fa-route"></i></div></div>`,
                         iconSize: [40, 40],
                         iconAnchor: [20, 40]
                     });
-                    const routeMarker = L.marker([lat, lng], { icon: routeIcon });
+                    const routeMarker = mapFacade().createMarker([lat, lng], { icon: routeIcon });
                     (routeMarker as any).isRouteLayer = true;
-                    routeMarker.addTo(mapRef.current!);
                 }
             });
         }
 
-        if (mapRef.current && allLatLngs.length > 0) {
-            const bounds = L.latLngBounds(allLatLngs);
-            mapRef.current.fitBounds(bounds, { padding: [60, 60] });
+        if (allLatLngs.length > 0) {
+            const bounds = mapFacade().latLngBounds(allLatLngs);
+            mapFacade().fitBounds(bounds, { padding: [60, 60] });
         }
 
         let zoomHandler: any;
-        if (mapRef.current && routePolyline) {
+        if (routePolyline) {
             const updateStyle = () => {
-                const z = mapRef.current!.getZoom();
+                const z = mapFacade().getZoom?.() ?? 0;
                 const weight = z <= 5 ? 8 : z <= 8 ? 6 : z <= 12 ? 5 : 4;
                 routePolyline!.setStyle({ weight });
             };
             updateStyle();
             zoomHandler = () => updateStyle();
-            mapRef.current.on('zoomend', zoomHandler);
+            mapFacade().onMapZoom(zoomHandler);
         }
 
         const routeStyles = document.createElement('style');
@@ -1184,15 +946,13 @@ const Map: React.FC<MapProps> = ({
         document.head.appendChild(routeStyles);
 
         return () => {
-            if (mapRef.current) {
-                mapRef.current.eachLayer((layer: L.Layer) => {
-                    if ((layer as any).isRouteLayer) {
-                        mapRef.current?.removeLayer(layer);
-                    }
-                });
-                if (zoomHandler) {
-                    mapRef.current.off('zoomend', zoomHandler);
+            mapFacade()?.eachLayer((layer: L.Layer) => {
+                if ((layer as any).isRouteLayer) {
+                    try { mapFacade()?.removeLayer(layer); } catch (e) { }
                 }
+            });
+            if (zoomHandler) {
+                mapFacade().offMapZoom(zoomHandler);
             }
             document.querySelectorAll('style').forEach(s => {
                 if (s.innerHTML.includes('route-marker') || s.innerHTML.includes('route-polyline')) {
@@ -1204,11 +964,10 @@ const Map: React.FC<MapProps> = ({
 
     // --- ZONES RENDER ---
     useEffect(() => {
-        if (!mapRef.current) return;
-
-        mapRef.current.eachLayer((layer: L.Layer) => {
-            if (layer instanceof L.Polygon && (layer as any).isZoneLayer) {
-                mapRef.current?.removeLayer(layer);
+        // remove existing zone layers via facade
+        mapFacade()?.eachLayer((layer: any) => {
+            if ((layer as any)?.isZoneLayer) {
+                try { mapFacade()?.removeLayer(layer); } catch (e) { }
             }
         });
 
@@ -1217,54 +976,61 @@ const Map: React.FC<MapProps> = ({
 
             zone.polygons.forEach(ring => {
                 const latLngs = ring.map(([lng, lat]) => [lat, lng] as [number, number]);
-                const polygon = L.polygon(latLngs, {
+                const polygon = mapFacade().createPolygon(latLngs, {
                     color: color,
                     fillColor: color,
                     fillOpacity: 0.2,
                     weight: 2,
                 });
-                (polygon as any).isZoneLayer = true;
-                polygon.addTo(mapRef.current!);
+
+                // Mark polygon as zone layer (polygon already added by facade)
+                if (polygon) {
+                    try { (polygon as any).isZoneLayer = true; } catch (e) { /* ignore */ }
+                }
             });
         });
     }, [zones]);
 
     // --- FLY TO ---
     useEffect(() => {
-        if (flyToCoordinates && mapRef.current) {
-            mapRef.current.flyTo(flyToCoordinates, mapRef.current.getZoom(), { animate: true, duration: 1.2 });
+        if (flyToCoordinates) {
+            mapFacade().flyTo(flyToCoordinates, undefined, { animate: true, duration: 1.2 });
         }
     }, [flyToCoordinates]);
 
     // --- SEARCH RADIUS CIRCLE ---
     useEffect(() => {
-        if (!mapRef.current) return;
-        let radiusCircle: L.Circle | null = null;
+        const map = mapFacade().getMap?.();
+        if (!map) return;
+        let radiusCircle: any = null;
 
         if (filters.radiusOn) {
-            radiusCircle = L.circle(searchRadiusCenter, {
+            radiusCircle = mapFacade().createCircle(searchRadiusCenter, {
                 radius: filters.radius * 1000,
                 color: mapSettings.themeColor,
                 fillColor: mapSettings.themeColor,
                 fillOpacity: 0.15,
                 weight: 2,
                 interactive: true,
-            }).addTo(mapRef.current);
+            });
 
             if (radiusCircle) {
-                radiusCircle.on('mousedown', function (_) {
-                    mapRef.current!.dragging.disable();
+                radiusCircle.on('mousedown', function (_: any) {
+                    const m = mapFacade().getMap?.();
+                    m?.dragging?.disable?.();
                     const onMove = (ev: any) => {
                         if (radiusCircle) radiusCircle.setLatLng(ev.latlng);
                     };
                     const onUp = (ev: any) => {
                         onSearchRadiusCenterChange([ev.latlng.lat, ev.latlng.lng]);
-                        mapRef.current!.off('mousemove', onMove);
-                        mapRef.current!.off('mouseup', onUp);
-                        mapRef.current!.dragging.enable();
+                        const m2 = mapFacade().getMap?.();
+                        m2?.off?.('mousemove', onMove);
+                        m2?.off?.('mouseup', onUp);
+                        m2?.dragging?.enable?.();
                     };
-                    mapRef.current!.on('mousemove', onMove);
-                    mapRef.current!.on('mouseup', onUp);
+                    const m2 = mapFacade().getMap?.();
+                    m2?.on?.('mousemove', onMove);
+                    m2?.on?.('mouseup', onUp);
                 });
             }
         }
@@ -1274,20 +1040,18 @@ const Map: React.FC<MapProps> = ({
 
     // --- MINI POPUP CLOSE ON MOVE ---
     useEffect(() => {
-        if (!mapRef.current) return;
-        const map = mapRef.current;
-
         const closeMiniPopup = () => {
             setMiniPopup(null);
             setEventMiniPopup(null);
         };
 
-        map.on('movestart', closeMiniPopup);
-        map.on('zoomstart', closeMiniPopup);
+        // Use facade start handlers to be renderer-agnostic
+        mapFacade().onMapMoveStart(closeMiniPopup);
+        mapFacade().onMapZoomStart(closeMiniPopup);
 
         return () => {
-            map.off('movestart', closeMiniPopup);
-            map.off('zoomstart', closeMiniPopup);
+            mapFacade().offMapMoveStart(closeMiniPopup);
+            mapFacade().offMapZoomStart(closeMiniPopup);
         };
     }, []);
 
@@ -1395,14 +1159,117 @@ const Map: React.FC<MapProps> = ({
     }, [externalIsAddingMarkerMode]);
 
     // --- HELPER FUNCTIONS ---
-    function latLngToContainerPoint(latlng: L.LatLng): { x: number; y: number } {
-        if (!mapRef.current) return { x: 0, y: 0 };
-        const point = mapRef.current.latLngToContainerPoint(latlng);
-        return { x: point.x, y: point.y };
-    }
+    // NOTE: use `latLngToContainerPoint` from `mapUtils` which uses facade to avoid leaking map instance
+    // Local helper removed — use exported `latLngToContainerPoint(mapFacade, latlng)` instead.
 
     // --- MAP READY CHECK ---
-    const isMapReadyCheck = isMapReady || mapRef.current || ((mapFacade() as any)?.INTERNAL?.api?.map);
+    const isMapReadyCheck = isMapReady || !!mapFacade().getMap?.() || !!((mapFacade() as any)?.INTERNAL?.api?.map);
+
+    // Diagnostic helper (development only): log topmost element in left map area to detect overlays
+    // Enhanced: visually highlight top element and first ancestors so developer sees what blocks the map
+    React.useEffect(() => {
+        if (process.env.NODE_ENV !== 'development') return;
+        try {
+            const highlighted: HTMLElement[] = [];
+            const clearHighlights = () => {
+                while (highlighted.length) {
+                    const e = highlighted.pop();
+                    if (!e) continue;
+                    try { e.style.outline = ''; e.style.outlineOffset = ''; } catch (err) { }
+                }
+            };
+
+            const checkOverlay = () => {
+                clearHighlights();
+                const x = Math.round(window.innerWidth * 0.25);
+                const y = Math.round(window.innerHeight / 2);
+                const el = document.elementFromPoint(x, y) as HTMLElement | null;
+
+                const info = (e: HTMLElement | null) => {
+                    if (!e) return { tag: null };
+                    const cs = window.getComputedStyle(e);
+                    const rect = e.getBoundingClientRect();
+                    return {
+                        tag: e.tagName,
+                        id: e.id || null,
+                        classList: Array.from(e.classList || []),
+                        pointerEvents: cs.pointerEvents,
+                        zIndex: cs.zIndex,
+                        rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+                    };
+                };
+
+                console.debug('[Map diagnostics] elementFromPoint at (25%,center):', x, y, info(el));
+
+                if (el) {
+                    // highlight the top element and up to 5 ancestors
+                    let node: HTMLElement | null = el;
+                    let depth = 0;
+                    const chain: any[] = [];
+                    while (node && node !== document.body && node !== document.documentElement && depth < 8) {
+                        chain.push(info(node));
+                        try {
+                            node.style.outline = '3px solid rgba(255,0,0,0.9)';
+                            node.style.outlineOffset = '-2px';
+                            highlighted.push(node);
+                        } catch (err) { }
+                        node = node.parentElement;
+                        depth++;
+                    }
+
+                    console.warn('[Map diagnostics] ancestor chain (top to parents):', chain.map(c => ({ tag: c.tag, classes: c.classList.join(' '), pointerEvents: c.pointerEvents, zIndex: c.zIndex })));
+
+                    // Create or update a floating debug label showing the top element info
+                    try {
+                        let lbl = document.getElementById('map-diagnostics-label') as HTMLDivElement | null;
+                        if (!lbl) {
+                            lbl = document.createElement('div');
+                            lbl.id = 'map-diagnostics-label';
+                            lbl.style.position = 'fixed';
+                            lbl.style.background = 'rgba(0,0,0,0.75)';
+                            lbl.style.color = 'white';
+                            lbl.style.padding = '6px 10px';
+                            lbl.style.fontSize = '12px';
+                            lbl.style.borderRadius = '6px';
+                            lbl.style.zIndex = '999999';
+                            lbl.style.pointerEvents = 'none';
+                            lbl.style.maxWidth = '320px';
+                            lbl.style.fontFamily = 'monospace';
+                            document.body.appendChild(lbl);
+                        }
+                        const topInfo = chain[0];
+                        if (topInfo) {
+                            lbl.textContent = `blocker: ${topInfo.tag} ${topInfo.classList.join(' ')} | ptr: ${topInfo.pointerEvents} | z:${topInfo.zIndex} | ${Math.round(topInfo.rect.width)}x${Math.round(topInfo.rect.height)}`;
+                            lbl.style.left = Math.min(Math.max(8, topInfo.rect.x), window.innerWidth - 330) + 'px';
+                            lbl.style.top = Math.min(Math.max(8, topInfo.rect.y - 30), window.innerHeight - 40) + 'px';
+                        }
+                    } catch (err) { }
+
+                    // Also probe a nearby point to detect invisible overlay differences
+                    try {
+                        const el2 = document.elementFromPoint(Math.min(window.innerWidth - 1, x + 10), y) as HTMLElement | null;
+                        if (el2 && el2 !== el) {
+                            console.warn('[Map diagnostics] different element at offset +10px:', info(el2));
+                            el2.style.outline = '2px dashed rgba(255,165,0,0.9)';
+                            highlighted.push(el2);
+                        }
+                    } catch (err) { }
+                }
+            };
+
+            // run immediately and poll occasionally while map/display may be changing
+            checkOverlay();
+            const intervalId = window.setInterval(checkOverlay, 1500);
+            const onResize = () => { setTimeout(checkOverlay, 120); };
+            window.addEventListener('resize', onResize);
+
+            return () => {
+                clearInterval(intervalId);
+                window.removeEventListener('resize', onResize);
+                clearHighlights();
+            };
+        } catch (err) { console.debug('[Map diagnostics] failed', err); }
+    }, [isMapReady, leftContent, rightContent]);
 
     // --- SELECTED MARKER POPUP ---
     const selectedMarkerPopup = useMemo(() => {
@@ -1410,7 +1277,7 @@ const Map: React.FC<MapProps> = ({
         const marker = markersData.find(m => m.id === selectedMarkerIdForPopup);
         if (!marker) return null;
 
-        const markerPosition = latLngToContainerPoint(L.latLng(Number(marker.latitude), Number(marker.longitude)));
+        const markerPosition = latLngToContainerPoint(mapFacade(), mapFacade().latLng(Number(marker.latitude), Number(marker.longitude)));
 
         return (
             <div
@@ -1421,9 +1288,8 @@ const Map: React.FC<MapProps> = ({
                     top: markerPosition.y,
                     transform: 'translate(-50%, -100%)',
                     zIndex: 1300,
-                    width: '205px',
-                    height: '285px',
                 }}
+                className="popup-card-fixed"
             >
                 <MarkerPopup
                     marker={marker}
@@ -1504,8 +1370,8 @@ const Map: React.FC<MapProps> = ({
                 key={`selected-${markerId}`}
                 style={{
                     position: 'absolute',
-                    left: latLngToContainerPoint(L.latLng(Number(marker.latitude), Number(marker.longitude))).x,
-                    top: latLngToContainerPoint(L.latLng(Number(marker.latitude), Number(marker.longitude))).y,
+                    left: latLngToContainerPoint(mapFacade(), mapFacade().latLng(Number(marker.latitude), Number(marker.longitude))).x,
+                    top: latLngToContainerPoint(mapFacade(), mapFacade().latLng(Number(marker.latitude), Number(marker.longitude))).y,
                     zIndex: 1199,
                     transform: 'translate(-50%, -100%)',
                 }}
@@ -1565,19 +1431,8 @@ const Map: React.FC<MapProps> = ({
                             showCloseButton={false}
                             className="culture-info-glass"
                         >
-                            <div style={{
-                                padding: '8px 12px',
-                                textAlign: 'center',
-                                background: 'linear-gradient(135deg, rgba(232, 245, 232, 0.9), rgba(240, 248, 240, 0.9))',
-                                backdropFilter: 'blur(10px) saturate(180%)',
-                                WebkitBackdropFilter: 'blur(10px) saturate(180%)',
-                                border: '1px solid rgba(195, 230, 195, 0.5)',
-                                borderRadius: '12px',
-                                color: '#2d5a2d',
-                                fontSize: '11px',
-                                lineHeight: '1.4',
-                            }}>
-                                <div style={{ fontWeight: 600, marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            <div className="glass-panel-culture">
+                                <div className="glass-panel-culture-header">
                                     🎯 Культура меток
                                 </div>
                                 <div style={{ opacity: 0.9 }}>
@@ -1593,8 +1448,8 @@ const Map: React.FC<MapProps> = ({
                         coords={coordsForNewMarker}
                         showCultureMessage={false}
                         onSubmit={async (data: any) => {
-                            if (mapRef.current && tempMarkerRef.current) {
-                                mapRef.current.removeLayer(tempMarkerRef.current);
+                            if (tempMarkerRef.current) {
+                                try { mapFacade().removeLayer(tempMarkerRef.current); } catch (e) { }
                                 setTempMarker(null);
                             }
                             const markerDataWithCoords = {
@@ -1606,9 +1461,10 @@ const Map: React.FC<MapProps> = ({
                             setCoordsForNewMarker(null);
                             setDiscoveredPlace(null);
                         }}
+
                         onCancel={() => {
-                            if (mapRef.current && tempMarkerRef.current) {
-                                mapRef.current.removeLayer(tempMarkerRef.current);
+                            if (tempMarkerRef.current) {
+                                try { mapFacade().removeLayer(tempMarkerRef.current); } catch (e) { }
                                 setTempMarker(null);
                             }
                             setCoordsForNewMarker(null);
@@ -1625,22 +1481,7 @@ const Map: React.FC<MapProps> = ({
                 {mapMessage && <MapMessage>{mapMessage}</MapMessage>}
 
                 {isDiscoveringPlace && (
-                    <div style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        zIndex: 1000,
-                        background: 'rgba(255, 255, 255, 0.95)',
-                        padding: '20px',
-                        borderRadius: '12px',
-                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '16px',
-                        minWidth: '200px'
-                    }}>
+                    <div className="map-overlay-loading">
                         <div style={{
                             width: '40px',
                             height: '40px',
@@ -1654,7 +1495,7 @@ const Map: React.FC<MapProps> = ({
                         </div>
                         <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
                     </div>
-                )}
+                )} 
             </MapWrapper>
 
             {isLoading && (

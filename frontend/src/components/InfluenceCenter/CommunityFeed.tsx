@@ -36,9 +36,9 @@ const activities = [
   {
     user: "Елена Козлова",
     avatar: user4,
-    action: "опубликовала блог",
+    action: "опубликовала пост",
     target: "Путешествие по Кавказу",
-    type: "blog",
+    type: "post",
     icon: BookOpen,
     color: "text-orange-500",
     bgColor: "bg-orange-500/10",
@@ -46,6 +46,7 @@ const activities = [
     likes: 67,
     comments: 19
   },
+  
   {
     user: "Дмитрий Волков",
     avatar: user5,
@@ -78,7 +79,7 @@ const getActionText = (activity: any) => {
   const actionTexts = {
     marker: "добавила новое место",
     route: "создал маршрут", 
-    blog: "опубликовала блог",
+    post: "опубликовала пост",
     event: "организовал событие",
     achievement: "получила достижение"
   };
@@ -125,7 +126,7 @@ export function CommunityFeed() {
                   className={`text-xs font-medium ${
                     activity.type === "marker" ? "bg-blue-50 text-blue-600 border-blue-200" :
                     activity.type === "route" ? "bg-green-50 text-green-600 border-green-200" :
-                    activity.type === "blog" ? "bg-orange-50 text-orange-600 border-orange-200" :
+                    activity.type === "post" ? "bg-orange-50 text-orange-600 border-orange-200" :
                     activity.type === "event" ? "bg-purple-50 text-purple-600 border-purple-200" :
                     activity.type === "achievement" ? "bg-yellow-50 text-yellow-600 border-yellow-200" :
                     "bg-gray-50 text-gray-600 border-gray-200"

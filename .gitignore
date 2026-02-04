@@ -26,3 +26,10 @@ dist-ssr
 backend/.env
 frontend/.env
 backend/scripts/wayatom-parser/config.env
+
+# TypeScript incremental build info
+tsconfig.tsbuildinfo
+frontend/tsconfig.tsbuildinfo
+
+# Exclude accidental test folders
+/frontend/Не выкладывать в репозиторий!!!/

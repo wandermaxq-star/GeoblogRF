@@ -2,14 +2,12 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { MarkerData } from '../types/marker';
 import { RouteData } from '../types/route';
 import { EventData } from '../types/event';
-import { Blog } from '../types/blog';
+// Blog type removed during cleanup
 
 interface GuestData {
   markers: MarkerData[];
   routes: RouteData[];
   events: EventData[];
-  posts: Blog[];
-  blogs: Blog[];
   sessionId: string;
   createdAt: string;
 }
@@ -30,15 +28,7 @@ interface GuestContextType {
   addEvent: (event: EventData) => void;
   updateEvent: (id: string, event: Partial<EventData>) => void;
   removeEvent: (id: string) => void;
-  
-  addPost: (post: Blog) => void;
-  updatePost: (id: string, post: Partial<Blog>) => void;
-  removePost: (id: string) => void;
-  
-  addBlog: (blog: Blog) => void;
-  updateBlog: (id: string, blog: Partial<Blog>) => void;
-  removeBlog: (id: string) => void;
-  
+
   // Управление сессией
   clearGuestData: () => void;
   hasGuestContent: () => boolean;
@@ -68,8 +58,6 @@ const loadGuestData = (): GuestData => {
         markers: parsed.markers || [],
         routes: parsed.routes || [],
         events: parsed.events || [],
-        posts: parsed.posts || [],
-        blogs: parsed.blogs || [],
         sessionId: parsed.sessionId || generateSessionId(),
         createdAt: parsed.createdAt || new Date().toISOString()
       };
@@ -82,8 +70,6 @@ const loadGuestData = (): GuestData => {
     markers: [],
     routes: [],
     events: [],
-    posts: [],
-    blogs: [],
     sessionId: generateSessionId(),
     createdAt: new Date().toISOString()
   };
@@ -173,49 +159,7 @@ export const GuestProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }));
   };
 
-  // Методы для работы с постами
-  const addPost = (post: Blog) => {
-    setGuestData(prev => ({
-      ...prev,
-      posts: [...prev.posts, { ...post, id: post.id || `post_${Date.now()}` }]
-    }));
-  };
-
-  const updatePost = (id: string, post: Partial<Blog>) => {
-    setGuestData(prev => ({
-      ...prev,
-      posts: prev.posts.map(p => p.id === id ? { ...p, ...post } : p)
-    }));
-  };
-
-  const removePost = (id: string) => {
-    setGuestData(prev => ({
-      ...prev,
-      posts: prev.posts.filter(p => p.id !== id)
-    }));
-  };
-
-  // Методы для работы с блогами
-  const addBlog = (blog: Blog) => {
-    setGuestData(prev => ({
-      ...prev,
-      blogs: [...prev.blogs, { ...blog, id: blog.id || `blog_${Date.now()}` }]
-    }));
-  };
-
-  const updateBlog = (id: string, blog: Partial<Blog>) => {
-    setGuestData(prev => ({
-      ...prev,
-      blogs: prev.blogs.map(b => b.id === id ? { ...b, ...blog } : b)
-    }));
-  };
-
-  const removeBlog = (id: string) => {
-    setGuestData(prev => ({
-      ...prev,
-      blogs: prev.blogs.filter(b => b.id !== id)
-    }));
-  };
+  // Posts and Blogs removed — no-op placeholders removed.
 
   // Очистка гостевых данных
   const clearGuestData = () => {
@@ -223,8 +167,6 @@ export const GuestProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       markers: [],
       routes: [],
       events: [],
-      posts: [],
-      blogs: [],
       sessionId: generateSessionId(),
       createdAt: new Date().toISOString()
     });
@@ -235,9 +177,7 @@ export const GuestProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const hasGuestContent = (): boolean => {
     return guestData.markers.length > 0 || 
            guestData.routes.length > 0 || 
-           guestData.events.length > 0 || 
-           guestData.posts.length > 0 || 
-           guestData.blogs.length > 0;
+           guestData.events.length > 0;
   };
 
   // Получение количества гостевого контента
@@ -246,8 +186,8 @@ export const GuestProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       markers: guestData.markers.length,
       routes: guestData.routes.length,
       events: guestData.events.length,
-      posts: guestData.posts.length,
-      blogs: guestData.blogs.length
+      posts: 0,
+      blogs: 0
     };
   };
 
@@ -262,12 +202,6 @@ export const GuestProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     addEvent,
     updateEvent,
     removeEvent,
-    addPost,
-    updatePost,
-    removePost,
-    addBlog,
-    updateBlog,
-    removeBlog,
     clearGuestData,
     hasGuestContent,
     getGuestContentCount,

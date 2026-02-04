@@ -5,7 +5,7 @@
 CREATE TYPE marker_category_new AS ENUM (
     'restaurant', 'hotel', 'attraction', 'nature', 'culture', 'entertainment', 'transport', 'service', 'other',
     'hidden_gems', 'instagram', 'non_tourist', 'summer2025', 'winter2025', 'newyear', 'family', 'romantic', 
-    'budget', 'trekking', 'gastrotour', 'ecotourism', 'excursions', 'user_poi', 'blog', 'event'
+    'budget', 'trekking', 'gastrotour', 'ecotourism', 'excursions', 'user_poi', 'post', 'event'
 );
 
 -- Обновляем существующие записи (если есть)

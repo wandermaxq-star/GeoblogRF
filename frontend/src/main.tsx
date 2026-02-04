@@ -8,6 +8,8 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 
 // Критические стили загружаем сразу
+// Шаг 3: Интеграция глобальной точки входа стилей
+import './styles/index.css';
 import './index.css'
 import './styles/popup.css'
 

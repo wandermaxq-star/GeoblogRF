@@ -17,7 +17,7 @@ export interface RouteCreationData {
   title: string;
   description?: string;
   category: string;
-  purpose: 'personal' | 'blog' | 'post' | 'event' | 'shared' | 'draft';
+  purpose: 'personal' | 'post' | 'event';
   tags: string[];
   visibility: 'private' | 'public' | 'friends';
   isTemplate: boolean;
@@ -61,11 +61,12 @@ const RouteCategoryModal: React.FC<RouteCategoryModalProps> = ({
     // Если пользователь не ввел название, используем "Новый маршрут" вместо даты
     const finalTitle = title.trim() || 'Новый маршрут';
     
+    const purposeValue: RouteCreationData['purpose'] = ['personal','post','event'].includes(category.purpose as any) ? category.purpose as RouteCreationData['purpose'] : 'personal';
     const routeData: RouteCreationData = {
       title: finalTitle,
       description: description.trim() || undefined,
       category: selectedCategory,
-      purpose: category.purpose,
+      purpose: purposeValue,
       tags: tags,
       visibility,
       isTemplate

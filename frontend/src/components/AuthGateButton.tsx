@@ -4,7 +4,7 @@ import AuthGate from './AuthGate';
 import { UserPlus } from 'lucide-react';
 
 interface AuthGateButtonProps {
-  type: 'marker' | 'route' | 'event' | 'post' | 'blog';
+  type: 'marker' | 'route' | 'event' | 'post';
   children: React.ReactNode;
   className?: string;
   onClick?: () => void;
@@ -14,8 +14,7 @@ const contentTypes = {
   marker: 'маркер',
   route: 'маршрут',
   event: 'событие',
-  post: 'пост',
-  blog: 'блог'
+  post: 'пост'
 };
 
 export default function AuthGateButton({ type, children, className, onClick }: AuthGateButtonProps) {

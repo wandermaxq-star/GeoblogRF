@@ -1,6 +1,6 @@
 import apiClient from '../api/apiClient';
 
-export type RatingTarget = 'marker' | 'route' | 'event' | 'blog' | 'book';
+export type RatingTarget = 'marker' | 'route' | 'event' | 'post';
 
 export interface RatingSummary {
   avg: number;

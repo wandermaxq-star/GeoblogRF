@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { MockEvent } from '../components/TravelCalendar/mockEvents';
 
-interface EventsState {
+export interface EventsState {
   // Открытые события (из календаря) - отображаются на карте
   openEvents: MockEvent[];
   

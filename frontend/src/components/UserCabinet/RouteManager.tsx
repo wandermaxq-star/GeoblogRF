@@ -22,7 +22,6 @@ interface RouteManagerProps {
 
 const CATEGORIES = [
   { id: 'personal', name: 'Личная коллекция', icon: <FaBook className="text-gray-600" size={16} />, color: 'blue' },
-  { id: 'blog', name: 'Для блога', icon: <FaEdit className="text-gray-600" size={16} />, color: 'green' },
   { id: 'post', name: 'Для поста', icon: <FaEdit className="text-gray-600" size={16} />, color: 'purple' },
   { id: 'event', name: 'Для события', icon: <FaCalendarAlt className="text-gray-600" size={16} />, color: 'purple' },
   { id: 'draft', name: 'Черновик', icon: <FaFileAlt className="text-gray-600" size={16} />, color: 'gray' }

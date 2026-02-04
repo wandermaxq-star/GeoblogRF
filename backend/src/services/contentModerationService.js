@@ -19,7 +19,6 @@ const CONTENT_XP_SOURCES = {
   'posts': 'post_created',
   'routes': 'route_created',
   'markers': 'marker_created',
-  'blogs': 'blog_created',
   'comments': 'comment_created',
   'chats': 'chat_created'
 };
@@ -32,7 +31,6 @@ const BASE_XP_VALUES = {
   'posts': 50,
   'routes': 100,
   'markers': 30,
-  'blogs': 75,
   'comments': 10,
   'chats': 5
 };

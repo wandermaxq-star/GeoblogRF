@@ -12,7 +12,7 @@ interface FeaturedBlog {
   lat: number;
   lng: number;
   author: string;
-  type: 'blog' | 'post';
+  type: 'post';
   description: string;
   icon: string;
 }
@@ -37,10 +37,11 @@ const FEATURED_BLOGS: FeaturedBlog[] = [
     lat: 55.7539,
     lng: 37.6208,
     author: 'Иван Сидоров',
-    type: 'blog',
+    type: 'post',
     description: 'Историческое сердце столицы и её главные достопримечательности',
     icon: 'fa-monument'
   },
+
   {
     id: '3',
     title: 'Тайны Московского Кремля',
@@ -59,7 +60,7 @@ const FEATURED_BLOGS: FeaturedBlog[] = [
     lat: 59.9390,
     lng: 30.3150,
     author: 'Пётр Волков',
-    type: 'blog',
+    type: 'post',
     description: 'Сокровища императорской коллекции',
     icon: 'fa-crown'
   }
@@ -92,7 +93,7 @@ const RussiaFeaturedBlogs: React.FC<RussiaFeaturedBlogsProps> = ({
     <div className="w-full">
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold text-gray-900 mb-2">
-          📚 Популярные блоги и посты
+          📚 Популярные посты
         </h2>
         <p className="text-gray-600">
           Читайте о путешествиях других пользователей
@@ -129,13 +130,9 @@ const RussiaFeaturedBlogs: React.FC<RussiaFeaturedBlogsProps> = ({
               </div>
 
               <div className="mt-3 pt-3 border-t border-gray-100">
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                  blog.type === 'blog' 
-                    ? 'bg-purple-100 text-purple-800' 
-                    : 'bg-blue-100 text-blue-800'
-                }`}>
-                  <i className={`fas ${blog.type === 'blog' ? 'fa-blog' : 'fa-edit'} mr-1`}></i>
-                  {blog.type === 'blog' ? 'Блог' : 'Пост'}
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800`}>
+                  <i className={`fas fa-edit mr-1`}></i>
+                  Пост
                 </span>
               </div>
             </div>
@@ -149,7 +146,7 @@ const RussiaFeaturedBlogs: React.FC<RussiaFeaturedBlogsProps> = ({
             onClick={() => navigate('/posts')}
             className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105"
           >
-            Посмотреть все блоги
+            Посмотреть все посты
           </button>
         </div>
       )}

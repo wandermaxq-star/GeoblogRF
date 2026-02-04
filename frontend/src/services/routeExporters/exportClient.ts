@@ -26,8 +26,8 @@ export async function exportRouteAndDownload(route: any, format: 'gpx' | 'kml' |
       return;
     }
   } catch (e) {
-    // silent fallback to client-side
-    console.warn('Server export failed, falling back to client serialization', e);
+    // silent fallback to client-side — логим только короткое сообщение, чтобы не спамить стектрейсами
+    console.warn('Server export failed, falling back to client serialization:', (e as any)?.message || e);
   }
 
   // Fallback: serialize locally

@@ -312,7 +312,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
               created_at: r.createdAt || new Date().toISOString(),
               updated_at: r.updatedAt || new Date().toISOString(),
               points: pts,
-              categories: { personal: true, blog: false, post: false, event: false }
+              categories: { personal: true, post: false, event: false }
             });
           }
         });
@@ -378,22 +378,22 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
     try {
       // Политика удаления: если помечен для блогов/постов/событий и уже связан с контентом — блокируем
       const favRoute = (favoritesContext as any)?.favoriteRoutes?.find((r: any) => String(r.id) === String(id));
-      const categories = favRoute?.categories || { personal: true, blog: false, post: false, event: false };
+      const categories = favRoute?.categories || { personal: true, post: false, event: false };
       const related = favRoute?.relatedContent || {};
 
-      const hasCategoryMark = Boolean(categories.blog || categories.post || categories.event);
-      const hasBoundContent = Boolean((related.blogs && related.blogs.length) || (related.posts && related.posts.length) || (related.events && related.events.length));
+      const hasCategoryMark = Boolean(categories.post || categories.event);
+      const hasBoundContent = Boolean((related.posts && related.posts.length) || (related.events && related.events.length));
 
       if (hasCategoryMark && hasBoundContent) {
-        alert('❌ Нельзя удалить маршрут: он уже используется в контенте (блог/пост/событие). Сначала отвяжите контент.');
+        alert('❌ Нельзя удалить маршрут: он уже используется в контенте (пост/событие). Сначала отвяжите контент.');
         return;
       }
 
       if (hasCategoryMark && !hasBoundContent) {
-        const confirmUnmark = confirm('Маршрут помечен для блогов/постов/событий. Снять пометки и удалить?');
+        const confirmUnmark = confirm('Маршрут помечен для постов/событий. Снять пометки и удалить?');
         if (!confirmUnmark) return;
         try {
-          (favoritesContext as any)?.updateFavoriteRoute?.(id, { categories: { personal: true, blog: false, post: false, event: false } });
+          (favoritesContext as any)?.updateFavoriteRoute?.(id, { categories: { personal: true, post: false, event: false } });
         } catch {}
       }
 
@@ -800,7 +800,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
   // Вставить маршрут в пост (строгий стиль, без лишних иконок)
   const handleInsertRouteToPost = (route: RouteData) => {
     try {
-      localStorage.setItem('blog-insert-route', JSON.stringify({ id: route.id, title: route.title, points: route.points || [] }));
+      localStorage.setItem('post-insert-route', JSON.stringify({ id: route.id, title: route.title, points: route.points || [] }));
     } catch {}
     try {
       navigate('/posts');
@@ -861,7 +861,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
     }
     try {
       const selectedMarkers = favorites.filter(m => selectedMarkerIds.includes(m.id));
-      localStorage.setItem('blog-insert-markers', JSON.stringify(selectedMarkers));
+      localStorage.setItem('post-insert-markers', JSON.stringify(selectedMarkers));
       navigate('/posts');
     } catch {
       // ignore
@@ -954,7 +954,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
       );
 
       // Сохраняем в localStorage для передачи в блог
-      localStorage.setItem('blog-insert-events', JSON.stringify(selectedEvents));
+      localStorage.setItem('post-insert-events', JSON.stringify(selectedEvents));
       
       // Переходим на страницу блога
       navigate('/posts');

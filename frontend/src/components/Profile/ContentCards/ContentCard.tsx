@@ -4,7 +4,7 @@ import { FaMapMarkedAlt, FaBlog, FaStar, FaTrophy, FaUsers, FaCamera, FaHeart, F
 // Типы данных
 export interface ContentCardData {
   id: string;
-  type: 'blog' | 'post' | 'route' | 'place' | 'event' | 'achievement' | 'photo';
+  type: 'post' | 'route' | 'place' | 'event' | 'achievement' | 'photo';
   title: string;
   preview: string;
   thumbnail?: string;

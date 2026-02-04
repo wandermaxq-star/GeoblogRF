@@ -31,6 +31,8 @@ const InteractiveMapDemo: React.FC = () => {
   const [routeProgress, setRouteProgress] = useState(0);
   const [showComments, setShowComments] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  // NOTE: mapRef is a DOM container ref used for measurements — avoid using it for map API calls.
+  // Use `mapFacade()` for map interactions.
   const mapRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>();
 

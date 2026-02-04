@@ -102,13 +102,7 @@ export const MARKER_CATEGORIES: MarkerCategory[] = [
     iconName: 'event', // pin-event.png - календарь
     description: 'События, фестивали, мероприятия'
   },
-  {
-    key: 'blog',
-    label: 'Блог',
-    color: '#2ecc71', // Светло-зелёный
-    iconName: 'blog', // pin-blog.png - ручка/блог
-    description: 'Места из блогов'
-  },
+
   {
     key: 'route',
     label: 'Маршрут',
@@ -183,7 +177,7 @@ export function getFontAwesomeIconName(key: string): string {
     'education': 'fa-users',
     'service': 'fa-building', // Здание для банков, почты, сервисных центров
     'event': 'fa-calendar-check',
-    'blog': 'fa-pen-nib',
+    
     'route': 'fa-route',
     'other': 'fa-question', // Вопрос для "Другое"
     'user_poi': 'fa-map-pin'
@@ -248,7 +242,7 @@ export function normalizeCategoryKey(typeOrCategory: string | undefined | null):
     'сервисный центр': 'service',
     'событие': 'event',
     'мероприятие': 'event',
-    'блог': 'blog',
+    
     'маршрут': 'route',
     'другое': 'other',
     'прочее': 'other'

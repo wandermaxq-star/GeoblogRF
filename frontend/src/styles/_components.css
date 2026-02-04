@@ -1,6 +1,9 @@
 /* ========================================
    _COMPONENTS.CSS - Базовые стили компонентов
    ======================================== */
+/* Примечание: CSS-переменные (например, --glass-shadow, --glass-bg-active и т.д.) определены в _base.css,
+   который подгружается из `styles/index.css`. Не меняйте жестко закодированные цвета сейчас — миграцию
+   значений выполним на следующем этапе. */
 
 /* --- Card component --- */
 .card {
@@ -49,3 +52,1141 @@
   border-color: var(--glass-border-active);
   box-shadow: var(--glass-shadow-active);
 }
+
+/* --- Map Specific Overlays --- */
+
+/* Стили для панели культурной информации (Culture Info Panel) */
+.glass-panel-culture {
+  padding: 8px 12px;
+  text-align: center;
+  background: linear-gradient(135deg, rgba(232, 245, 232, 0.9), rgba(240, 248, 240, 0.9));
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border: 1px solid rgba(195, 230, 195, 0.5);
+  border-radius: 12px;
+  color: #2d5a2d;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.glass-panel-culture-header {
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* Контейнер для оверлея загрузки (Discovering Place) */
+.map-overlay-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  background: var(--glass-bg-modal);
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-width: 200px;
+  border: 1px solid var(--glass-border);
+}
+
+/* Фиксированные размеры для попапов (вместо инлайнов в Map.tsx) */
+.popup-card-fixed {
+  width: 205px;
+  height: 285px;
+}
+
+/* --- Modals & Overlays (Универсальные классы) --- */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Темный оверлей (например, для галереи) */
+.modal-overlay-dark {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.modal-content {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  min-width: 320px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 1.5em;
+  color: #888;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+
+.modal-close-btn:hover {
+  color: var(--color-h-danger);
+}
+
+/* --- Popup Specifics --- */
+
+/* Иконка-кнопка поверх фото (камера) */
+.overlay-icon-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  color: #333;
+  font-size: 1.4em;
+  cursor: pointer;
+  z-index: 3;
+  transition: color 0.2s;
+  text-shadow: 0px 0px 4px rgba(255, 255, 255, 0.8);
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.overlay-icon-btn:hover {
+  color: #007bff;
+}
+
+/* Бейдж на фото (кол-во фото) */
+.overlay-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  border-radius: 12px;
+  padding: 4px 8px;
+  font-size: 0.8em;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  z-index: 3;
+  user-select: none;
+}
+
+/* Кнопка "Читать далее" в описании */
+.text-link-btn {
+  background: none;
+  border: none;
+  color: #3498db;
+  cursor: pointer;
+  font-size: 0.8em;
+  padding: 0;
+  margin: 0;
+  display: inline;
+  text-decoration: none;
+}
+
+.text-link-btn:hover {
+  text-decoration: underline;
+  color: #2980b9;
+}
+
+/* Вспомогательные классы */
+
+/* Вспомогательные классы */
+.photo-clickable { cursor: pointer; }
+.completeness-badge { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 10; }
+.gallery-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.3); color: white; border: none; font-size: 2em; cursor: pointer; padding: 10px 15px; border-radius: 5px; z-index: 2001; }
+.gallery-nav-btn:focus { outline: none; }
+.gallery-nav-btn.gallery-prev { left: 20px; }
+.gallery-nav-btn.gallery-next { right: 20px; }
+.gallery-image { max-width: calc(100% - 60px); max-height: calc(100% - 60px); object-fit: contain; border: 3px solid white; border-radius: 4px; box-shadow: 0 5px 20px rgba(0,0,0,0.4); }
+
+/* Modal form inputs / actions */
+.modal-input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 12px; cursor: pointer; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.modal-btn { padding: 6px 16px; border-radius: 4px; border: none; cursor: pointer; font-size: 14px; }
+.modal-btn-alt { background: #eee; color: #333; }
+.modal-btn-primary { background: #8e44ad; color: #fff; border: 1px solid #8e44ad; }
+.modal-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.modal-status { margin-top: 10px; }
+/* --- Settings Menu Button --- */
+.settings-menu-btn {
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 10px 16px;
+  font-size: 1rem;
+  color: #333;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s;
+}
+
+.settings-menu-btn:hover {
+  background: rgba(0,0,0,0.03);
+}
+
+/* Иконки внутри кнопки настроек */
+.settings-menu-btn i {
+  margin-right: 8px;
+}
+
+/* ========================================
+   PostConstructor Utility Classes
+   ======================================== */
+
+/* Элемент списка с кнопкой удаления (Маршруты, Маркеры, Секции) */
+.pc-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 6px;
+  background: #fff;
+  transition: all 0.2s;
+}
+
+/* Маленькая красная кнопка удаления (крестик) */
+.pc-btn-icon-sm {
+  background: transparent;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.pc-btn-icon-danger {
+  color: var(--state-danger);
+  font-size: 16px;
+}
+
+/* Карточка секции */
+.pc-section-card {
+  padding: 10px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 6px;
+  background: white;
+  transition: all 0.2s;
+}
+
+.pc-section-card:hover {
+  border-color: var(--color-primary, #3b82f6);
+}
+
+/* Активная/Выбранная секция */
+.pc-section-card.active {
+  border: 2px solid var(--color-primary, #3b82f6);
+  background: var(--glass-bg-light, #f0f9ff);
+}
+
+/* Заголовки и текст */
+.pc-label-sm {
+  font-size: 12px;
+  color: #4b5563;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.pc-text-muted-sm {
+  font-size: 13px;
+  color: #111827;
+}
+
+/* Бейдж статуса элемента */
+.pc-badge {
+  font-size: 10px;
+  color: var(--state-success, #10b981);
+  margin-top: 4px;
+  padding: 4px;
+  background: #f0fdf4;
+  border-radius: 4px;
+}
+
+/* Зона загрузки изображения */
+.pc-img-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 2px dashed #cbd5e1;
+  border-radius: 6px;
+  padding: 8px;
+  transition: all 0.2s;
+}
+
+.pc-img-placeholder:hover {
+  border-color: var(--color-primary, #3b82f6);
+  background: #f8fafc;
+}
+
+/* Кнопка добавления элемента (Маршрут, Метка в секции) */
+.pc-btn-action-sm {
+  padding: 4px 8px;
+  font-size: 10px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #374151;
+}
+
+.pc-btn-action-sm:hover {
+  background: #e5e7eb;
+} 
+
+/* --- Modal and PostConstructor helpers --- */
+.modal-header { display:flex; justify-content: space-between; align-items:center; margin-bottom:12px; }
+.modal-title { font-size:18px; font-weight:600; color:#1f2937; margin:0; }
+.modal-list { display:flex; flex-direction: column; gap:8px; }
+
+.image-remove-btn { position:absolute; top:4px; right:4px; background: rgba(239,68,68,0.9); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display:flex; align-items:center; justify-content:center; font-size:16px; line-height:1; }
+.image-remove-btn:hover { filter: brightness(0.9); }
+
+.image-cover { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
+
+.pc-section-heading { font-size: 12px; color: #4b5563; margin-bottom: 8px; font-weight: 600; }
+
+.pc-btn-row { display:flex; gap:8px; }
+.pc-section { margin-top:10px; }
+
+/* ========================================
+   Дополнительные утилиты для PostConstructor
+   ======================================== */
+
+/* Группа переключателей (Simple/Guide) */
+.pc-toggle-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+/* Кнопка на всю ширину внутри группы */
+.pc-btn-full {
+  flex: 1;
+  margin-bottom: 0 !important; /* Сброс стандартного margin-bottom у ControlButton */
+}
+
+/* Универсальный заголовок секции (для "Добавить на карту" и др.) */
+.pc-section-header {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* Вертикальный список элементов (col = column) */
+.pc-list-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Стили для блока изображений */
+.pc-images-header {
+  margin-bottom: 16px;
+}
+.pc-images-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #1f2937;
+}
+.pc-images-hint {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 16px;
+}
+
+/* Секции путеводителя */
+.pc-guide-wrapper {
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+.pc-guide-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* Чекбокс и лейбл в ряд */
+.pc-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.pc-checkbox-sm {
+  width: 14px;
+  height: 14px;
+}
+
+/* Кнопки действий карты в секции */
+.pc-map-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+/* Статусное сообщение (цветное) */
+.pc-status-badge {
+  margin-top: 4px;
+  padding: 4px;
+  background: #f0f9ff;
+  border-radius: 4px;
+}
+
+/* Кнопки снизу */
+.pc-bottom-actions {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Доп. утилиты */
+.image-item { position: relative; }
+
+.pc-section-title { margin-bottom: 15px; }
+
+.pc-selected-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+
+/* Preview utilities for guide sections */
+.pc-section-preview-content { padding: 20px; }
+.pc-mb-md { margin-bottom: 15px; }
+.pc-mt-md { margin-top: 15px; }
+
+/* Fill-flex helper used in modal lists */
+.pc-fill-flex { flex: 1; }
+
+/* --- Статистика (Stats) --- */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .stat-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.stat-card {
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+  color: white;
+  transition: box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stat-card:hover {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
+}
+
+/* Варианты цветов для статистики */
+.stat-card.blue {
+  background: linear-gradient(to right, #3b82f6, #2563eb);
+}
+.stat-card.orange {
+  background: linear-gradient(to right, #f97316, #ea580c);
+}
+.stat-card.green {
+  background: linear-gradient(to right, #22c55e, #16a34a);
+}
+.stat-card.purple {
+  background: linear-gradient(to right, #a855f7, #9333ea);
+}
+
+/* Скелетон для загрузки статистики */
+.stat-skeleton {
+  height: 2rem;
+  background-color: #e5e7eb; /* fallback gray-200 */
+  border-radius: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+.stat-skeleton.sm {
+  height: 1rem;
+  width: 60%;
+}
+
+/* --- Хедер Активности --- */
+.activity-header-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border-light);
+}
+
+/* Заголовок и подзаголовок активити */
+.activity-title {
+  color: var(--text-primary);
+}
+
+.activity-subtitle {
+  color: var(--text-secondary);
+}
+
+/* Добавлено: текст для плашки статуса */
+.activity-status-text {
+  color: var(--text-accent);
+}
+
+/* --- Боковые кнопки (Side Buttons) --- */
+.activity-side-buttons {
+  /* Задаем переменные по умолчанию, чтобы не было ошибок если класс не применится */
+  --btn-size: 47px;
+  --btn-border-width: 2px;
+  --btn-border-color: #8E9093;
+  --btn-bg: #FFFFFF;
+  --top-pos: 50%;
+  --offset: 5px;
+  --gap: 15px;
+}
+
+.activity-side-buttons.left {
+  --top-pos: 53%;
+}
+
+.activity-side-buttons.right {
+  --top-pos: 55%;
+}
+
+.page-side-buttons.left .page-side-button {
+  width: var(--btn-size);
+  height: var(--btn-size);
+  border: var(--btn-border-width) solid var(--btn-border-color);
+  background: var(--btn-bg);
+  left: var(--offset);
+}
+
+.page-side-buttons.right .page-side-button {
+  width: var(--btn-size);
+  height: var(--btn-size);
+  border: var(--btn-border-width) solid var(--btn-border-color);
+  background: var(--btn-bg);
+  right: var(--offset);
+}
+
+/* --- Контейнер ленты (Feed Wrapper) --- */
+.activity-feed-wrapper {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.5rem;
+}
+
+.activity-compact .activity-feed-wrapper {
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+}
+
+/* --- Posts Page Header & Filters --- */
+
+.posts-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-bottom: 1rem; /* mb-4 */
+}
+
+.posts-main-title {
+  font-size: 1.5rem; /* text-2xl */
+  font-weight: 700; /* font-bold */
+  color: #111827; /* gray-900 */
+  text-align: center;
+}
+
+/* Кнопка закрытия панели (крестик) */
+.posts-close-panel-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 0.5rem;
+  border-radius: 9999px;
+  background: rgba(229, 231, 235, 0.8); /* gray-200/80 */
+  color: #4b5563; /* gray-600 */
+  transition: all 0.2s;
+  backdrop-filter: blur(4px);
+}
+
+.posts-close-panel-btn:hover {
+  background: rgba(209, 213, 219, 0.9); /* gray-300/90 */
+  color: #1f2937; /* gray-800 */
+}
+
+/* Ряд фильтров и кнопок */
+.posts-controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem; /* gap-3 */
+}
+
+/* Группа кнопок фильтра */
+.posts-filter-group {
+  display: flex;
+  gap: 0.5rem; /* gap-2 */
+}
+
+/* Кнопка фильтра */
+.filter-btn {
+  padding: 0.5rem 1rem; /* px-4 py-2 */
+  border-radius: 0.5rem; /* rounded-lg */
+  font-weight: 500; /* font-medium */
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.filter-btn.active {
+  color: white;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); /* shadow-md */
+}
+
+/* Варианты активных цветов */
+.filter-btn.active.blue { background-color: #2563eb; } /* blue-600 */
+.filter-btn.active.orange { background-color: #ea580c; } /* orange-600 */
+
+/* Состояние по умолчанию */
+.filter-btn:not(.active) {
+  background-color: rgba(255, 255, 255, 0.6); /* white/60 */
+  color: #374151; /* gray-700 */
+  backdrop-filter: blur(4px);
+}
+
+.filter-btn:not(.active):hover {
+  background-color: rgba(255, 255, 255, 0.8); /* white/80 */
+}
+
+/* Группа кнопок действий (Создать/Черновики) */
+.posts-action-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Кнопка "Создать пост" */
+.btn-create-post {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem; /* py-2.5 px-5 */
+  background: linear-gradient(to right, #2563eb, #1d4ed8); /* blue-600 to blue-700 */
+  color: white;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-create-post:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(to right, #1d4ed8, #1e40af); /* blue-700 to blue-800 */
+  transform: scale(1.02);
+}
+
+.btn-create-post:active {
+  transform: scale(0.95);
+}
+
+.btn-drafts {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem; /* py-2.5 px-4 */
+  background-color: #4b5563; /* gray-600 */
+  color: white;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+  position: relative;
+}
+
+.btn-drafts:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  background-color: #374151; /* gray-700 */
+}
+
+.drafts-badge {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  background-color: #ef4444; /* red-500 */
+  color: white;
+  font-size: 0.75rem; /* text-xs */
+  border-radius: 9999px;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+/* --- Loading & Empty States --- */
+
+.posts-state-view {
+  text-align: center;
+  padding: 3rem 0; /* py-12 */
+}
+
+.posts-state-icon-wrapper {
+  width: 4rem; /* 16 */
+  height: 4rem;
+  margin: 0 auto 1rem; /* mx-auto mb-4 */
+  background-color: rgba(255, 255, 255, 0.4); /* white/40 */
+  backdrop-filter: blur(4px);
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.posts-state-icon {
+  width: 2rem; /* 8 */
+  height: 2rem;
+  color: #6b7280; /* gray-500 */
+}
+
+.posts-state-title {
+  font-size: 1.125rem; /* lg */
+  font-weight: 500; /* medium */
+  color: #111827; /* gray-900 */
+  margin-bottom: 0.5rem; /* mb-2 */
+}
+
+.posts-state-subtitle {
+  color: #4b5563; /* gray-600 */
+}
+
+/* ========================================
+   UNIFIED BUTTON SYSTEM
+   Заменяет GlassButton, MapActionButtons, CalendarActionButtons
+   ======================================== */
+
+/* Базовый сброс для кнопок */
+.btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: visible;
+  gap: 8px;
+}
+
+/* --- Base Style: Glass Effect --- */
+.btn-glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(0, 0, 0, 0.8);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Fallback для старых браузеров */
+@supports not (backdrop-filter: blur(10px)) {
+  .btn-glass {
+    background: rgba(255, 255, 255, 0.85);
+  }
+}
+
+/* Hover эффект (общий) */
+.btn-glass:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* --- Shapes (Формы) --- */
+
+/* Прямоугольные (по умолчанию для GlassButton) */
+.btn-rect {
+  border-radius: 12px;
+}
+
+/* Круглые (для Map и Calendar) */
+.btn-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  padding: 0;
+}
+
+/* --- Sizes (Размеры для прямоугольных) --- */
+.btn-sm { padding: 8px 16px; font-size: 12px; border-radius: 8px; }
+.btn-md { padding: 12px 24px; font-size: 14px; border-radius: 12px; }
+.btn-lg { padding: 16px 32px; font-size: 16px; border-radius: 16px; }
+
+/* --- Variants (Цвета) --- */
+
+/* Primary (Синий) */
+.btn-primary {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: rgba(59, 130, 246, 1);
+}
+.btn-primary:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.3);
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+}
+
+/* Danger (Красный) */
+.btn-danger {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: rgba(239, 68, 68, 1);
+}
+.btn-danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.2);
+}
+
+/* Success (Зеленый) */
+.btn-success {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: rgba(34, 197, 94, 1);
+}
+.btn-success:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(34, 197, 94, 0.4);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.2);
+}
+
+/* --- Active State (Пульсация) --- */
+.btn-active {
+  background: rgba(59, 130, 246, 0.3);
+  border: 2px solid rgba(59, 130, 246, 0.6);
+  animation: btn-pulse 2s ease-in-out infinite;
+}
+
+@keyframes btn-pulse {
+  0%, 100% { box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+  50% { box-shadow: 0 4px 20px rgba(59, 130, 246, 0.6); }
+}
+
+/* --- Dark Theme & Light Variants --- */
+
+/* Темная тема (для Map/Calendar на темном фоне) */
+.btn-dark {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+.btn-dark:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Светлая тема (для кнопок на темном фоне, как в Calendar horizontal) */
+.btn-light {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.btn-light:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* --- Disabled --- */
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* --- Utilities --- */
+.btn-full-width { width: 100%; }
+
+/* Badge (для счетчиков) */
+.btn-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #fbbf24;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 1;
+}
+
+/* Icon/Text inside unified buttons */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 6px;
+  line-height: 0;
+}
+
+.btn-text {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ========================================
+   Map Action Buttons container + tooltip (migrated)
+   ======================================== */
+.map-action-buttons-container {
+  position: absolute;
+  right: 17px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 8px;
+  border-radius: 20px;
+  /* Фон и стекло */
+  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  animation: slideInFromRight 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.map-action-buttons-container.two-panel-mode {
+  position: fixed;
+  top: calc(64px + (100vh - 64px - 60px) / 2);
+  transform: translateY(-50%);
+  right: calc(50% + 12px);
+  z-index: 1200;
+}
+
+@supports not (backdrop-filter: blur(10px)) {
+  .map-action-buttons-container { background: rgba(255,255,255,0.85); }
+}
+
+.map-action-buttons-container.dark {
+  background: linear-gradient(135deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.1) 100%);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Map tooltip */
+.map-action-tooltip {
+  position: absolute;
+  right: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  animation: tooltipFadeIn 0.2s ease-in-out forwards;
+  z-index: 1300;
+}
+
+.map-action-tooltip::after {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 6px solid transparent;
+  border-left-color: rgba(0,0,0,0.85);
+}
+
+@keyframes tooltipFadeIn {
+  from { opacity: 0; transform: translateY(-50%) translateX(-4px); }
+  to { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
+
+/* Адаптивность карты */
+@media (max-width: 1024px) and (min-width: 768px) {
+  .map-action-buttons-container { right: 12px; }
+}
+
+@media (max-width: 767px) {
+  .map-action-buttons-container { display: none; }
+}
+
+/* ========================================
+   Calendar Action Buttons container + tooltip (migrated)
+   ======================================== */
+.calendar-action-buttons-container {
+  position: absolute;
+  right: 18px;
+  top: 52%;
+  transform: translateY(-50%);
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 8px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  animation: slideInFromRight 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Горизонтальный блок настроек */
+.calendar-actions-horizontal .calendar-action-buttons-container {
+  position: static;
+  transform: none;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  width: auto;
+  margin: 0 auto;
+  animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(135deg, rgba(34, 38, 48, 0.85), rgba(46, 52, 68, 0.82));
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 25px 50px rgba(5, 8, 15, 0.5), 0 8px 20px rgba(10, 14, 25, 0.35);
+}
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+@keyframes slideInFromRight { from { opacity: 0; transform: translateX(20px) translateY(-50%); } to { opacity: 1; transform: translateX(0) translateY(-50%); } }
+
+@supports not (backdrop-filter: blur(10px)) {
+  .calendar-action-buttons-container { background: rgba(255, 255, 255, 0.85); }
+}
+
+.calendar-action-button-wrapper { position: relative; display: flex; align-items: center; justify-content: center; }
+
+/* Горизонтальные светлые кнопки */
+.calendar-actions-horizontal .btn { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: rgba(255,255,255,0.95); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+
+.calendar-action-tooltip {
+  position: absolute;
+  right: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(8, 9, 16, 0.95);
+  color: #f8fafc;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  animation: calendarTooltipFade 0.15s ease forwards;
+}
+
+.calendar-action-tooltip::after { content: ''; position: absolute; left: 100%; top: 50%; transform: translateY(-50%); border: 6px solid transparent; border-left-color: rgba(8,9,16,0.95); }
+
+@keyframes calendarTooltipFade { from { opacity: 0; transform: translateY(-50%) translateX(-4px); } to { opacity: 1; transform: translateY(-50%) translateX(0); } }
+
+@media (max-width: 1024px) and (min-width: 768px) {
+  .calendar-action-buttons-container { top: 55%; right: 12px; }
+}
+
+@media (max-width: 767px) {
+  .calendar-action-buttons-container { display: none; }
+}
+
+/* GlassButton compat helpers */
+.btn:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.6);
+  outline-offset: 2px;
+}
+
+@supports not (backdrop-filter: blur(10px)) {
+  .btn {
+    background: rgba(255,255,255,0.85);
+  }
+}
+
+/* Compact buttons inside add-marker-panel (preserve old behavior) */
+.add-marker-panel .btn {
+  padding: 2px 5px;
+  font-size: 9px;
+  border-radius: 4px;
+  min-width: 0;
+  flex: 1;
+  width: 100%;
+  line-height: 1.1;
+  height: auto;
+}
+
+.add-marker-panel .btn-full-width {
+  width: 100%;
+  flex: 1;
+}
+
+/* End of migrated styles */

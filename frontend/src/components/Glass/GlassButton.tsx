@@ -1,5 +1,4 @@
 import React from 'react';
-import './GlassButton.css';
 
 export interface GlassButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'> {
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
@@ -27,19 +26,43 @@ const GlassButton: React.FC<GlassButtonProps> = ({
   size = 'medium',
   ...rest
 }) => {
-  const baseClasses = `glass-button glass-button-${variant} glass-button-${size} ${active ? 'glass-button-active' : ''} ${fullWidth ? 'glass-button-full-width' : ''} ${className}`;
+  const variantMap: Record<string, string> = {
+    primary: 'btn-primary',
+    secondary: '',
+    danger: 'btn-danger',
+    success: 'btn-success',
+  };
+
+  const sizeMap: Record<string, string> = {
+    small: 'btn-sm',
+    medium: 'btn-md',
+    large: 'btn-lg',
+  };
+
+  const classes = [
+    'btn',
+    'btn-glass',
+    'btn-rect',
+    variantMap[variant] || '',
+    sizeMap[size] || '',
+    active ? 'btn-active' : '',
+    fullWidth ? 'btn-full-width' : '',
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <button
       type={type}
-      className={baseClasses}
+      className={classes}
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
       {...rest}
     >
-      {icon && <span className="glass-button-icon">{icon}</span>}
-      {children && <span className="glass-button-text">{children}</span>}
+      {icon && <span className="btn-icon">{icon}</span>}
+      {children && <span className="btn-text">{children}</span>}
     </button>
   );
 };

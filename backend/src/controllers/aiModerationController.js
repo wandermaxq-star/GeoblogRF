@@ -154,12 +154,13 @@ export const analyzeContent = async (req, res) => {
         break;
 
       case 'blogs':
-        const blogResult = await pool.query('SELECT * FROM blog_posts WHERE id::text = $1', [contentId]);
+        // Legacy: treat blogs as posts
+        const blogResult = await pool.query('SELECT * FROM posts WHERE id::text = $1', [contentId]);
         if (blogResult.rows.length === 0) {
-          return res.status(404).json({ message: 'Блог не найден.' });
+          return res.status(404).json({ message: 'Пост не найден.' });
         }
         content = blogResult.rows[0];
-        contentText = `${content.title || ''} ${content.content || ''}`.trim();
+        contentText = `${content.title || ''} ${content.body || content.content || ''}`.trim();
         contentData = content;
         break;
 
@@ -170,7 +171,7 @@ export const analyzeContent = async (req, res) => {
     // Используем ModerationService для анализа
     const moderationResult = await ModerationService.moderateContent({
       text: contentText,
-      type: contentType === 'posts' ? 'blog' : contentType === 'blogs' ? 'blog' : 'review',
+      type: (contentType === 'posts' || contentType === 'blogs') ? 'post' : 'review',
       userId: content.creator_id || content.author_id || 'unknown',
       location: content.location || content.address,
       timestamp: new Date(content.created_at || Date.now())

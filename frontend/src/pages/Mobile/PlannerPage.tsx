@@ -226,8 +226,7 @@ const PlannerPage: React.FC = () => {
         // Добавляем метки для точек маршрута
         const markers: MapMarker[] = routePlanner.routePoints.map((point: any, index: number) => ({
           id: `point-${index}`,
-          lat: point.latitude,
-          lon: point.longitude,
+          position: { lat: Number(point.latitude), lon: Number(point.longitude) },
           title: point.title || `Точка ${index + 1}`,
           category: 'route-point',
         }));
@@ -243,13 +242,15 @@ const PlannerPage: React.FC = () => {
         // Yandex Maps сам построит маршрут по дорогам и передаст геометрию через callback
         if (routePlanner.routePoints.length >= 2) {
           try {
-            const routePoints = routePlanner.routePoints.map((p: any) => [p.latitude, p.longitude] as [number, number]);
+            const routePoints = routePlanner.routePoints.map((p: any) => ({ lat: Number(p.latitude), lon: Number(p.longitude) }));
             
             // Передаём маршрут в фасад - Yandex Maps построит его по дорогам
             const route: Route = {
               id: 'current-route',
               points: routePoints,
-            };
+              distance: 0,
+              duration: 0,
+            }; 
             await mapFacade().drawRoute(route);
             // Геометрия будет получена через callback onRouteGeometry
           } catch (error) {
@@ -290,8 +291,7 @@ const PlannerPage: React.FC = () => {
             // Добавляем метку на карту
             mapFacade().addMarker({
               id: place.id,
-              lat: place.latitude,
-              lon: place.longitude,
+              position: { lat: Number(place.latitude), lon: Number(place.longitude) },
               title: place.name || 'Место',
               category: 'favorite',
             });
@@ -303,11 +303,11 @@ const PlannerPage: React.FC = () => {
         
         // Всегда центрируем карту на метке с зумом
         try {
-          (mapFacade as any).setView([place.latitude!, place.longitude!], 15);
+            mapFacade().setView([place.latitude!, place.longitude!], 15);
         } catch (err) {
           // Если setView не поддерживается, используем setCenter
           try {
-            (mapFacade as any).setCenter([place.latitude!, place.longitude!], 15);
+            mapFacade().setCenter([place.latitude!, place.longitude!], 15);
           } catch (e) {
           }
         }
@@ -333,8 +333,7 @@ const PlannerPage: React.FC = () => {
             // Добавляем метку на карту
             mapFacade().addMarker({
               id: place.id,
-              lat: place.latitude,
-              lon: place.longitude,
+              position: { lat: Number(place.latitude), lon: Number(place.longitude) },
               title: place.name || 'Место',
               category: 'favorite',
             });
@@ -346,11 +345,11 @@ const PlannerPage: React.FC = () => {
         
         // Всегда центрируем карту на метке с зумом
         try {
-          (mapFacade as any).setView([place.latitude!, place.longitude!], 15);
+          mapFacade().setView([place.latitude!, place.longitude!], 15);
         } catch (err) {
           // Если setView не поддерживается, используем setCenter
           try {
-            (mapFacade as any).setCenter([place.latitude!, place.longitude!], 15);
+            mapFacade().setCenter([place.latitude!, place.longitude!], 15);
           } catch (e) {
           }
         }

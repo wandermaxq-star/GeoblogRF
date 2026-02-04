@@ -8,7 +8,7 @@ interface PresetDropdownProps {
 const presets = [
   { key: 'all', label: 'Все метки', icon: 'fa-map-marker-alt' },
   { key: 'events', label: 'События', icon: 'fa-calendar-check' },
-  { key: 'blogs', label: 'Блоги', icon: 'fa-blog' },
+  { key: 'posts', label: 'Посты', icon: 'fa-edit' },
   { key: 'routes', label: 'Маршруты', icon: 'fa-route' },
   { key: 'user_poi', label: 'Пользовательские', icon: 'fa-map-pin' },
   { key: 'chat_rooms', label: 'Активные чаты', icon: 'fa-comments' },

@@ -1,9 +1,9 @@
 import React from 'react';
 
 interface CategoryButtonProps {
-  category: 'post' | 'blog' | 'event';
+  category: 'post' | 'event';
   isActive: boolean;
-  onToggle: (category: 'post' | 'blog' | 'event') => void;
+  onToggle: (category: 'post' | 'event') => void;
   label: string;
 }
 

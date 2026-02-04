@@ -1,0 +1,13 @@
+/* 
+   GLOBAL STYLES ENTRY POINT
+   Импортируйте этот файл в main.tsx
+*/
+
+/* 1. Переменные и сброс стилей */
+@import './_base.css';
+
+/* 2. Глобальные компоненты (кнопки, карточки) */
+@import './_components.css';
+
+/* 3. Стили режимов (layout) */
+@import './_modes.css';

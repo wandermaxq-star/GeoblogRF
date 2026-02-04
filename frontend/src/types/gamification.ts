@@ -36,7 +36,7 @@ export interface XPParams {
   source: XPSource;
   amount: number;
   contentId?: string; // ID контента для проверки уникальности
-  contentType?: 'post' | 'marker' | 'event' | 'route' | 'blog' | 'comment' | 'chat';
+  contentType?: 'post' | 'marker' | 'event' | 'route' | 'comment' | 'chat';
   metadata?: {
     hasPhoto?: boolean;
     hasMarker?: boolean;

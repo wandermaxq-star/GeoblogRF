@@ -177,8 +177,8 @@ class Activity {
       const {
         room_created_visibility,
         room_joined_visibility,
-        blog_created_visibility,
-        blog_published_visibility,
+        post_created_visibility,
+        post_published_visibility,
         marker_created_visibility,
         route_created_visibility,
         route_shared_visibility,
@@ -198,7 +198,7 @@ class Activity {
       const query = `
         INSERT INTO activity_privacy_settings (
           user_id, room_created_visibility, room_joined_visibility,
-          blog_created_visibility, blog_published_visibility,
+          post_created_visibility, post_published_visibility,
           marker_created_visibility, route_created_visibility,
           route_shared_visibility, event_created_visibility,
           event_joined_visibility, achievement_earned_visibility,
@@ -213,8 +213,8 @@ class Activity {
         DO UPDATE SET 
           room_created_visibility = EXCLUDED.room_created_visibility,
           room_joined_visibility = EXCLUDED.room_joined_visibility,
-          blog_created_visibility = EXCLUDED.blog_created_visibility,
-          blog_published_visibility = EXCLUDED.blog_published_visibility,
+          post_created_visibility = EXCLUDED.post_created_visibility,
+          post_published_visibility = EXCLUDED.post_published_visibility,
           marker_created_visibility = EXCLUDED.marker_created_visibility,
           route_created_visibility = EXCLUDED.route_created_visibility,
           route_shared_visibility = EXCLUDED.route_shared_visibility,
@@ -235,7 +235,7 @@ class Activity {
 
       const values = [
         user_id, room_created_visibility, room_joined_visibility,
-        blog_created_visibility, blog_published_visibility,
+        post_created_visibility, post_published_visibility,
         marker_created_visibility, route_created_visibility,
         route_shared_visibility, event_created_visibility,
         event_joined_visibility, achievement_earned_visibility,
