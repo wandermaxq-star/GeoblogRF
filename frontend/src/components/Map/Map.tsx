@@ -8,7 +8,7 @@ import CircularProgressBar from '../ui/CircularProgressBar';
 
 // Leaflet и его стили инициализируются в `../../utils/leafletInit`.
 // Используем `mapFacade` и глобальный `window.L` вместо прямых импортов.
-// (импорты 'leaflet', 'leaflet/dist/leaflet.css' и 'leaflet.markercluster' удалены)
+// Импорт для кластеризации маркеров уже есть в useMapMarkers
 
 // Объявляем L как глобальную переменную (устанавливается в leafletInit.ts)
 declare const L: any;
@@ -84,8 +84,6 @@ interface MapProps {
     onRemoveFromFavorites?: (id: string) => void;
     setSelectedMarkerIds?: React.Dispatch<React.SetStateAction<string[]>> | ((ids: string[]) => void);
     onAddToBlog?: (marker: MarkerData) => void;
-    onFavoritesClick?: () => void;
-    favoritesCount?: number;
     onBoundsChange?: (bounds: { north: number; south: number; east: number; west: number }) => void;
     radius: number;
     isAddingMarkerMode?: boolean;
@@ -93,6 +91,7 @@ interface MapProps {
     legendOpen?: boolean;
     onLegendOpenChange?: (open: boolean) => void;
     isFavorite: (marker: MarkerData) => boolean;
+    favoritesCount?: number;
     mapSettings: {
         mapType: string;
         showTraffic: boolean;
@@ -122,8 +121,8 @@ function Map(props: MapProps) {
     const {
         center, zoom, markers, onMapClick, onHashtagClickFromPopup,
         flyToCoordinates, selectedMarkerIdForPopup, setSelectedMarkerIdForPopup, onAddToFavorites, onAddToBlog, isFavorite,
-        onFavoritesClick, favoritesCount, mapSettings, filters, searchRadiusCenter, onSearchRadiusCenterChange, selectedMarkerIds, onBoundsChange, zones = [], routeData, isAddingMarkerMode: externalIsAddingMarkerMode, onAddMarkerModeChange, legendOpen: externalLegendOpen, onLegendOpenChange,
-        onRemoveFromFavorites, setSelectedMarkerIds
+        mapSettings, filters, searchRadiusCenter, onSearchRadiusCenterChange, selectedMarkerIds, onBoundsChange, zones = [], routeData, isAddingMarkerMode: externalIsAddingMarkerMode, onAddMarkerModeChange, legendOpen: externalLegendOpen, onLegendOpenChange,
+        onRemoveFromFavorites, setSelectedMarkerIds, favoritesCount
     } = props;
 
     // --- СОСТОЯНИЕ ДЛЯ МАРКЕРОВ ---
@@ -205,6 +204,9 @@ function Map(props: MapProps) {
         event: MockEvent;
         position: { x: number; y: number };
     } | null>(null);
+
+    // Тик, который обновляется при перемещении/зуме/resize карты — нужен чтобы пересчитывать экранные позиции попапов
+    const [mapViewTick, setMapViewTick] = useState<number>(0);
 
     // --- LEGEND STATE ---
     const [internalLegendOpen, setInternalLegendOpen] = useState(false);
@@ -718,6 +720,43 @@ function Map(props: MapProps) {
             } catch (e) { }
         };
     }, [isMapReady]);
+
+    // --- SYNC POPUP POSITIONS ON MAP MOVE/ZOOM/RESIZE ---
+    useEffect(() => {
+        if (!isMapReady) return;
+        const tick = () => setMapViewTick(v => v + 1);
+        try {
+            mapFacade().onMapMove(tick);
+            mapFacade().onMapZoom(tick);
+        } catch (e) { }
+        window.addEventListener('resize', tick);
+        return () => {
+            try { mapFacade().offMapMove(tick); mapFacade().offMapZoom(tick); } catch (e) { }
+            window.removeEventListener('resize', tick);
+        };
+    }, [isMapReady]);
+
+    // --- PAN MAP WHEN OPENING SELECTED MARKER POPUP ---
+    useEffect(() => {
+        if (!selectedMarkerIdForPopup) return;
+        try {
+            const marker = markersData.find(m => m.id === selectedMarkerIdForPopup);
+            if (!marker) return;
+            const lat = Number(marker.latitude);
+            const lng = Number(marker.longitude);
+            if (isNaN(lat) || isNaN(lng)) return;
+
+            const zoom = mapFacade().getZoom?.() ?? 0;
+            const projected = mapFacade().project([lat, lng]);
+            const mapSize = mapFacade().getSize?.() ?? { x: 0, y: 0 };
+            const targetScreenY = mapSize.y * 0.25;
+            const screenCenterY = mapSize.y / 2;
+            const offsetY = targetScreenY - screenCenterY;
+            const targetCenterPoint = mapFacade().point(projected.x, projected.y - offsetY);
+            const targetCenterLatLng = mapFacade().unproject({ x: targetCenterPoint.x, y: targetCenterPoint.y }, zoom);
+            try { mapFacade().setView(targetCenterLatLng, zoom); } catch (err) { }
+        } catch (err) { }
+    }, [selectedMarkerIdForPopup, markersData]);
 
     // --- MAP TYPE CHANGE ---
     useEffect(() => {
@@ -1302,58 +1341,76 @@ function Map(props: MapProps) {
                 />
             </div>
         );
-    }, [selectedMarkerIdForPopup, markersData, selectedMarkerIds]);
+    }, [selectedMarkerIdForPopup, markersData, selectedMarkerIds, mapViewTick]);
 
     // --- EVENT MINI POPUP ---
-    const eventPopup = eventMiniPopup && eventMiniPopup.position && (
-        <div
-            style={{
-                position: 'absolute',
-                left: eventMiniPopup.position.x,
-                top: eventMiniPopup.position.y,
-                transform: 'translate(-50%, -100%)',
-                marginBottom: '10px',
-                zIndex: 9999,
-                pointerEvents: 'auto'
-            }}
-            onMouseLeave={() => { setEventMiniPopup(null); }}
-        >
-            <EventMiniPopup
-                event={eventMiniPopup.event}
-                onOpenFull={() => {
-                    setEventMiniPopup(null);
-                    setSelectedEvent(eventMiniPopup.event);
-                }}
-                isSelected={selectedEvent?.id === eventMiniPopup.event.id}
-                showGoButton={true}
-            />
-        </div>
+    const eventPopup = eventMiniPopup && eventMiniPopup.event && (
+        (() => {
+            try {
+                const lat = Number(eventMiniPopup.event.latitude);
+                const lng = Number(eventMiniPopup.event.longitude);
+                const pos = latLngToContainerPoint(mapFacade(), mapFacade().latLng(lat, lng));
+                return (
+                    <div
+                        style={{
+                            position: 'absolute',
+                            left: pos.x,
+                            top: pos.y,
+                            transform: 'translate(-50%, -100%)',
+                            marginBottom: '10px',
+                            zIndex: 9999,
+                            pointerEvents: 'auto'
+                        }}
+                        onMouseLeave={() => { setEventMiniPopup(null); }}
+                    >
+                        <EventMiniPopup
+                            event={eventMiniPopup.event}
+                            onOpenFull={() => {
+                                setEventMiniPopup(null);
+                                setSelectedEvent(eventMiniPopup.event);
+                            }}
+                            isSelected={selectedEvent?.id === eventMiniPopup.event.id}
+                            showGoButton={true}
+                        />
+                    </div>
+                );
+            } catch (err) { return null; }
+        })()
     );
 
     // --- MAIN MINI POPUP ---
-    const miniPopupElement = miniPopup && (
-        <div
-            style={{
-                position: 'absolute',
-                left: miniPopup.position.x,
-                top: miniPopup.position.y,
-                zIndex: 1200,
-                transform: 'translate(-50%, -100%)',
-            }}
-            onMouseLeave={() => { setMiniPopup(null); }}
-        >
-            <MiniMarkerPopup
-                marker={miniPopup.marker}
-                onOpenFull={() => {
-                    const markerId = miniPopup?.marker?.id;
-                    setMiniPopup(null);
-                    if (markerId) {
-                        setSelectedMarkerIdForPopup(markerId);
-                    }
-                }}
-                isSelected={false}
-            />
-        </div>
+    const miniPopupElement = miniPopup && miniPopup.marker && (
+        (() => {
+            try {
+                const lat = Number(miniPopup.marker.latitude);
+                const lng = Number(miniPopup.marker.longitude);
+                const pos = latLngToContainerPoint(mapFacade(), mapFacade().latLng(lat, lng));
+                return (
+                    <div
+                        style={{
+                            position: 'absolute',
+                            left: pos.x,
+                            top: pos.y,
+                            zIndex: 1200,
+                            transform: 'translate(-50%, -100%)',
+                        }}
+                        onMouseLeave={() => { setMiniPopup(null); }}
+                    >
+                        <MiniMarkerPopup
+                            marker={miniPopup.marker}
+                            onOpenFull={() => {
+                                const markerId = miniPopup?.marker?.id;
+                                setMiniPopup(null);
+                                if (markerId) {
+                                    setSelectedMarkerIdForPopup(markerId);
+                                }
+                            }}
+                            isSelected={false}
+                        />
+                    </div>
+                );
+            } catch (err) { return null; }
+        })()
     );
 
     // --- SELECTED MARKERS MINI POPUPS ---
@@ -1390,9 +1447,9 @@ function Map(props: MapProps) {
 
     // --- JSX RENDER ---
     const mapContent = (
-        <MapContainer>
+        <MapContainer style={{ pointerEvents: isLoading || error ? 'none' : 'auto' }}>
             {isLoading && (
-                <div style={{ position: 'absolute', left: '50%', top: '50%', zIndex: 2000, transform: 'translate(-50%, -50%)' }}>
+                <div style={{ position: 'absolute', left: '50%', top: '50%', zIndex: 2000, transform: 'translate(-50%, -50%)', pointerEvents: 'auto' }}>
                     <CircularProgressBar value={progress} size={90} />
                 </div>
             )}
@@ -1404,9 +1461,8 @@ function Map(props: MapProps) {
                 ref={mapContainerRef}
                 style={{
                     ...mapStyle,
-                    transform: isTwoPanelMode ? 'translateX(-20%)' : 'none',
-                    width: isTwoPanelMode ? '140%' : '100%',
-                    transition: 'transform 0.3s ease, width 0.3s ease',
+                    width: '100%',
+                    height: '100%',
                 }}
             >
                 {coordsForNewMarker && showCultureMessage && (
@@ -1499,7 +1555,7 @@ function Map(props: MapProps) {
             </MapWrapper>
 
             {isLoading && (
-                <LoadingOverlay>
+                <LoadingOverlay style={{ pointerEvents: isLoading ? 'auto' : 'none' }}>
                     <div className="loading-content">
                         <div className="spinner" />
                         <p>{t('map.loading')}</p>
@@ -1508,7 +1564,7 @@ function Map(props: MapProps) {
             )}
 
             {error && !isMapReadyCheck && (
-                <ErrorMessage>
+                <ErrorMessage style={{ pointerEvents: error ? 'auto' : 'none' }}>
                     <p>{error}</p>
                     <button onClick={() => window.location.reload()}>
                         {t('map.error.retry')}

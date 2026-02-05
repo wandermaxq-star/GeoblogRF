@@ -7,6 +7,7 @@ import {
   LazyActivity, LazyCentrePage, LazyFriends, LazyModerationPage,
   LazyUserAgreement, LazyPrivacyPolicy, LazyAnalyticsDashboard
 } from './components/LazyComponents';
+import AdminSubscriptionsPage from './pages/admin/AdminSubscriptionsPage';
 // Posts загружается статически для быстрой загрузки проекта с фокусом на контенте
 import Posts from './pages/Posts';
 import { FEATURES } from './config/features';
@@ -39,7 +40,7 @@ const AppRoutes = () => {
       <Route path="/friends" element={<Suspense fallback={<PageLoadingFallback />}><LazyFriends /></Suspense>} />
       {/* Удалён статический профиль. Профиль открывается как модалка через Sidebar/ProfilePanel */}
       <Route path="/admin/moderation" element={<Suspense fallback={<ModerationLoadingFallback />}><LazyModerationPage /></Suspense>} />
-      <Route path="/admin/subscriptions" element={<Suspense fallback={<PageLoadingFallback />}><LazyAdminSubscriptionsPage /></Suspense>} />
+      <Route path="/admin/subscriptions" element={<AdminSubscriptionsPage />} />
       <Route path="/legal/user-agreement" element={<Suspense fallback={<PageLoadingFallback />}><LazyUserAgreement /></Suspense>} />
       <Route path="/legal/privacy-policy" element={<Suspense fallback={<PageLoadingFallback />}><LazyPrivacyPolicy /></Suspense>} />
     <Route path="/analytics" element={<Suspense fallback={<AnalyticsLoadingFallback />}><LazyAnalyticsDashboard /></Suspense>} />

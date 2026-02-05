@@ -948,9 +948,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
       <div className="page-main-area">
         <div className="page-content-wrapper">
           <div className="page-main-panel relative" style={{ background: 'transparent', borderRadius: 0 }}>
-            {/* Стеклянный блок с инструментами: Поиск + RegionSelector + Запрещенные зоны
-                ВАЖНО: Вынесен за пределы MapContainer чтобы выпадающий список не обрезался
-                Стиль: тёмное матовое стекло */}
+            {/* Блок инструментов - поиск, селектор регионов, кнопки */}
             <div
               className="absolute flex items-center gap-3"
               style={{
@@ -970,12 +968,12 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
                 border: '1px solid rgba(255, 255, 255, 0.08)',
                 transition: 'left 0.3s ease-in-out, top 0.3s ease-in-out',
                 zIndex: 10,
-                // Включаем события мыши для этого блока
-                pointerEvents: 'auto'
+                // ИСПРАВЛЕНО: Отключаем перехват кликов, чтобы карта оставалась интерактивной
+                pointerEvents: 'none'
               }}
             >
               {/* Поиск */}
-              <div className="relative" style={{ position: 'relative' }}>
+              <div className="relative" style={{ position: 'relative', pointerEvents: 'auto' }}>
                 <input
                   type="text"
                   placeholder="Адрес или объект"
@@ -1039,7 +1037,8 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
                     left: 0,
                     right: 0,
                     zIndex: 10000,
-                    marginTop: '4px'
+                    marginTop: '4px',
+                    pointerEvents: 'auto'
                   }}>
                     <SearchResultsDropdown
                       loading={isSearchLoading}
@@ -1053,7 +1052,9 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
               </div>
 
               {/* Селектор регионов */}
-              <RegionSelector />
+              <div style={{ pointerEvents: 'auto' }}>
+                <RegionSelector />
+              </div>
 
               {/* Переключатель запрещенных зон - тёмный стиль */}
               <button
@@ -1062,7 +1063,8 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
                 style={{
                   background: showZonesLayer ? 'rgba(76, 201, 240, 0.3)' : 'rgba(255, 255, 255, 0.1)',
                   border: `1px solid ${showZonesLayer ? 'rgba(76, 201, 240, 0.5)' : 'rgba(255, 255, 255, 0.15)'}`,
-                  color: showZonesLayer ? '#4cc9f0' : 'rgba(255, 255, 255, 0.9)'
+                  color: showZonesLayer ? '#4cc9f0' : 'rgba(255, 255, 255, 0.9)',
+                  pointerEvents: 'auto'
                 }}
                 title={showZonesLayer ? 'Скрыть запрещённые зоны' : 'Показать запрещённые зоны'}
               >
@@ -1073,47 +1075,28 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
               </button>
             </div>
 
-            {/* Кнопки действий карты - в двухоконном режиме рендерим ВНЕ MapContainer чтобы избежать overflow: hidden */}
-            {
-              isTwoPanelMode && (
-                <MapActionButtons
-                  onSettingsClick={() => setSettingsOpen(true)}
-                  onFavoritesClick={() => {
-                    if (process.env.NODE_ENV === 'development') {
-                    }
-                    setFavoritesOpen(true);
-                  }}
-                  favoritesCount={favoritesCount}
-                  onLegendClick={() => setLegendOpen(true)}
-                  onAddMarkerClick={() => setIsAddingMarkerMode(true)}
-                  isAddingMarkerMode={isAddingMarkerMode}
-                  onRecordTrackClick={handleRecordTrackClick}
-                  isRecording={isRecording}
-                  isTwoPanelMode={isTwoPanelMode}
-                />
-              )
-            }
+            {/* Кнопки управления по бокам карты */}
+            {!isTwoPanelMode && (
+              <MapActionButtons
+                onSettingsClick={() => setSettingsOpen(true)}
+                onFavoritesClick={() => {
+                  if (process.env.NODE_ENV === 'development') {
+                  }
+                  setFavoritesOpen(true);
+                }}
+                favoritesCount={favoritesCount}
+                onLegendClick={() => setLegendOpen(true)}
+                onAddMarkerClick={() => setIsAddingMarkerMode(true)}
+                isAddingMarkerMode={isAddingMarkerMode}
+                onRecordTrackClick={handleRecordTrackClick}
+                isRecording={isRecording}
+                isTwoPanelMode={isTwoPanelMode}
+              />
+            )}
 
             {/* Область карты */}
             <MapContainer className="facade-map-root map-area">
-              {/* Кнопки управления по бокам карты - в однооконном режиме внутри MapContainer */}
-              {!isTwoPanelMode && (
-                <MapActionButtons
-                  onSettingsClick={() => setSettingsOpen(true)}
-                  onFavoritesClick={() => {
-                    if (process.env.NODE_ENV === 'development') {
-                    }
-                    setFavoritesOpen(true);
-                  }}
-                  favoritesCount={favoritesCount}
-                  onLegendClick={() => setLegendOpen(true)}
-                  onAddMarkerClick={() => setIsAddingMarkerMode(true)}
-                  isAddingMarkerMode={isAddingMarkerMode}
-                  onRecordTrackClick={handleRecordTrackClick}
-                  isRecording={isRecording}
-                  isTwoPanelMode={isTwoPanelMode}
-                />
-              )}
+              {/* УДАЛЕНО: MapActionButtons - функции перенесены в сайдбар */}
 
               {/* Кнопка "Избранное" теперь в компоненте Map */}
 
@@ -1146,11 +1129,6 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
                 }}
                 setSelectedMarkerIds={(ids: string[]) => {
                   try { setSelectedMarkerIds(Array.isArray(ids) ? ids : []); } catch (e) { }
-                }}
-                onFavoritesClick={() => {
-                  if (process.env.NODE_ENV === 'development') {
-                  }
-                  setFavoritesOpen(true);
                 }}
                 favoritesCount={favoritesCount}
                 isFavorite={marker => {

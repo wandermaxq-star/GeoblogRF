@@ -28,13 +28,13 @@
   /* Левая граница панели должна совпадать с центральной вертикалью экрана */
   left: calc(50%);
   bottom: 1cm;
-  right: 1cm; /* 1см от правого края экрана */
+  right: 0; /* БЕЗ отступа - карта под панелью на весь экран */
   border-radius: 12px;
   overflow: hidden;
   z-index: 80;
   display: flex;
   /* Allow width to be fluid but cap it */
-  max-width: min(720px, calc(50% - 3cm));
+  max-width: min(720px, 50%);
   box-shadow: 0 14px 48px rgba(0,0,0,0.25);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;

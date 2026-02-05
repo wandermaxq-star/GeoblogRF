@@ -30,4 +30,10 @@ if (Leaflet && Leaflet.Icon && Leaflet.Icon.Default) {
     });
 }
 
-console.debug('[leafletInit] Leaflet initialized globally');
+// Side-effect import: ensure Leaflet MarkerCluster plugin is loaded and styles are bundled.
+// We use dynamic import so it executes after Leaflet was attached to window.
+void import('leaflet.markercluster').catch(() => { /* ignore - plugin may be missing in some envs */ });
+void import('leaflet.markercluster/dist/MarkerCluster.css').catch(() => { /* ignore */ });
+void import('leaflet.markercluster/dist/MarkerCluster.Default.css').catch(() => { /* ignore */ });
+
+console.debug('[leafletInit] Leaflet initialized globally (markercluster import attempted)');

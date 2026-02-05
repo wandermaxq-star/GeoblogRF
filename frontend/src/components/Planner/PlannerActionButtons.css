@@ -36,8 +36,8 @@
 /* Двухоконный режим - позиционирование относительно панели постов */
 .planner-action-buttons-container.two-panel-mode {
   position: fixed;
-  /* Центр области контента: topbar=64px, bottom=60px */
-  top: calc(64px + (100vh - 64px - 60px) / 2);
+  /* Центр области контента: topbar=64px, bottom=0px */
+  top: calc(64px + (100vh - 64px) / 2);
   transform: translateY(-50%);
   right: calc(50% + 12px);
   z-index: 1200;

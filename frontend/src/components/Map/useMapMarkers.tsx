@@ -32,7 +32,7 @@ interface UseMapMarkersOptions {
 }
 
 export function useMapMarkers(opts: UseMapMarkersOptions) {
-  const { mapRef, markerClusterGroupRef, markersData, isDarkMode, filters, searchRadiusCenter, mapSettings, openEvents, selectedEvent, leftContent, rightContent, isMapReady, setMiniPopup, setEventMiniPopup } = opts as any;
+  const { mapRef, markerClusterGroupRef, markersData, isDarkMode, filters, searchRadiusCenter, mapSettings, openEvents, selectedEvent, leftContent, rightContent, isMapReady, setMiniPopup, setEventMiniPopup, setSelectedMarkerIdForPopup, setSelectedMarkerIds, isFavorite, onHashtagClickFromPopup, onAddToFavorites, onRemoveFromFavorites, onAddToBlog } = opts as any;
 
   const activePopupRoots = useRef<Record<string, Root>>({});
 
@@ -47,18 +47,40 @@ export function useMapMarkers(opts: UseMapMarkersOptions) {
         markerClusterGroupRef.current = null;
       }
 
-      if (!mapFacade().createMarkerClusterGroup) return;
-      // ВОССТАНОВЛЕНО: настройки кластеризации
-      const markerClusterGroup = mapFacade().createMarkerClusterGroup({
+      if (!(window as any).L?.markerClusterGroup) return;
+      
+      // Создаём группу кластеров с настройками
+      const markerClusterGroup = (window as any).L.markerClusterGroup({
         showCoverageOnHover: false,
         maxClusterRadius: 50,
         spiderfyOnMaxZoom: true,
         animate: true,
         iconCreateFunction: (cluster: any) => {
-          return mapFacade().createDivIcon({
-            className: 'marker-cluster-custom',
-            html: '<span>' + cluster.getChildCount() + '</span>',
-            iconSize: [40, 40]
+          const count = cluster.getChildCount();
+          
+          // Получаем типы маркеров в кластере
+          const layers = cluster.getAllChildMarkers();
+          const categories = new Set(layers.map((layer: any) => {
+            // Используем существующую систему категорий
+            const markerData = layer.markerData || layer.options?.markerData || {};
+            return markerData.category || 'other';
+          }));
+          
+          // Определяем основную категорию кластера
+          let clusterClass = 'marker-cluster-custom';
+          if (categories.size === 1) {
+            const category = Array.from(categories)[0];
+            clusterClass += ` marker-cluster-${category}`;
+          } else if (categories.size > 1) {
+            // Если в кластере разные категории - используем смешанный стиль
+            clusterClass += ' marker-cluster-mixed';
+          }
+          
+          return (window as any).L.divIcon({
+            className: clusterClass,
+            html: `<div class="marker-cluster-content"><span class="marker-cluster-count">${count}</span></div>`,
+            iconSize: [40, 40],
+            iconAnchor: [20, 20]
           });
         }
       });
@@ -73,6 +95,13 @@ export function useMapMarkers(opts: UseMapMarkersOptions) {
           const markerCategory = markerData.category || 'other';
           const markerCategoryStyle = markerCategoryStyles[markerCategory] || markerCategoryStyles.default;
           const isPending = markerData.status === 'pending';
+
+          // Dedupe: если в группе уже есть маркер с тем же id — пропускаем добавление
+          try {
+            const existing = markerClusterGroup.getLayers && markerClusterGroup.getLayers().some((m: any) => String(m?.markerData?.id) === String(markerData.id));
+            if (existing) return;
+          } catch (err) { /* ignore dedupe check errors */ }
+
 
           const [searchRadiusCenterLat, searchRadiusCenterLng] = searchRadiusCenter;
           const isInRadius = filters.radiusOn
@@ -108,12 +137,18 @@ export function useMapMarkers(opts: UseMapMarkersOptions) {
             try { setMiniPopup(null); } catch (err) { }
           });
 
-          // Mobile/tap support: show mini popup on click (but do NOT open full popup)
+          // Click behavior: open full React popup when handler provided, otherwise show mini-popup (useful for mobile)
           leafletMarker.on?.('click', (e: any) => {
             try {
-              const pos = latLngToContainerPoint(mapFacade(), mapFacade().latLng(lat, lng));
-              setMiniPopup({ marker: markerData, position: { x: pos.x, y: pos.y } });
               e?.originalEvent?.stopPropagation?.();
+              if (typeof opts.setSelectedMarkerIdForPopup === 'function') {
+                try { if (leafletMarker.getPopup && leafletMarker.getPopup()) leafletMarker.closePopup(); } catch (err) { }
+                opts.setSelectedMarkerIdForPopup(markerData.id);
+                setMiniPopup(null);
+              } else {
+                const pos = latLngToContainerPoint(mapFacade(), mapFacade().latLng(lat, lng));
+                setMiniPopup({ marker: markerData, position: { x: pos.x, y: pos.y } });
+              }
             } catch (err) { }
           });
 
@@ -185,6 +220,12 @@ export function useMapMarkers(opts: UseMapMarkersOptions) {
               iconAnchor: [iconSize / 2, iconSize],
               popupAnchor: [0, -iconSize],
             });
+
+            // Dedupe event markers as well
+            try {
+              const exists = markerClusterGroup.getLayers && markerClusterGroup.getLayers().some((m: any) => String(m?.eventData?.id) === String(event.id));
+              if (exists) return;
+            } catch (err) { /* ignore */ }
 
             const eventMarker = mapFacade().createMarker([lat, lng], { icon: eventIcon });
             (eventMarker as any).eventData = event;

@@ -83,16 +83,16 @@ const PageLayer: React.FC<PageLayerProps> = ({ side }) => {
         return (
           <div
             key={`${side}-${pageId}`}
-            className="absolute inset-0"
             style={{
-              // ВАЖНО: Полностью скрываем неактивные панели
+              // Убрали класс absolute inset-0 - он создавал лишнюю рамку
               display: isActive ? 'block' : 'none',
               width: '100%',
               height: '100%',
               position: 'relative',
+              pointerEvents: isActive ? 'auto' : 'none',
             }}
           >
-            <div className={isInsetPanel ? 'panel-inset' : ''} style={isInsetPanel ? undefined : { width: '100%', height: '100%' }}>
+            <div className={isInsetPanel ? 'panel-inset' : ''} style={isInsetPanel ? undefined : { width: '100%', height: '100%', pointerEvents: 'auto' }}>
               {/* КРИТИЧНО: Все компоненты оборачиваем в Suspense для избежания синхронных обновлений */}
               <Suspense
                 key={`suspense-${side}-${pageId}`}

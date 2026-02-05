@@ -193,39 +193,11 @@ const MapPage: React.FC = () => {
   }, [location.search, allMarkers]);
 
   return (
-    <div className="absolute inset-0 w-full h-full">
-      {/* Блок настроек и поиска по центру сверху (отступ 3мм от ActionButtons) */}
-      <div 
-        className="absolute left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-2"
-        style={{ top: 'calc(var(--action-buttons-height) + 3px)' }}
-      >
-        {/* Кнопка настроек - такая же как кнопки быстрого выбора */}
-        <button
-          onClick={() => setSettingsOpen(true)}
-          className="bg-gray-100 text-gray-800 border border-gray-200 shadow-lg hover:shadow-xl hover:bg-gray-200 transition-all duration-300 rounded-xl p-3 flex flex-col items-center justify-center gap-2 min-w-[70px] max-w-[70px] h-[70px] relative active:scale-95"
-          title="Настройки карты"
-        >
-          <Settings className="w-5 h-5 text-gray-800" />
-          <span className="text-[10px] font-medium leading-tight text-center text-gray-800">Настройки</span>
-        </button>
-        
-        {/* Поисковая строка */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-          <input
-            type="text"
-            placeholder="Поиск мест или меток..."
-            className="bg-white rounded-full pl-10 pr-4 py-2 shadow-lg border-2 border-gray-300 min-w-[200px] focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </div>
-      
-      {/* Карта занимает весь экран */}
-      <div className="absolute inset-0 w-full h-full">
+    <div className="relative w-full h-full" style={{ position: 'fixed', inset: 0, pointerEvents: 'none' }}>
+      {/* Карта занимает весь экран - должна быть ПОЗАДИ UI элементов */}
+      <div className="absolute inset-0 w-full h-full" style={{ zIndex: 100, pointerEvents: 'auto' }}>
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10" style={{ pointerEvents: 'auto' }}>
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
               <p className="text-muted-foreground">Загрузка карты...</p>
@@ -253,10 +225,43 @@ const MapPage: React.FC = () => {
           onAddToBlog={() => {}}
           onBoundsChange={() => {}}
           favoritesCount={favorites?.favoritePlaces?.length || 0}
-          onFavoritesClick={() => {}}
           selectedMarkerIds={[]}
           zones={[]}
         />
+      </div>
+      
+      {/* UI элементы: поиск и кнопки (ПОВЕРХ карты, только на нужной площади) */}
+      <div 
+        className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2 pointer-events-auto"
+        style={{ 
+          top: 'calc(var(--action-buttons-height, 60px) + 3px)',
+          zIndex: 1200,
+          pointerEvents: 'auto'
+        }}
+      >
+        {/* Кнопка настроек */}
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="bg-gray-100 text-gray-800 border border-gray-200 shadow-lg hover:shadow-xl hover:bg-gray-200 transition-all duration-300 rounded-xl p-3 flex flex-col items-center justify-center gap-2 min-w-[70px] max-w-[70px] h-[70px] relative active:scale-95"
+          title="Настройки карты"
+          style={{ pointerEvents: 'auto' }}
+        >
+          <Settings className="w-5 h-5 text-gray-800" />
+          <span className="text-[10px] font-medium leading-tight text-center text-gray-800">Настройки</span>
+        </button>
+        
+        {/* Поисковая строка */}
+        <div className="relative" style={{ pointerEvents: 'auto' }}>
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+          <input
+            type="text"
+            placeholder="Поиск мест или меток..."
+            className="bg-white rounded-full pl-10 pr-4 py-2 shadow-lg border-2 border-gray-300 min-w-[200px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{ pointerEvents: 'auto' }}
+          />
+        </div>
       </div>
       
       {/* Настройки карты */}

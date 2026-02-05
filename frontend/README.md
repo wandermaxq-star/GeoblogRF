@@ -1036,6 +1036,7 @@ mapFacade.renderMarkers([
 ## 📄 Лицензия
 
 MIT License - см. файл [LICENSE](LICENSE)
+<<<<<<< HEAD
 ```tsx
 import { useEffect, useState } from 'react';
 import { AdminLayout } from '../../layouts/AdminLayout';
@@ -1122,6 +1123,8 @@ model UserSubscription {
   @@index([yooKassaId])
 }> npx prisma migrate dev --name add_subscription
 > 
+=======
+>>>>>>> e34fc4e (fix(map): prevent overlays from blocking map interactions (pointer-events, portal handling, loading/error overlays))
 ## 📞 Контакты
 
 - **Автор:** Максим Иванов (Simakis)

@@ -92,8 +92,8 @@ const PlannerActionButtons: React.FC<PlannerActionButtonsProps> = ({
   };
 
   // Расчёт центра области контента постов:
-  // Панель постов: top: 64px (под topbar), bottom: 60px
-  // Центр = 64px + (100vh - 64px - 60px) / 2
+  // Панель постов: top: 64px (под topbar), bottom: 0px
+  // Центр = 64px + (100vh - 64px) / 2
   return (
     <div
       className={`planner-action-buttons-container ${isDarkMode ? 'dark' : ''} ${isTwoPanelMode ? 'two-panel-mode' : ''}`}
@@ -102,8 +102,8 @@ const PlannerActionButtons: React.FC<PlannerActionButtonsProps> = ({
       style={isTwoPanelMode ? {
         position: 'fixed', // Фиксированное позиционирование относительно viewport
         right: 'calc(50% + 12px)', // Прижимаем к панели постов
-        // Центр области контента: topbar=64px, bottom=60px
-        top: 'calc(64px + (100vh - 64px - 60px) / 2)',
+        // Центр области контента: topbar=64px, bottom=0px
+        top: 'calc(64px + (100vh - 64px) / 2)',
         transform: 'translateY(-50%)', // Центрируем по вертикали
         transition: 'right 0.3s ease-in-out'
       } : undefined}

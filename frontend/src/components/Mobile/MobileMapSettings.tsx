@@ -206,6 +206,7 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
       {isOpen && (
       <div
           className="fixed inset-0 bg-black/30 z-40 transition-opacity"
+          style={{ pointerEvents: 'auto' }}
         onClick={onClose}
       />
       )}
@@ -218,7 +219,7 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
           "overflow-hidden flex flex-col transition-all duration-300",
           isOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[-20px] pointer-events-none"
         )}
-        style={{ top: 'calc(var(--action-buttons-height) + 40px + 70px + 40px)' }}
+        style={{ top: 'calc(var(--action-buttons-height) + 40px + 70px + 40px)', pointerEvents: isOpen ? 'auto' : 'none' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header - стальной градиент */}

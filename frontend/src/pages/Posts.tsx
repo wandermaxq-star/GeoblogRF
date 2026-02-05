@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom';
 import { useLayoutState } from '../contexts/LayoutContext';
 import { MirrorGradientContainer, usePanelRegistration } from '../components/MirrorGradientProvider';
-import PageLayout from '../components/PageLayout';
 import { listPosts, createPost, PostDTO, toggleReaction } from '../services/postsService';
 import { FaPlus, FaCog, FaEdit, FaFileAlt, FaCloud, FaTimes } from 'react-icons/fa';
 import { useContentStore } from '../stores/contentStore';
@@ -545,18 +544,12 @@ const PostsPage: React.FC = () => {
   if (showPostConstructor) {
     return (
       <MirrorGradientContainer className="page-layout-container page-container posts-mode">
-        <div className="page-main-area">
-          <div className="page-content-wrapper">
-            <div className="page-main-panel relative">
-              <Suspense fallback={<div className="text-center p-8">Загрузка конструктора...</div>}>
-                <LazyPostConstructor
-                  onSave={handlePostConstructorSave}
-                  onClose={() => setShowPostConstructor(false)}
-                />
-              </Suspense>
-            </div>
-          </div>
-        </div>
+        <Suspense fallback={<div className="text-center p-8">Загрузка конструктора...</div>}>
+          <LazyPostConstructor
+            onSave={handlePostConstructorSave}
+            onClose={() => setShowPostConstructor(false)}
+          />
+        </Suspense>
       </MirrorGradientContainer>
     );
   }
@@ -593,26 +586,17 @@ const PostsPage: React.FC = () => {
   if (selectedPost && !showInteractivePost) {
     return (
       <MirrorGradientContainer className="page-layout-container page-container posts-mode">
-        <div className="page-main-area">
-          <div className="page-content-wrapper">
-            <div className="page-main-panel relative">
-              <Suspense fallback={<div className="text-center p-8">Загрузка деталей поста...</div>}>
-                <LazyPostDetail post={selectedPost} onBack={handleBackToList} />
-              </Suspense>
-            </div>
-          </div>
-        </div>
+        <Suspense fallback={<div className="text-center p-8">Загрузка деталей поста...</div>}>
+          <LazyPostDetail post={selectedPost} onBack={handleBackToList} />
+        </Suspense>
       </MirrorGradientContainer>
     );
   }
 
   return (
     <MirrorGradientContainer className="page-layout-container page-container posts-mode">
-      <div className="page-main-area">
-        <div className="page-content-wrapper">
-          <div className="page-main-panel relative">
-            {/* СТАТИЧНЫЙ ЗАГОЛОВОК */}
-            <div className="posts-static-header">
+      {/* СТАТИЧНЫЙ ЗАГОЛОВОК */}
+      <div className="posts-static-header">
               <div className="posts-title-row">
                 <h1 className="posts-main-title">Лента контента</h1>
                 {/* Кнопка закрытия панели - только в двухоконном режиме */}
@@ -726,9 +710,6 @@ const PostsPage: React.FC = () => {
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 

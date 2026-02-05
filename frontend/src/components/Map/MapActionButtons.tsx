@@ -91,9 +91,9 @@ const MapActionButtons: React.FC<MapActionButtonsProps> = ({
   };
 
   // Расчёт центра области контента постов:
-  // Панель постов: top: 64px (под topbar), bottom: 60px
-  // Центр контента = 64px + (100vh - 64px - 60px) / 2
-  // = 64px + 50vh - 32px - 30px = 50vh + 2px
+  // Панель постов: top: 64px (под topbar), bottom: 0px
+  // Центр контента = 64px + (100vh - 64px) / 2
+  // = 64px + 50vh - 32px = 50vh + 32px
   // Но так как transform: translateY(-50%) центрирует элемент,
   // нам нужен центр области = 64 + (высота области / 2)
   return (
@@ -104,9 +104,9 @@ const MapActionButtons: React.FC<MapActionButtonsProps> = ({
       style={isTwoPanelMode ? {
         position: 'fixed', // Фиксированное позиционирование относительно viewport
         right: 'calc(50% + 12px)', // Прижимаем к панели постов
-        // Центр области контента: topbar=64px, bottom=60px
-        // top = 64px + (100vh - 64px - 60px) / 2 = 64px + 50vh - 62px = 50vh + 2px
-        top: 'calc(64px + (100vh - 64px - 60px) / 2)',
+        // Центр области контента: topbar=64px, bottom=0px
+        // top = 64px + (100vh - 64px) / 2 = 64px + 50vh - 32px = 50vh + 32px
+        top: 'calc(64px + (100vh - 64px) / 2)',
         transform: 'translateY(-50%)', // Центрируем по вертикали
         transition: 'right 0.3s ease-in-out'
       } : undefined}
