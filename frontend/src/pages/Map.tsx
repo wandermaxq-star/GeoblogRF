@@ -1115,7 +1115,8 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
 
             {/* Область карты (рендерим в portal, чтобы избежать обрезания родительскими панелями) */}
             {typeof document !== 'undefined' && facadeMapRootEl && ReactDOM.createPortal(
-              <MapContainer className="facade-map-root map-area">
+              <MapContainer className={`facade-map-root map-area ${isTwoPanelMode ? 'two-panel-mode' : 'single-panel-mode'}`}>
+
                 {/* Кнопки управления по бокам карты - в однооконном режиме внутри MapContainer */}
                 {!isTwoPanelMode && (
                   <MapActionButtons

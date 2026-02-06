@@ -1,0 +1,1483 @@
+/* Модульная система стилей для всех страниц */
+
+/* ===== CORE LAYOUT (минимальные, предсказуемые правила) ===== */
+:root {
+  /* layout tokens (override in _base.css if needed) */
+  --page-padding: 24px;
+  --topbar-height: var(--header-height, 70px);
+  --sidebar-width: var(--sidebar-width, 4rem);
+  --z-topbar: 1200;
+  --z-sidebar: 1150;
+  --z-map: 100;
+  --z-overlay: 1100;
+}
+
+/* Основной контейнер страницы — минимальный, предсказуемый */
+.page-layout-container {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.page-container {
+  width: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: var(--page-padding);
+  box-sizing: border-box;
+}
+
+.page-main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* allow internal scrolling */
+}
+
+.page-content-wrapper {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.page-main-panel {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* Кнопки управления */
+.page-side-button { z-index: var(--z-overlay); }
+.page-side-buttons { z-index: calc(var(--z-overlay) + 10); }
+
+/* NOTE: Specific mode styles are in _modes.css. Keep this file for generic layout only. */
+/* Для planner-mode - переопределяем все ограничения для полного экрана */
+.page-layout-container.planner-mode {
+  height: 100vh;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Blog page: narrow edge blur strips (2cm) at left and right, full height, pointer-events none (kept minimal) */
+.page-container.blog-page::before,
+.page-container.blog-page::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: 2cm;
+  pointer-events: none; /* allow clicks through */
+  z-index: calc(var(--z-overlay) - 10);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255,255,255,0.55);
+}
+
+.page-container.blog-page::before { left: 0; }
+.page-container.blog-page::after { right: 0; }
+
+/* Make the map non-interactive while posts panel is active, but keep the panel interactive */
+.page-container.blog-page .facade-map-root {
+  pointer-events: none; /* map visible but non-interactive */
+}
+
+.page-container.blog-page .page-main-panel {
+  pointer-events: auto; /* allow interactions with posts panel */
+}
+
+@media (max-width: 768px) {
+  /* On small screens make the strips smaller so they don't consume too much space */
+  .page-container.blog-page::before,
+  .page-container.blog-page::after { width: 1rem; }
+}
+
+/* Для map-mode - переопределяем все ограничения для полного экрана */
+.page-layout-container.map-mode {
+  height: 100vh;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* ===== ДВУХОКОННЫЙ РЕЖИМ: СМЕЩЕНИЕ ЦЕНТРА КАРТЫ ===== */
+/* 
+ * В двухоконном режиме (карта + посты) нужно сместить "центр" карты
+ * на 1/4 экрана влево, чтобы Москва была в центре видимой области карты
+ * (между sidebar и левым краем постов)
+ */
+
+/* Для Leaflet карт - центр смещается через JS в компоненте карты
+   При необходимости можно добавить CSS transform:
+   .has-left-panel .leaflet-container { transform: translateX(-25%); }
+*/
+
+/* Для Yandex Maps - центр управляется через margin API в JS */
+
+
+
+/* Заголовок страницы */
+.page-header {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Основная область контента */
+.page-main-area {
+  flex: 1;
+  position: relative;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+/* Обертка контента */
+.page-content-wrapper {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  position: relative;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+/* Главная панель */
+.page-main-panel {
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.10);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  flex: 1;
+}
+
+/* For blog page we prefer narrow edge blur strips instead of full panel blur so inspector clicks work */
+.page-container.blog-page .page-main-panel {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* ===== КНОПКИ УПРАВЛЕНИЯ ===== */
+
+/* Кнопки по бокам */
+.page-side-button {
+  position: absolute;
+  top: calc(47% + 10px);
+  transform: translateY(-50%);
+  z-index: 250;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  opacity: 1;
+  visibility: visible;
+}
+
+.page-side-button:hover {
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.page-side-button.left {
+  left: 16px;
+  z-index: 250;
+}
+
+/* Контейнер правых кнопок с поддержкой CSS-переменных для позиционирования */
+.page-side-buttons.right {
+  position: absolute;
+  right: var(--right-offset, 14px);
+  top: var(--right-top, 50%);
+  transform: translateY(var(--right-translateY, -50%));
+  display: flex;
+  flex-direction: column;
+  gap: var(--right-gap, 14px);
+  z-index: 1200;
+}
+
+/* Кнопки внутри правого контейнера — без абсолютного позиционирования */
+.page-side-buttons.right .page-side-button {
+  position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+  transform: none;
+  width: var(--right-button-size, 47px);
+  height: var(--right-button-size, 47px);
+  border: var(--right-button-border-width, 2px) solid var(--right-button-border-color, #8E9093);
+  background: var(--right-button-bg, #ffffff);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin: 0;
+}
+
+.page-side-buttons.right .page-side-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Правые кнопки по умолчанию: якорим справа по центру (standalone вариант) */
+.page-side-button.right {
+  position: absolute;
+  right: 17px;
+  top: 48%;
+  transform: translateY(-50%);
+  width: var(--right-button-size, 47px);
+  height: var(--right-button-size, 47px);
+  z-index: 41;
+  border: var(--right-button-border-width, 1px) solid var(--right-button-border-color, #e5e7eb);
+  background: var(--right-button-bg, rgba(255, 255, 255, 0.9));
+}
+
+/* Группа кнопок слева */
+.page-side-buttons.left {
+  position: absolute;
+  left: var(--left-offset, 16px);
+  top: var(--left-top, 50%);
+  transform: var(--left-translateY, translateY(-50%));
+  z-index: 250;
+  display: flex;
+  flex-direction: column;
+  gap: var(--left-gap, 5px);
+  /* расстояние между кнопками */
+  opacity: 1;
+  visibility: visible;
+}
+
+.page-side-buttons.left .page-side-button {
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: none;
+  width: var(--left-button-size, 47px);
+  height: var(--left-button-size, 47px);
+  border: var(--left-button-border-width, 2px) solid var(--left-button-border-color, #8E9093);
+  background: var(--left-button-bg, #ffffff);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin: 0;
+  opacity: 1;
+  visibility: visible;
+  z-index: 250;
+}
+
+.page-side-buttons.left .page-side-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Стили для кнопок на карте - теперь используем общие стили page-side-buttons */
+.map-side-buttons {
+  position: absolute;
+  left: 16px;
+  top: 45%;
+  transform: translateY(-50%);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  /* 5мм между кнопками */
+}
+
+.map-side-buttons .page-side-button {
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: none;
+}
+
+/* Специальные стили для кнопок карты */
+.page-side-buttons.left .page-side-button {
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: none;
+  margin: 0;
+  width: var(--left-button-size, 47px);
+  height: var(--left-button-size, 47px);
+  border: var(--left-button-border-width, 2px) solid var(--left-button-border-color, #8E9093);
+  background: var(--left-button-bg, #ffffff);
+}
+
+/* Стили для кнопок в правом контейнере карты */
+.page-side-buttons.right .page-side-button {
+  position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+  transform: none;
+  margin: 0;
+  width: var(--right-button-size, 47px);
+  height: var(--right-button-size, 47px);
+  border: var(--right-button-border-width, 2px) solid var(--right-button-border-color, #8E9093);
+  background: var(--right-button-bg, #ffffff);
+}
+
+/* Специфичные позиции для кнопок в Planner */
+.page-side-buttons.left .page-side-button:nth-child(1) {
+  /* AI Гид - выше центра на 5мм */
+  margin-top: -5px;
+}
+
+.page-side-buttons.left .page-side-button:nth-child(2) {
+  /* Перестроение маршрута - по центру */
+  margin-top: 0;
+}
+
+.page-side-buttons.left .page-side-button:nth-child(3) {
+  /* Порядок меток - ниже центра на 5мм */
+  margin-top: 5px;
+  top: auto;
+  transform: none;
+}
+
+/* ===== ГОРИЗОНТАЛЬНЫЙ БЛОК НАСТРОЕК КАЛЕНДАРЯ ===== */
+.calendar-actions-horizontal {
+  padding: 12px 20px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* Белый фон блока */
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+
+
+/* ===== ВЫДВИГАЮЩИЕСЯ ПАНЕЛИ (СТАРЫЕ СТИЛИ - ОСТАВЛЯЕМ ДЛЯ ОБРАТНОЙ СОВМЕСТИМОСТИ) ===== */
+
+/* Выдвигающиеся панели */
+.page-slide-panel {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 95%;
+  /* Увеличиваем высоту с 80% до 95% */
+  width: 300px;
+  background: white;
+  backdrop-filter: blur(10px);
+  border-radius: 0;
+  box-shadow: none;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 100;
+  display: none;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+  border: 1px solid #e2e8f0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* Сайдбар открывается ТОЛЬКО при клике - убираем hover */
+.page-slide-panel:hover {
+  /* Явно не открываем при hover */
+  cursor: pointer;
+}
+
+.page-slide-panel.dark-glass {
+  /* Тёмное матовое стекло (осветлён на 4 оттенка для лучшей прозрачности, как у блока кнопок) */
+  background: linear-gradient(135deg, rgba(34, 38, 48, 0.85), rgba(46, 52, 68, 0.82));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 25px 50px rgba(5, 8, 15, 0.5), 0 8px 20px rgba(10, 14, 25, 0.35);
+  color: #f1f5f9;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+.page-slide-panel.dark-glass .page-slide-panel-content {
+  background: transparent;
+  color: inherit;
+}
+
+.page-slide-panel.dark-glass .page-slide-panel-header {
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  color: inherit;
+}
+
+.page-slide-panel.dark-glass .page-slide-panel-header h2 {
+  color: inherit;
+}
+
+.page-slide-panel.dark-glass .page-slide-panel-close {
+  color: rgba(255, 255, 255, 0.82);
+  border-radius: 8px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.page-slide-panel.dark-glass .page-slide-panel-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+/* Стили для панелей календаря с GlassPanel - ПРОЗРАЧНОЕ стекло как в map.tsx и planner.tsx */
+.calendar-panel.glass-panel {
+  /* Унифицированные размеры как на planner.tsx */
+  width: 400px;
+
+  /* Fallback для старых браузеров */
+  background: rgba(255, 255, 255, 0.1);
+
+  /* Стеклянный эффект - точно как в MapActionButtons */
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+
+  border: 1px solid rgba(255, 255, 255, 0.2);
+
+  /* Градиент для читаемости - ПРОЗРАЧНЫЙ */
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.05) 100%);
+}
+
+.calendar-panel .glass-panel-content {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  color: #000000;
+  /* Строго чёрный текст */
+  font-size: 16px;
+  /* Крупный текст как на map.tsx */
+}
+
+.calendar-panel-content {
+  color: #000000;
+  /* Строго чёрный текст */
+  font-size: 16px;
+  /* Крупный текст */
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Заменяем все белые фоны на матовое стекло */
+.calendar-panel .bg-white,
+.calendar-panel [class*="bg-white"] {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+}
+
+/* Стили для bg-[#f4f4f4] элементов в calendar-panel */
+.calendar-panel [style*="background"] {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+}
+
+/* Стили для аккордеонов - матовое стекло */
+
+/* ===== Persistent background and glass helpers ===== */
+
+/* Persistent background map container */
+.persistent-map-bg {
+  background-color: transparent;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  /* фон не интерактивен */
+}
+
+/* Ensure interactive map container fills viewport and sits behind topbar/sidebar */
+/* ИСПРАВЛЕНО: убрали z-index: 0, чтобы MapContainer мог управлять своим z-index */
+.map-container,
+.leaflet-container,
+#map,
+.map-root {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* z-index управляется через Map.styles.ts (MapContainer имеет z-index: 1) */
+}
+
+/* КРИТИЧНО: Явно задаём z-index для Leaflet panes, чтобы маркеры были видны */
+/* Leaflet использует систему панелей (panes) для разных типов объектов */
+.leaflet-map-pane {
+  z-index: 1;
+  /* Основная панель карты */
+}
+
+.leaflet-tile-pane {
+  z-index: 200;
+  /* Тайлы карты (фон) */
+}
+
+.leaflet-overlay-pane {
+  z-index: 400;
+  /* Полигоны, полилинии */
+}
+
+.leaflet-shadow-pane {
+  z-index: 500;
+  /* Тени маркеров */
+}
+
+.leaflet-marker-pane {
+  z-index: 600;
+  /* МАРКЕРЫ - должны быть выше всех элементов карты */
+}
+
+.leaflet-tooltip-pane {
+  z-index: 650;
+  /* Подсказки */
+}
+
+.leaflet-popup-pane {
+  z-index: 700;
+  /* Попапы - самые верхние */
+}
+
+/* Glassmorphism helpers for side panels */
+.glass-sidebar {
+  background: rgba(255, 255, 255, 0.32);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  backdrop-filter: blur(10px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 18px rgba(23, 23, 23, 0.06);
+}
+
+.glass-sidebar--dark {
+  background: rgba(10, 12, 16, 0.32);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  backdrop-filter: blur(10px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Ensure right activity feed wrapper is transparent so backdrop-filter works */
+.activity-feed {
+  background: transparent;
+  /* Скрываем скролл на activity-feed контейнере */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overflow: visible;
+}
+
+.activity-feed::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* If you want interactive map area on left only, add overlay that enables pointer-events there */
+.persistent-map-interactive-left {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: calc(50% - 1px);
+  /* matching MainLayout left width when both panels open */
+  z-index: 1;
+  /* above background map but below sidebars/content */
+  pointer-events: auto;
+}
+
+.calendar-panel button[class*="px-4"] {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #000000;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.calendar-panel button[class*="px-4"]:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Стили для контента аккордеонов */
+.calendar-panel [class*="border-t"] {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  border-radius: 0 0 12px 12px;
+}
+
+/* Стили для всех текстов - строго чёрный и крупный */
+.calendar-panel label,
+.calendar-panel span,
+.calendar-panel div,
+.calendar-panel p,
+.calendar-panel input,
+.calendar-panel textarea,
+.calendar-panel select {
+  color: #000000;
+  font-size: 16px;
+}
+
+.calendar-panel label {
+  font-weight: 600;
+}
+
+.calendar-panel input,
+.calendar-panel textarea,
+.calendar-panel select {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #000000;
+  font-size: 16px;
+  border-radius: 8px;
+  padding: 10px 12px;
+  transition: all 0.3s ease;
+}
+
+.calendar-panel input:focus,
+.calendar-panel textarea:focus,
+.calendar-panel select:focus {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+}
+
+.calendar-panel input::placeholder,
+.calendar-panel textarea::placeholder {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+/* Стили для SmartEventSearch внутри GlassPanel */
+.calendar-panel .glass-panel-content>div[class*="Wrapper"] {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  color: #000000;
+  font-size: 16px;
+}
+
+.calendar-panel .glass-panel-content>div[class*="Wrapper"]>div[class*="Header"] {
+  display: none;
+  /* Скрываем заголовок SmartEventSearch, так как используем GlassHeader */
+}
+
+/* Стили для кнопок в панелях календаря - применяем стили GlassButton */
+.calendar-panel button:not(.glass-panel-close):not(.calendar-panel-close):not([class*="px-4"]) {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border-radius: 12px;
+  padding: 12px 24px;
+  color: #000000;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.calendar-panel button:not(.glass-panel-close):not(.calendar-panel-close):not([class*="px-4"]):hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Стили для панели легенды */
+.calendar-legend-panel.glass-panel {
+  width: 300px;
+}
+
+.calendar-legend-panel .glass-panel-content {
+  color: #000000;
+  font-size: 16px;
+}
+
+.calendar-legend-panel h3 {
+  color: #000000;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* Стеклянные кнопки для календаря - как в MapActionButtons */
+.calendar-glass-button {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  color: rgba(0, 0, 0, 0.8);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.calendar-glass-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.calendar-glass-button:active {
+  transform: translateY(0);
+}
+
+.calendar-glass-button-primary {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: rgba(0, 0, 0, 0.9);
+}
+
+.calendar-glass-button-primary:hover {
+  background: rgba(59, 130, 246, 0.3);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+.calendar-glass-button-success {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: rgba(0, 0, 0, 0.9);
+}
+
+.calendar-glass-button-success:hover {
+  background: rgba(16, 185, 129, 0.3);
+  border-color: rgba(16, 185, 129, 0.5);
+}
+
+.calendar-glass-button-secondary {
+  background: rgba(107, 114, 128, 0.2);
+  border-color: rgba(107, 114, 128, 0.4);
+  color: rgba(0, 0, 0, 0.9);
+}
+
+.calendar-glass-button-secondary:hover {
+  background: rgba(107, 114, 128, 0.3);
+  border-color: rgba(107, 114, 128, 0.5);
+}
+
+/* Кнопки аккордеона в форме создания события - точно как GlassButton */
+.calendar-accordion-button {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border-radius: 12px;
+  color: rgba(0, 0, 0, 0.8);
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.calendar-accordion-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.02);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.calendar-panel button[class*="px-4"] {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #000000;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.calendar-panel button[class*="px-4"]:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.calendar-legend-panel span {
+  color: #000000;
+  font-size: 16px;
+}
+
+/* Футер с кнопками - матовое стекло */
+.calendar-panel [class*="bg-\\[\\#dadada\\]"] {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.calendar-panel-header {
+  padding: 0.85rem 1.2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 20px 20px 0 0;
+}
+
+.calendar-panel-header h2 {
+  color: #f8fafc;
+}
+
+.calendar-panel-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.calendar-panel-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.page-slide-panel.left {
+  left: -300px;
+  transform: translateY(-50%) translateX(0);
+}
+
+.page-slide-panel.left.open {
+  display: flex;
+  left: 3mm;
+  transform: translateY(-50%);
+  opacity: 1;
+  pointer-events: auto;
+  border-top-right-radius: 20px;
+  border-bottom-right-radius: 20px;
+  box-shadow: 8px 0 25px rgba(0, 0, 0, 0.15);
+}
+
+/* AI Guide панель - открывается поверх настроек */
+.page-slide-panel.left.ai-guide.open {
+  z-index: 101;
+  left: 6mm;
+}
+
+.page-slide-panel.right {
+  right: -300px;
+  transform: translateY(-50%) translateX(0);
+}
+
+.page-slide-panel.right.open {
+  display: flex;
+  right: 3mm;
+  transform: translateY(-50%);
+  opacity: 1;
+  pointer-events: auto;
+  border-top-left-radius: 20px;
+  border-bottom-left-radius: 20px;
+  box-shadow: -8px 0 25px rgba(0, 0, 0, 0.15);
+}
+
+.page-slide-panel-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  animation: slideInContent 0.5s ease-out 0.2s both;
+  box-sizing: border-box;
+  flex: 1;
+  /* Добавляем flex: 1 для растяжения */
+  min-height: 0;
+  /* Важно для корректной работы flex */
+}
+
+@keyframes slideInContent {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.page-slide-panel.right .page-slide-panel-content {
+  animation: slideInContentRight 0.5s ease-out 0.2s both;
+}
+
+@keyframes slideInContentRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Показываем заголовки панелей */
+.page-slide-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #e8e8e8;
+  flex-shrink: 0;
+}
+
+.page-slide-panel-header h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+  text-align: center;
+  flex: 1;
+}
+
+/* Кнопка закрытия */
+.page-slide-panel-close {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8em;
+  min-width: 20px;
+  min-height: 20px;
+}
+
+.page-slide-panel-close:hover {
+  background: #e8e8e8;
+  color: #475569;
+}
+
+/* ===== ЗАТЕМНЕНИЕ ===== */
+
+/* Затемнение при открытых панелях - ОТКЛЮЧЕНО */
+.page-overlay {
+  display: none;
+}
+
+.page-overlay.active {
+  display: none;
+}
+
+/* ===== СПЕЦИАЛЬНЫЕ МОДИФИКАТОРЫ ===== */
+
+/* Для карты - убираем все отступы для полного экрана (как планировщик) */
+.page-container.map-mode {
+  padding: 0;
+  margin: 0;
+  top: 0;
+  left: 0;
+}
+
+.page-container.map-mode .page-main-area {
+  height: 100%;
+  /* Пропускаем клики к карте */
+  pointer-events: none;
+}
+
+.page-container.map-mode .page-content-wrapper {
+  pointer-events: none;
+}
+
+.page-container.map-mode .page-main-panel {
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  /* Пропускаем клики сквозь панель к карте Leaflet */
+  pointer-events: none;
+}
+
+/* Интерактивные элементы внутри map-mode должны получать события */
+.page-container.map-mode .page-main-panel>* {
+  pointer-events: auto;
+}
+
+/* Для чата - стандартные ограничения */
+/* .page-container.chat-mode {
+  Использует стандартные стили
+} */
+
+/* Для календаря - компактный режим */
+.page-container.calendar-mode {
+  padding: 7mm;
+  padding-top: 15mm;
+  margin-left: 3rem;
+}
+
+.page-container.calendar-mode .page-header {
+  padding: 0.5rem 1rem;
+}
+
+.page-container.calendar-mode .page-main-panel {
+  border-radius: 20px;
+}
+
+/* Для планировщика - полный экран без ограничений */
+.page-container.planner-mode {
+  padding: 0;
+  margin: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  min-height: 100vh;
+  background: transparent;
+  position: absolute;
+}
+
+.page-container.planner-mode .page-main-panel {
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  /* Пропускаем клики к карте планировщика */
+  pointer-events: none;
+}
+
+/* Интерактивные элементы внутри planner-mode должны получать события */
+.page-container.planner-mode .page-main-panel>* {
+  pointer-events: auto;
+}
+
+/* ===== СПЕЦИАЛЬНЫЙ РЕЖИМ ДЛЯ BLOGPAGE ===== */
+.blog-page .page-slide-panel.left {
+  width: 80%;
+  max-width: none;
+}
+
+/* ===== АДАПТИВНОСТЬ ===== */
+
+@media (max-width: 768px) {
+  .page-slide-panel {
+    width: 80%;
+  }
+
+  .page-accordion-panel {
+    max-width: 300px;
+
+    /* Общий wrapper для однооконного режима (для вывода страниц Posts и Activity)
+   Применяется к общему окну, не затрагивает внутренние блоки постов/ленты */
+    .global-content-window {
+      max-width: calc(100% - 4cm);
+      margin: -1cm auto 1cm auto;
+      /* поднять на 1cm, снизу 1cm отступ */
+      padding: 0;
+      /* сами блоки внутри не трогаем */
+      box-sizing: border-box;
+      width: 100%;
+      height: calc(100% - 0px);
+      transition: margin 180ms ease, max-width 180ms ease;
+      pointer-events: auto;
+    }
+
+    @media (max-width: 920px) {
+      .global-content-window {
+        max-width: 100%;
+        margin: 0.6rem auto;
+      }
+    }
+
+    left: 70px;
+    right: 70px;
+  }
+
+  .page-side-button {
+    width: 45px;
+    height: 45px;
+    top: calc(50% + 8px);
+  }
+
+  .page-side-button.left {
+    left: 1rem;
+  }
+
+  .page-side-button.right {
+    right: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-slide-panel {
+    width: 90%;
+  }
+
+  .page-accordion-panel {
+    max-width: 300px;
+    left: 60px;
+    right: 60px;
+  }
+
+  .page-side-button {
+    width: 40px;
+    height: 40px;
+    top: calc(50% + 6px);
+  }
+}
+
+/* ===== АНИМАЦИИ ===== */
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.page-slide-panel.left.open {
+  animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.page-slide-panel.right.open {
+  animation: slideInRight 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.page-overlay.active {
+  animation: fadeIn 0.3s ease;
+}
+
+/* ===== СТИЛИ ДЛЯ POSTS-MODE ===== */
+
+/* Основной контейнер posts-mode */
+.page-container.posts-mode {
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-container.posts-mode .page-main-area {
+  /* Контейнер с отступами от краёв экрана */
+  position: absolute;
+  top: 1cm;
+  /* 1cm от верха (под topbar) */
+  bottom: 20px;
+  /* 20px (~5mm) от низа экрана - ПОПРОБУЙТЕ ИЗМЕНИТЬ */
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 80px);
+  /* отступы от sidebar */
+  max-width: 1000px;
+  /* Гарантируем что контейнер не растянется до низа */
+  max-height: calc(100% - 1cm - 20px);
+
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+}
+
+.page-container.posts-mode .page-content-wrapper {
+  height: 100%;
+  width: 100%;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+}
+
+/* Posts/blog styles migrated to `./_content.css` */
+/* See `frontend/src/styles/_content.css` for authoritative content styles */
+
+/* Также скрываем скролл на page-main-panel */
+.page-container.posts-mode .page-main-panel>div,
+.page-container.posts-mode .p-6 {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.page-container.posts-mode .page-main-panel>div::-webkit-scrollbar,
+.page-container.posts-mode .p-6::-webkit-scrollbar {
+  display: none;
+  width: 0;
+}
+
+/* Posts mode styles have been migrated to `frontend/src/styles/_content.css`.
+   Keep `_content.css` as the canonical source for posts/blog related layout and scroll behavior.
+   Removed legacy duplicates from this file to avoid conflicts. */
+
+/* Back-compat helper (minimal) */
+.posts-inner-container { display: none; }
+/* ===== СТИЛИ ДЛЯ ACTIVITY-MODE - GLASSMORPHISM КОНТЕЙНЕР ===== */
+
+/* Основной контейнер activity - аналогично posts-mode */
+.page-layout-container.activity-map-background {
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.page-layout-container.activity-map-background .page-main-panel {
+  position: absolute;
+  /* Позиционирование как у posts */
+  top: calc(64px + 1cm);
+  bottom: 5mm;
+  left: 10mm;
+  right: 10mm;
+  width: auto;
+  height: auto;
+
+  /* Glassmorphism эффект */
+  background: rgba(255, 255, 255, 0.18);
+  /* Temporarily disable heavy blur to avoid page-wide effect */
+  -webkit-backdrop-filter: none;   /* disabled temporarily */
+  backdrop-filter: none;           /* disabled temporarily */
+
+  /* Скруглённые углы */
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.15),
+    0 2px 8px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+
+  overflow: hidden;
+}
+
+/* Двухоконный режим для activity */
+.has-left-panel .page-layout-container.activity-map-background .page-main-panel {
+  /* Позиционирование задаётся родительским контейнером в MainLayout */
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+}
+
+/* Внутренний контейнер для activity */
+.activity-inner-container {
+  position: absolute;
+  top: 4mm;
+  bottom: 5mm;
+  left: 4mm;
+  right: 4mm;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.activity-inner-container::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Скрываем скроллы на всех уровнях activity */
+.page-layout-container.activity-map-background,
+.page-layout-container.activity-map-background .page-main-area,
+.page-layout-container.activity-map-background .page-content-wrapper,
+.page-layout-container.activity-map-background .page-main-panel,
+.page-layout-container.activity-map-background .map-content-container,
+.page-layout-container.activity-map-background .map-area,
+.page-layout-container.activity-map-background .full-height-content {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.page-layout-container.activity-map-background::-webkit-scrollbar,
+.page-layout-container.activity-map-background .page-main-area::-webkit-scrollbar,
+.page-layout-container.activity-map-background .page-content-wrapper::-webkit-scrollbar,
+.page-layout-container.activity-map-background .page-main-panel::-webkit-scrollbar,
+.page-layout-container.activity-map-background .map-content-container::-webkit-scrollbar,
+.page-layout-container.activity-map-background .map-area::-webkit-scrollbar,
+.page-layout-container.activity-map-background .full-height-content::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Контент внутри activity - скрытый скролл */
+.page-layout-container.activity-map-background .full-height-content {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 16px;
+}
+
+/* Стили для кнопок постов */
+.page-container.posts-mode .page-side-button.right {
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e5e7eb;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.page-container.posts-mode .page-side-button.right:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Стили для выдвигающихся панелей постов */
+.page-slide-panel.right {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 350px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-slide-panel.right.open {
+  transform: translateX(0);
+}
+
+/* Дублирующий стиль удален - используется основной выше */
+
+/* Затемнение при открытых панелях */
+.page-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  z-index: 15;
+}
+
+.page-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}

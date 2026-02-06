@@ -39,6 +39,7 @@ import { FEATURES } from '../../config/features';
 import { getDistanceFromLatLonInKm } from '../../utils/russiaBounds';
 import { getMarkerIconPath, getCategoryColor, getFontAwesomeIconName } from '../../constants/markerCategories';
 import { mapFacade, INTERNAL } from '../../services/map_facade/index';
+import ErrorBoundary from '../ErrorBoundary';
 import { initMapDebug } from '../../utils/devMapDebug';
 import type { MapConfig } from '../../services/map_facade/index';
 import { useMapStateStore } from '../../stores/mapStateStore';
@@ -155,6 +156,36 @@ const Map: React.FC<MapProps> = ({
     const tileLayerRef = useRef<any | null>(null);
     const isAddingMarkerModeRef = useRef(false);
     const initRetryRef = useRef<number>(0);
+    // Сохраняем исходный центр карты, чтобы восстановить при выходе из двухоконного режима
+    const originalCenterRef = useRef<[number, number] | null>(null);
+
+    // Helper: safely add a Leaflet layer to the map when mapRef may be not ready yet.
+    const safeAddTo = (layer: any, attempt = 0) => {
+      if (!layer) {
+        if (process.env.NODE_ENV === 'development') console.warn('[Map] safeAddTo: layer is null or undefined', new Error().stack);
+        return;
+      }
+      if (typeof layer.addTo !== 'function') {
+        if (process.env.NODE_ENV === 'development') console.warn('[Map] safeAddTo: layer.addTo is not a function', layer);
+        return;
+      }
+      const map = mapRef.current;
+      if (map) {
+        try {
+          layer.addTo(map);
+        } catch (e) {
+          console.warn('[Map] safeAddTo failed to add layer:', e);
+        }
+        return;
+      }
+      // Retry a few times with backoff
+      if (attempt < 6) {
+        const delay = 100 * (attempt + 1);
+        setTimeout(() => safeAddTo(layer, attempt + 1), delay);
+      } else {
+        console.warn('[Map] safeAddTo: mapRef not ready after retries. Layer not added.');
+      }
+    }; 
 
     // --- PORTAL ---
     const [portalEl] = useState<HTMLElement | null>(() => {
@@ -181,6 +212,7 @@ const Map: React.FC<MapProps> = ({
     const openEvents = useEventsStore((state: EventsState) => state.openEvents);
     const selectedEvent = useEventsStore((state: EventsState) => state.selectedEvent);
     const setSelectedEvent = useEventsStore((state: EventsState) => state.setSelectedEvent);
+    const mapDisplayMode = useMapDisplayMode();
 
     // --- STATE ---
     const [isLoading, setIsLoading] = useState(true);
@@ -243,7 +275,8 @@ const Map: React.FC<MapProps> = ({
     // --- PORTAL VISIBILITY ---
     useEffect(() => {
         if (!portalEl) return;
-        // Показываем портал, если карта активна в любой из панелей или если левая панель не задана
+        // ИСПРАВЛЕНО: Портал показывается всегда когда карта активна (leftContent === 'map'),
+        // или когда shouldShowFullscreen === true, или когда левая панель не задана (карта по умолчанию).
         const shouldShowPortal = leftContent === 'map' || rightContent === 'map' || leftContent === null || mapDisplayMode.shouldShowFullscreen;
         if (!shouldShowPortal) {
             portalEl.style.display = 'none';
@@ -267,7 +300,6 @@ const Map: React.FC<MapProps> = ({
     }, []);
 
     // --- FACADE MAP TOP OFFSET ---
-    const mapDisplayMode = useMapDisplayMode();
 
     // Динамическое управление видимостью и классом контейнера карты
     useEffect(() => {
@@ -275,13 +307,16 @@ const Map: React.FC<MapProps> = ({
         const facadeMapRoot = document.querySelector('.facade-map-root') as HTMLElement | null;
         
         if (mapContainer) {
-            // Управляем видимостью на основе режима отображения
+            // ИСПРАВЛЕНО: Карта всегда видима и интерактивна когда shouldShowFullscreen === true
+            // (что теперь включает случай leftContent === 'map')
             if (mapDisplayMode.shouldShowFullscreen) {
                 mapContainer.style.display = 'block';
                 mapContainer.style.visibility = 'visible';
                 mapContainer.style.pointerEvents = 'auto';
+                mapContainer.style.zIndex = '1';
             } else {
-                // Скрываем карту когда открыты только Posts + Activity
+                // Скрываем карту ТОЛЬКО когда она действительно не нужна
+                // (когда leftContent !== 'map' и нет фонового режима)
                 mapContainer.style.display = 'none';
                 mapContainer.style.visibility = 'hidden';
                 mapContainer.style.pointerEvents = 'none';
@@ -302,13 +337,19 @@ const Map: React.FC<MapProps> = ({
         
         // Инвалидируем размер карты при изменении режима
         if (mapRef.current && mapDisplayMode.shouldShowFullscreen) {
+            // Двойной invalidateSize для надёжности при переключении режимов
             setTimeout(() => {
                 try {
                     mapRef.current?.invalidateSize();
                 } catch (e) {}
             }, 100);
+            setTimeout(() => {
+                try {
+                    mapRef.current?.invalidateSize();
+                } catch (e) {}
+            }, 350);
         }
-    }, [mapDisplayMode.shouldShowFullscreen, mapDisplayMode.isTwoPanelMode, mapDisplayMode.isOnlyPostsAndActivity]);
+    }, [mapDisplayMode.shouldShowFullscreen, mapDisplayMode.isTwoPanelMode, mapDisplayMode.isOnlyPostsAndActivity, leftContent]);
 
     useEffect(() => {
         // On resize, invalidate Leaflet size when map is visible — don't set CSS vars here (MainLayout manages --facade-map-top)
@@ -324,6 +365,41 @@ const Map: React.FC<MapProps> = ({
         window.addEventListener('resize', handler);
         return () => window.removeEventListener('resize', handler);
     }, [mapDisplayMode.shouldShowFullscreen]);
+
+    // Смещение центра карты для двухоконного режима — центрируем вид в левой части экрана (25%)
+    useEffect(() => {
+        if (!mapRef.current || !isMapReady) return;
+
+        try {
+            const map = mapRef.current;
+            const zoom = map.getZoom();
+            const mapSize = map.getSize();
+            const currentCenter = map.getCenter();
+            const projected = map.project(currentCenter, zoom);
+
+            const targetScreenX = isTwoPanelMode ? mapSize.x * 0.25 : mapSize.x * 0.5;
+            const dx = targetScreenX - (mapSize.x / 2);
+
+            const targetPoint = mapFacade().point(projected.x + dx, projected.y);
+            const targetCenterLatLng = map.unproject(targetPoint, zoom);
+
+            if (isTwoPanelMode) {
+                if (!originalCenterRef.current) {
+                    originalCenterRef.current = [currentCenter.lat, currentCenter.lng];
+                }
+                try { map.setView(targetCenterLatLng, zoom, { animate: true }); } catch (e) { }
+            } else {
+                if (originalCenterRef.current) {
+                    try { map.setView(originalCenterRef.current, zoom, { animate: true }); } catch (e) { }
+                    originalCenterRef.current = null;
+                }
+            }
+
+            setTimeout(() => { try { mapRef.current?.invalidateSize(); } catch (e) {} }, 120);
+        } catch (e) {
+            // best-effort
+        }
+    }, [isTwoPanelMode, isMapReady]);
 
     // --- CENTER/ZOOM FROM PROPS (only if no saved state) ---
     useEffect(() => {
@@ -392,6 +468,30 @@ const Map: React.FC<MapProps> = ({
             return () => observer.disconnect();
         }
     }, []);
+
+    const [forceReinit, setForceReinit] = useState(false);
+
+    // recovery helper — попытка аккуратно восстановить карту при ошибках
+    const handleRecoverMap = async () => {
+        console.warn('[Map] Attempting map recovery...');
+        setError(null);
+        setIsLoading(true);
+        try {
+            // Destroy facade and project manager state
+            try { projectManager.reset(); } catch (e) { console.warn('projectManager.reset failed', e); }
+            // Destroy map instance if present
+            try {
+                if (mapRef.current && typeof mapRef.current.remove === 'function') {
+                    mapRef.current.remove();
+                }
+            } catch (e) { console.warn('mapRef.remove failed', e); }
+            mapRef.current = null;
+            // Toggle force reinit to trigger effect
+            setTimeout(() => setForceReinit(f => !f), 50);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     // --- MAP INITIALIZATION (main effect) ---
     useEffect(() => {
@@ -517,8 +617,6 @@ const Map: React.FC<MapProps> = ({
                     throw new Error('Фасад не вернул карту после инициализации.');
                 }
 
-                const map = mapRef.current;
-
                 if (mapRef.current && typeof (mapRef.current as any).addLayer !== 'function') {
                     const possibleInner = (facadeApi as any)?.map || (facadeApi as any)?.mapInstance || (initResult && (initResult as any).map);
                     if (possibleInner && typeof possibleInner.addLayer === 'function') {
@@ -526,15 +624,18 @@ const Map: React.FC<MapProps> = ({
                     }
                 }
 
+                const map = mapRef.current;
                 const tileLayerInfo = getTileLayer(mapSettings.mapType);
                 let hasTileLayer = false;
-                map.eachLayer((layer: any) => {
-                    // Avoid direct instanceof check against Leaflet classes; rely on layer properties instead
-                    if ((layer as any)?._url === 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png') {
-                        hasTileLayer = true;
-                        tileLayerRef.current = layer;
-                    }
-                });
+                if (map && typeof (map as any).eachLayer === 'function') {
+                    (map as any).eachLayer((layer: any) => {
+                        // Avoid direct instanceof check against Leaflet classes; rely on layer properties instead
+                        if ((layer as any)?._url === 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png') {
+                            hasTileLayer = true;
+                            tileLayerRef.current = layer;
+                        }
+                    });
+                }
 
                 if (!hasTileLayer) {
                     // Use facade to add tile layer so we keep Leaflet usage centralized
@@ -549,7 +650,18 @@ const Map: React.FC<MapProps> = ({
                 const additionalLayers = getAdditionalLayers(mapSettings.showTraffic, mapSettings.showBikeLanes);
                 additionalLayers.forEach(layer => {
                     // layers may be L.TileLayer instances, add them using facade when map is managed by facade
-                    try { (layer as any).addTo(map); } catch (e) { }
+                    if (!layer) return;
+                    try {
+                        if (map && typeof (layer as any).addTo === 'function') {
+                            (layer as any).addTo(map);
+                        } else {
+                            // If map not ready, schedule safe add
+                            safeAddTo(layer);
+                        }
+                    } catch (e) {
+                        // Fallback to safe add with retry
+                        try { safeAddTo(layer); } catch (e2) { }
+                    }
                 });
 
                 if (!map.zoomControl) {
@@ -667,7 +779,7 @@ const Map: React.FC<MapProps> = ({
                 }
             }
         };
-    }, [leftContent, rightContent, center, zoom, mapSettings.mapType, onBoundsChange, onMapClick, mapDisplayMode.shouldShowFullscreen]);
+    }, [leftContent, rightContent, center, zoom, mapSettings.mapType, onBoundsChange, onMapClick, mapDisplayMode.shouldShowFullscreen, forceReinit]);
 
     // --- MAP STATE SAVING ---
     useEffect(() => {
@@ -718,23 +830,46 @@ const Map: React.FC<MapProps> = ({
         if (!mapRef.current) return;
         const map = mapRef.current;
 
-        map.eachLayer((layer: any) => {
-            // Avoid instanceof checks against Leaflet classes; rely on properties instead
-            const containerClass = (layer as any).getContainer?.()?.className || '';
-            if (((layer as any)?._url || containerClass.includes('traffic-layer') || containerClass.includes('bike-lanes-layer'))) {
-                try { map.removeLayer(layer); } catch (e) { }
-            }
-        });
+        if (map && typeof (map as any).eachLayer === 'function') {
+            (map as any).eachLayer((layer: any) => {
+                // Avoid instanceof checks against Leaflet classes; rely on properties instead
+                const containerClass = (layer as any).getContainer?.()?.className || '';
+                if (((layer as any)?._url || containerClass.includes('traffic-layer') || containerClass.includes('bike-lanes-layer'))) {
+                    try { map.removeLayer(layer); } catch (e) { }
+                }
+            });
+        }
 
         document.querySelectorAll('.layer-indicator').forEach(indicator => indicator.remove());
 
         if (L) {
             const additionalLayers = getAdditionalLayers(mapSettings.showTraffic, mapSettings.showBikeLanes);
             additionalLayers.forEach((layer) => {
-                layer.addTo(map);
-                const layerType = (layer as any).getContainer?.()?.className?.includes('traffic-layer') ? 'traffic' : 'bike';
-                const indicator = createLayerIndicator(layerType);
-                map.getContainer().appendChild(indicator);
+                if (!layer) return;
+                try {
+                    if (map && typeof (layer as any).addTo === 'function') {
+                        (layer as any).addTo(map);
+                        const layerType = (layer as any).getContainer?.()?.className?.includes('traffic-layer') ? 'traffic' : 'bike';
+                        const indicator = createLayerIndicator(layerType);
+                        map.getContainer().appendChild(indicator);
+                    } else {
+                        // Map not ready; use safeAddTo and append indicator later
+                        safeAddTo(layer);
+                        setTimeout(() => {
+                            try {
+                                if (mapRef.current && typeof (layer as any).addTo === 'function') {
+                                    (layer as any).addTo(mapRef.current);
+                                    const layerType = (layer as any).getContainer?.()?.className?.includes('traffic-layer') ? 'traffic' : 'bike';
+                                    const indicator = createLayerIndicator(layerType);
+                                    mapRef.current.getContainer().appendChild(indicator);
+                                }
+                            } catch (e) { }
+                        }, 300);
+                    }
+                } catch (e) {
+                    // fallback
+                    safeAddTo(layer);
+                }
             });
         }
     }, [mapSettings.showTraffic, mapSettings.showBikeLanes]);
@@ -753,12 +888,14 @@ const Map: React.FC<MapProps> = ({
             markerClusterGroupRef.current = null;
         }
 
-        mapRef.current.eachLayer((layer: any) => {
-            // Avoid direct instanceof checks; remove layers that look like markers and aren't the temp marker
-            if (layer && (layer as any).markerData && layer !== tempMarkerRef.current) {
-                try { mapRef.current?.removeLayer(layer); } catch (e) { }
-            }
-        });
+        if (mapRef.current && typeof (mapRef.current as any).eachLayer === 'function') {
+            (mapRef.current as any).eachLayer((layer: any) => {
+                // Avoid direct instanceof checks; remove layers that look like markers and aren't the temp marker
+                if (layer && (layer as any).markerData && layer !== tempMarkerRef.current) {
+                    try { mapRef.current?.removeLayer(layer); } catch (e) { }
+                }
+            });
+        }
 
         // Create a marker cluster group via the facade (keeps Leaflet usage centralized)
         if (!mapFacade().createMarkerClusterGroup) return;
@@ -806,6 +943,10 @@ const Map: React.FC<MapProps> = ({
                 });
 
                 const leafletMarker = mapFacade().createMarker([lat, lng], { icon: customIcon });
+                if (!leafletMarker) {
+                    console.warn('[Map] createMarker returned null for marker', markerData?.id);
+                    return;
+                }
 
                 const img = new Image();
                 img.onerror = () => {
@@ -815,10 +956,10 @@ const Map: React.FC<MapProps> = ({
                         iconSize: [iconWidth, iconHeight],
                         iconAnchor: [iconWidth / 2, iconHeight],
                     });
-                    leafletMarker.setIcon(divIcon);
+                    try { leafletMarker.setIcon(divIcon); } catch (err) { console.debug('[Map] setIcon failed on fallback divIcon:', err); }
                 };
                 img.src = markerIconUrl;
-                (leafletMarker as any).markerData = markerData;
+                try { (leafletMarker as any).markerData = markerData; } catch (err) { console.debug('[Map] Failed to set markerData on leafletMarker:', err); }
 
                 const popupOptions = {
                     className: `custom-marker-popup ${isDarkMode ? 'dark' : 'light'}`,
@@ -1030,13 +1171,20 @@ const Map: React.FC<MapProps> = ({
         if (!hasTileLayer) {
             setTimeout(() => {
                 if (mapRef.current && !markerClusterGroupRef.current) {
-                    markerClusterGroup.addTo(mapRef.current);
+                    safeAddTo(markerClusterGroup);
                     markerClusterGroupRef.current = markerClusterGroup;
                 }
             }, 100);
         } else {
-            markerClusterGroup.addTo(mapRef.current);
-            markerClusterGroupRef.current = markerClusterGroup;
+            if (mapRef.current) {
+              safeAddTo(markerClusterGroup);
+              // map not ready — try to add marker cluster shortly after
+              setTimeout(() => {
+                if (mapRef.current && !markerClusterGroupRef.current) {
+                  try { safeAddTo(markerClusterGroup); markerClusterGroupRef.current = markerClusterGroup; } catch (e) { }
+                }
+              }, 200);
+            }
         }
 
         const highPriorityStyle = document.createElement('style');
@@ -1235,7 +1383,7 @@ const Map: React.FC<MapProps> = ({
 
                 // ИСПРАВЛЕНИЕ: Добавляем полигон на карту и помечаем его
                 if (polygon && mapRef.current && typeof (polygon as any).addTo === 'function') {
-                    polygon.addTo(mapRef.current);
+                    safeAddTo(polygon);
                     (polygon as any).isZoneLayer = true;
                 }
             });
@@ -1552,6 +1700,24 @@ const Map: React.FC<MapProps> = ({
                     transition: 'transform 0.3s ease, width 0.3s ease',
                 }}
             >
+            {/* Error boundary wrapping map internals — allows graceful recovery */}
+            <ErrorBoundary
+                fallback={(
+                    <div style={{ padding: 24, textAlign: 'center' }}>
+                        <h3>Ошибка карты</h3>
+                        <p>Попробуйте восстановить карту или обновить страницу.</p>
+                        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 12 }}>
+                            <button className="btn btn-primary" onClick={() => handleRecoverMap()}>Восстановить карту</button>
+                            <button className="btn" onClick={() => window.location.reload()}>Обновить страницу</button>
+                        </div>
+                    </div>
+                )}
+                onError={(err) => {
+                    console.error('[Map] ErrorBoundary caught error:', err);
+                    // Попытка восстановления
+                    handleRecoverMap();
+                }}
+            >
                 {coordsForNewMarker && showCultureMessage && (
                     <div
                         style={{
@@ -1637,7 +1803,9 @@ const Map: React.FC<MapProps> = ({
                         </div>
                         <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
                     </div>
-                )} 
+                )}
+
+                </ErrorBoundary>
             </MapWrapper>
 
             {isLoading && (
@@ -1652,7 +1820,30 @@ const Map: React.FC<MapProps> = ({
             {error && !isMapReadyCheck && (
                 <ErrorMessage>
                     <p>{error}</p>
-                    <button onClick={() => window.location.reload()}>
+                    <button onClick={async () => {
+                        try {
+                            setError(null);
+                            setIsLoading(true);
+                            // Используем projectManager.reinitializeMap — если контейнер/конфиг уже сохранены, он переинициализирует карту
+                            const container = mapContainerRef.current || document.getElementById('map');
+                            const config = { provider: 'leaflet', center, zoom, markers: [] } as any;
+                            try {
+                                const api = await projectManager.reinitializeMap(container as HTMLElement, config);
+                                const facadeApi = (api as any) || ((window as any).INTERNAL && (window as any).INTERNAL.api) || null;
+                                if (facadeApi) {
+                                    if (facadeApi.map) mapRef.current = facadeApi.map;
+                                    else if (facadeApi.mapInstance) mapRef.current = facadeApi.mapInstance;
+                                }
+                                setIsMapReady(true);
+                                setError(null);
+                            } catch (err2) {
+                                console.error('Retry initialization failed', err2);
+                                setError(t('map.error.initialization') || 'Ошибка инициализации карты');
+                            }
+                        } finally {
+                            setIsLoading(false);
+                        }
+                    }}>
                         {t('map.error.retry')}
                     </button>
                 </ErrorMessage>

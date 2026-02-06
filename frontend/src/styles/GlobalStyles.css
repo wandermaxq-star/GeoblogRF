@@ -789,11 +789,6 @@ html, body, #root {
    Remove duplicated/legacy rules from this file to avoid conflicts. */
 
 /* See `PageLayout.css` for authoritative definitions of `.page-main-panel` and `.page-layout-container` */
-  top: 0 !important;
-  left: 0 !important;
-  width: 100% !important;
-  inset: 0 !important;
-}
 
 /* Стили для кнопок управления картой */
 .map-control-button {
@@ -817,8 +812,6 @@ html, body, #root {
   transform: scale(1.05);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
-
-
 
 /* Стили для контента карты */
 .map-content-container {

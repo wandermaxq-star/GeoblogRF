@@ -27,12 +27,17 @@ export const useMapDisplayMode = () => {
       leftContent !== 'planner' &&
       !isMapActive;
 
+    // ИСПРАВЛЕНО: Карта должна быть видна и интерактивна всегда когда
+    // leftContent === 'map' или isPlannerActive, независимо от showBackgroundMap.
+    // showBackgroundMap влияет только на фоновый режим (когда карта НЕ является активным контентом).
+    const shouldShowFullscreen = isMapActive || isPlannerActive || (showBackgroundMap && !isOnlyPostsAndActivity);
+
     return {
       // Использовать Leaflet карту (не Яндекс)
       shouldUseLeaflet: !isPlannerActive,
       
-      // Показывать карту на полном экране — зависит от store.showBackgroundMap (по умолчанию true)
-      shouldShowFullscreen: showBackgroundMap && !isOnlyPostsAndActivity,
+      // Показывать карту на полном экране
+      shouldShowFullscreen,
       
       // Режимы
       isPlannerActive,
@@ -51,7 +56,7 @@ export const useMapDisplayMode = () => {
         ? 'facade-map-root two-panel-mode' 
         : 'facade-map-root',
     };
-  }, [leftContent, rightContent]);
+  }, [leftContent, rightContent, showBackgroundMap]);
 }
 
 export default useMapDisplayMode;

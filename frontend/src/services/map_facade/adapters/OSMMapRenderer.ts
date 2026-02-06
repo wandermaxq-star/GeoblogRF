@@ -63,6 +63,24 @@ export class OSMMapRenderer implements IMapRenderer {
 
     this.containerId = containerId;
 
+    // Если на контейнере уже есть предыдущая инициализация Leaflet — очищаем её
+    try {
+      // Попытка достать сохранённый инстанс (если предыдущий destroy не сработал)
+      const existingMap = (container as any).__leafletMap;
+      if (existingMap && typeof existingMap.remove === 'function') {
+        try {
+          existingMap.remove();
+        } catch (e) {
+          console.warn('[OSMMapRenderer] Failed to remove existing map instance on container:', e);
+        }
+      }
+      // Удаляем возможные флаги Leaflet у контейнера, чтобы L.map не ругался
+      try { delete (container as any)._leaflet_id; } catch (e) {}
+      try { delete (container as any).__leafletMap; } catch (e) {}
+    } catch (e) {
+      // best-effort
+    }
+
     // Используем координаты из config или значения по умолчанию
     const center = config?.center;
     let lat: number, lon: number;
@@ -88,6 +106,9 @@ export class OSMMapRenderer implements IMapRenderer {
       zoom,
       zoomControl: true,
     });
+
+    // Сохраняем ссылку на созданную карту на контейнере для последующего корректного удаления
+    try { (this.mapInstance.getContainer() as any).__leafletMap = this.mapInstance; } catch (e) {}
 
     // Используем публичный метод для добавления слоя по умолчанию
     this.addTileLayer();
@@ -208,14 +229,22 @@ export class OSMMapRenderer implements IMapRenderer {
       try {
         const container = this.mapInstance.getContainer();
         if (container) {
-          // Удаляем возможную ссылку
-          delete (container as any).__leafletMap;
+          // Удаляем возможную ссылку и флаги Leaflet
+          try { delete (container as any).__leafletMap; } catch (e) {}
+          try { delete (container as any)._leaflet_id; } catch (e) {}
         }
         this.mapInstance.remove();
         this.mapInstance = null;
         this.leafletMarkers = {};
       } catch (e) {
         console.warn('[OSMMapRenderer] Error destroying map:', e);
+      }
+    } else {
+      // Если mapInstance уже null, но контейнер мог иметь флаги Leaflet — пытаемся их удалить
+      const container = this.containerId ? document.getElementById(this.containerId) : null;
+      if (container) {
+        try { delete (container as any).__leafletMap; } catch (e) {}
+        try { delete (container as any)._leaflet_id; } catch (e) {}
       }
     }
     console.log('[OSMMapRenderer] Destroyed');

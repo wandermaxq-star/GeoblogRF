@@ -43,6 +43,8 @@ const PostsPage: React.FC = () => {
   const [moderationCount, setModerationCount] = useState(0);
   const [showDraftsPanel, setShowDraftsPanel] = useState(false);
   const [draftsCount, setDraftsCount] = useState(0);
+  // Степень матовости/прозрачности: 'light' | 'dark' (светлый по умолчанию)
+  const [glassVariant, setGlassVariant] = useState<'light'|'dark'>('light');
 
   // Проверяем двухоконный режим - есть ли левая панель (карта/планировщик)
   const leftContent = useContentStore((state) => state.leftContent);
@@ -543,7 +545,7 @@ const PostsPage: React.FC = () => {
   // Если открыт конструктор постов, показываем его
   if (showPostConstructor) {
     return (
-      <MirrorGradientContainer className="page-layout-container page-container posts-mode">
+      <MirrorGradientContainer className={`page-layout-container page-container posts-mode glass-${glassVariant}`}>
         <div className="page-main-area">
           <div className="page-content-wrapper">
             <div className="page-main-panel relative">
@@ -591,7 +593,7 @@ const PostsPage: React.FC = () => {
   // Если открыт пост без интерактивного контента, показываем обычный режим
   if (selectedPost && !showInteractivePost) {
     return (
-      <MirrorGradientContainer className="page-layout-container page-container posts-mode">
+      <MirrorGradientContainer className={`page-layout-container page-container posts-mode glass-${glassVariant}`}>
         <div className="page-main-area">
           <div className="page-content-wrapper">
             <div className="page-main-panel relative">
@@ -606,7 +608,7 @@ const PostsPage: React.FC = () => {
   }
 
   return (
-    <MirrorGradientContainer className="page-layout-container page-container posts-mode">
+    <MirrorGradientContainer className={`page-layout-container page-container posts-mode glass-${glassVariant}`}>
       <div className="page-main-area">
         <div className="page-content-wrapper">
           <div className="page-main-panel relative">
@@ -670,6 +672,13 @@ const PostsPage: React.FC = () => {
                     <span>Создать пост</span>
                   </button>
                 </div>
+
+                {/* Переключатель варианта стекла — светлый / тёмный */}
+                <div className="glass-variant-toggle" role="tablist" aria-label="Вариант стекла">
+                  <button className={`variant-btn ${glassVariant === 'light' ? 'active' : ''}`} onClick={() => setGlassVariant('light')} title="Светлый (как на скрине)">Светл</button>
+                  <button className={`variant-btn ${glassVariant === 'dark' ? 'active' : ''}`} onClick={() => setGlassVariant('dark')} title="Тёмный (как в Избранном)">Тёмн</button>
+                </div> 
+
               </div>
             </div>
 
