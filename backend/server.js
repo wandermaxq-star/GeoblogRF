@@ -129,6 +129,10 @@ app.get('/', (req, res) => {
 // Health-check маршрут для проверки живости сервера и БД
 app.get('/api/health', async (req, res) => {
   try {
+    // Позволяем пропустить проверку БД в локальном режиме разработки
+    if (process.env.SKIP_DB === 'true') {
+      return res.json({ status: 'ok', port: PORT, db: 'skipped', uptime: process.uptime() });
+    }
     // Лёгкий запрос к БД, чтобы проверить доступность
     await pool.query('SELECT 1');
     res.json({ status: 'ok', port: PORT, db: 'ok', uptime: process.uptime() });
@@ -398,8 +402,12 @@ async function startServer() {
 
     // Пробуем заранее пингнуть БД, чтобы выявить проблемы на старте
     try {
-      await pool.query('SELECT 1');
-      logger.info('Соединение с БД успешно проверено');
+      if (process.env.SKIP_DB === 'true') {
+        logger.info('SKIP_DB=true — пропускаю проверку соединения с БД (локальный режим без БД)');
+      } else {
+        await pool.query('SELECT 1');
+        logger.info('Соединение с БД успешно проверено');
+      }
     } catch (dbErr) {
       logger.error('Ошибка подключения к БД на старте', { error: dbErr?.message });
       // Не выходим, сервер всё равно поднимем, но health покажет проблему

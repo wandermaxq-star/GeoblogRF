@@ -5,7 +5,6 @@ import { FaCalendar as _FaCalendar, FaCog as _FaCog, FaTimes as _FaTimes, FaQues
 import { ChevronUp, ChevronDown, X } from 'lucide-react';
 import { MirrorGradientContainer, usePanelRegistration } from '../components/MirrorGradientProvider';
 import { GlassPanel, GlassHeader } from '../components/Glass';
-import '../styles/GlobalStyles.css';
 import '../styles/PageLayout.css';
 import CalendarActionButtons from '../components/Calendar/CalendarActionButtons';
 import '../components/Calendar/CalendarViewSwitcher.css';

@@ -9,5 +9,9 @@
 /* 2. Глобальные компоненты (кнопки, карточки) */
 @import './_components.css';
 
-/* 3. Стили режимов (layout) */
+/* 3. Layout и режимы (разделённые модули) */
+@import './_layout.css';
 @import './_modes.css';
+
+/* 4. Content-specific styles (posts/blogs) — подключаем последним, чтобы гарантировать переопределение */
+@import './_content.css';

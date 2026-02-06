@@ -120,6 +120,14 @@
   z-index: 0;
 }
 
+/* При разработке / временном отключении фоновой карты и полосы справа */
+body.disable-posts-blur .map-background-extension {
+  display: none !important;
+}
+body.disable-posts-blur .guest-indicator {
+  display: none !important;
+}
+
 /* Режим продолжения карты - когда карта открыта */
 .map-extension-mode::before {
   display: none; /* Убираем сетчатый паттерн, карта показывается через компонент */

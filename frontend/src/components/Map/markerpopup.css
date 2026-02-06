@@ -1,25 +1,28 @@
-/* Оранжевая рамка ТОЛЬКО для избранных меток через меню избранного */
+/* Оранжевая рамка ONLY для избранных меток через меню избранного */
 .custom-marker-popup.selected {
-  border: 2px solid var(--state-favorite) !important;
-  box-shadow: 0 0 12px 2px var(--state-favorite), 0 0 20px 4px rgba(255, 152, 0, 0.3) !important;
-  background: #fffbe6;
-  animation: glowing 2s ease-in-out infinite alternate;
-} 
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
 
-/* Стандартный попап всегда с белой рамкой */
+/* Стандартный попап — Leaflet-обёртка прозрачна */
 .custom-marker-popup:not(.selected) {
-  border: 2px solid #ffffff !important;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.18) !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }
 
 /* Исправляем скругление углов для выбранных попапов */
 .custom-marker-popup.selected .leaflet-popup-content-wrapper {
-  border-radius: 8px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 0 !important;
 }
 
 .custom-marker-popup.selected .leaflet-popup-content {
-  border-radius: 8px !important;
   margin: 0 !important;
+  padding: 0 !important;
 }
 
 @keyframes glowing {
@@ -59,22 +62,25 @@
   border-radius: 2px;
 }
 
-/* Дополнительно для кастомных попапов */
+/* Leaflet-обёртка прозрачна для кастомных попапов */
 .custom-marker-popup .leaflet-popup-content-wrapper {
-  border-radius: 8px !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
 }
 
-/* Убираем стандартные отступы Leaflet и применяем скругления */
+/* Убираем стандартные отступы Leaflet */
 .leaflet-popup-content {
   margin: 0 !important;
-  border-radius: 8px !important;
 }
 
-/* Убеждаемся, что все углы попапа скруглены */
+/* Убеждаемся, что все углы попапа прозрачны */
 .leaflet-popup-content-wrapper,
 .leaflet-popup-content {
-  border-radius: 8px !important;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Force allow interactions inside popup (fixes overlay/drag layers blocking clicks) */
@@ -170,4 +176,36 @@
   border: 2px solid var(--state-favorite) !important; /* Было #ff9800 */
   box-shadow: 0 0 12px 2px var(--state-favorite), 0 0 20px 4px rgba(255, 152, 0, 0.3) !important;
   animation: favoriteGlowing 2s ease-in-out infinite alternate !important;
-} 
+}
+
+/* === КЛАСТЕРЫ МАРКЕРОВ === */
+.marker-cluster-custom {
+  color: #fff !important;
+  border: 2px solid #fff;
+  border-radius: 50% !important;
+  width: 40px !important;
+  height: 40px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.marker-cluster-custom span {
+  color: #fff !important;
+  font-size: 1.2em;
+}
+
+/* === МАРКЕРЫ СОБЫТИЙ === */
+.event-marker-base {
+  transition: transform 0.2s ease;
+}
+
+.event-marker-selected .event-marker-base {
+  transform: scale(1.1);
+}
+
+@keyframes eventMarkerPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}

@@ -7,6 +7,22 @@ if (typeof React.createContext === 'undefined') {
 import ReactDOM from 'react-dom/client'
 import App from './App'
 
+// Инициализация i18n должна быть выполнена как можно раньше
+import './i18n';
+
+// Во время разработки (codespaces / preview) манифест может переадресовываться
+// на страницы авторизации хоста (например, github.dev) и вызывать CORS ошибки в консоли.
+// Удаляем ссылку на manifest в деве, чтобы не шуметь в логах и не ломать поведение.
+if (typeof document !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  try {
+    const manifestLink = document.querySelector('link[rel="manifest"]');
+    if (manifestLink && manifestLink.parentNode) {
+      manifestLink.parentNode.removeChild(manifestLink);
+      console.debug('[main] Removed manifest link in dev to avoid CORS errors');
+    }
+  } catch (e) { /* ignore */ }
+}
+
 // Критические стили загружаем сразу
 // Шаг 3: Интеграция глобальной точки входа стилей
 import './styles/index.css';

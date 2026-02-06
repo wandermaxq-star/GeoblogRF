@@ -2,7 +2,6 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { MirrorGradientContainer, usePanelRegistration } from '../components/MirrorGradientProvider';
 import { FaFilter, FaCog, FaTimes, FaBell, FaHeart, FaComment } from 'react-icons/fa';
 import { ActivityFilters as ActivityFiltersType } from '../services/activityService';
-import '../styles/GlobalStyles.css';
 import '../styles/PageLayout.css';
 import '../styles/MapBackground.css';
 

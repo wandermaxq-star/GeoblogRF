@@ -176,14 +176,17 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <div
           className="h-full absolute top-0 left-0 transition-all duration-300 ease-in-out left-panel-map"
           style={{
-            // Карта всегда занимает весь экран когда активна - используем 100vw
-            width: leftContent ? '100vw' : '0',  // Изменено с 100% на 100vw
+            // Карта всегда занимает весь экран когда активна
+            width: leftContent ? '100%' : '0%',
             visibility: leftContent ? 'visible' : 'hidden',
             // Когда левая панель активна (map или planner), ставим её ПОД сайдбаром для эффекта стекла
             // Сайдбар имеет zIndex = 1150, карта должна быть ниже для морфизма
             zIndex: leftContent === 'map' || leftContent === 'planner' ? 1140 : (leftContent ? 1160 : 0),
             overflow: 'visible',
-            pointerEvents: 'none',  // ВАЖНО: Контейнер НЕ блокирует клики - карта и UI внутри обрабатывают сами
+            // В map-mode карта рендерится через portal на body — этот контейнер
+            // должен пропускать клики (pointer-events: none), чтобы Leaflet получал события.
+            // Для planner и прочего контент рендерится внутри, поэтому auto.
+            pointerEvents: leftContent === 'map' ? 'none' : (leftContent ? 'auto' : 'none'),
           }}
         >
           <PageLayer side="left" />
@@ -203,13 +206,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             className={`activity-feed h-full transition-all duration-300 ease-in-out ${leftContent ? 'has-left-panel' : 'no-left-panel'}`}
             style={leftContent ? {
               // Двухоконный режим:
-              // - Справа: ДО САМОГО КРАЯ (убираем отступ, карта под постами на весь экран)
+              // - Справа: 1cm от края экрана (вертикальная полоса карты)
               // - Слева: от центра экрана (50%)
               // - Сверху/снизу: как в однооконном режиме
               position: 'fixed',
-              right: '0',                // Изменено с '1cm' на '0' - убираем отступ справа
+              right: '1cm',              // 1cm от правого края
               top: '64px',               // под topbar
-              bottom: '0',
+              bottom: '60px',            // ~15mm от низа (как в однооконном)
               left: '50%',               // от центра экрана
               display: 'flex',
               justifyContent: 'flex-end',
@@ -222,7 +225,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               // Однооконный режим - прозрачный контейнер, CSS сделает остальное
               position: 'fixed',
               top: '64px',               // сразу под topbar
-              bottom: '0',                // Убираем отступ снизу для полного экрана карты
+              bottom: '60px',            // ~15mm от низа экрана
               left: '56px',              // справа от sidebar
               right: 0,
               display: 'flex',
@@ -249,18 +252,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       <GuestIndicator />
     </div>
   );
-
-  // ЭФФЕКТ: Добавляем/убираем класс на корневом элементе страницы когда карта показывается полноэкранно
-  // Это позволяет применять CSS-перехват для скрытия вспомогательных панелей
-  useEffect(() => {
-    const el = document.documentElement;
-    if (leftContent === 'map' && rightContent === null) {
-      el.classList.add('map-fullscreen');
-    } else {
-      el.classList.remove('map-fullscreen');
-    }
-    return () => { el.classList.remove('map-fullscreen'); };
-  }, [leftContent, rightContent]);
 
   // КРИТИЧНО: НЕ принудительно открываем посты
   // LayoutContext уже имеет посты по умолчанию, Sidebar управляет состоянием

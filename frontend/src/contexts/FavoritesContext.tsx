@@ -575,6 +575,7 @@ export const useFavorites = () => {
   if (context === undefined) {
     // Возвращаем заглушку вместо undefined для предотвращения блокировки рендеринга
     return {
+      _isStub: true,
       favoriteRoutes: [],
       favoritePlaces: [],
       favoriteEvents: [],

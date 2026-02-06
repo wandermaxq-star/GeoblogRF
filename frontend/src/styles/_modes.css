@@ -44,47 +44,41 @@
   padding: 0;
 }
 
-/* --- Map mode (полноэкранный режим карты) --- */
-.page-layout-container.map-mode {
+/* --- Map / Planner modes (минимальные правила) --- */
+.page-container.map-mode,
+.page-container.planner-mode {
+  padding: 0; /* Zero padding — full-bleed content */
+}
+
+/* Facade map root fills viewport and respects topbar offset */
+.facade-map-root {
+  position: fixed;
+  top: var(--facade-map-top, 0px);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: calc(100vh - var(--facade-map-top, 0px));
+  z-index: var(--z-map);
+  pointer-events: auto;
+  overflow: visible;
+}
+
+/* When a page is in map-mode or planner-mode, the container should be full viewport */
+.page-layout-container.map-mode,
+.page-layout-container.planner-mode {
+  position: relative;
+  width: 100%;
   height: 100vh;
-  min-height: 100vh;
-  max-height: 100vh;
-  padding: 0;
-  margin: 0;
-  display: contents;
-  overflow: visible;
-  background: var(--bg-page);
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  inset: 0;
 }
 
-.page-container.map-mode {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: visible;
-}
-
-.page-main-area.map-mode {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: visible;
+/* Posts, activity and other panels are displayed above map using z-index */
+.page-container.posts-mode .page-main-panel,
+.page-container.activity-mode .page-main-panel,
+.page-container.blog-page .page-main-panel {
+  position: relative;
+  z-index: var(--z-overlay);
+  max-width: 100%;
 }
 
 .page-content-wrapper.map-mode {

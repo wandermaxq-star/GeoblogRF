@@ -221,7 +221,8 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
 
     // Если метка уже в избранном — удаляем её
     try {
-      if (favorites && typeof (favorites as any).removeFavoritePlace === 'function') {
+      const isRealContext = favorites && !(favorites as any)._isStub;
+      if (isRealContext && typeof (favorites as any).removeFavoritePlace === 'function') {
         (favorites as any).removeFavoritePlace(String(marker.id));
       } else if (typeof onRemoveFromFavorites === 'function') {
         onRemoveFromFavorites(String(marker.id));
@@ -230,16 +231,12 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
 
     // Убираем её из выбранных checkbox'ов, если была отмечена
     try {
-      if (typeof setSelectedMarkerIds === 'function') {
-        try {
-          const current = (favorites && (favorites as any).selectedMarkerIds) || [];
-          const next = Array.isArray(current) ? current.filter((id: string) => String(id) !== String(marker.id)) : [];
-          (setSelectedMarkerIds as any)(next);
-        } catch (err) {}
-      } else if (favorites && typeof (favorites as any).setSelectedMarkerIds === 'function') {
-        try {
-          (favorites as any).setSelectedMarkerIds((prev: string[]) => (prev || []).filter((id: string) => String(id) !== String(marker.id)));
-        } catch (err) {}
+      // Используем контекстный setSelectedMarkerIds (он корректно управляет массивом)
+      const ctxSetIds = (favorites && !(favorites as any)._isStub && typeof (favorites as any).setSelectedMarkerIds === 'function')
+        ? (favorites as any).setSelectedMarkerIds
+        : setSelectedMarkerIds;
+      if (typeof ctxSetIds === 'function') {
+        ctxSetIds((prev: string[]) => (prev || []).filter((id: string) => String(id) !== String(marker.id)));
       }
     } catch (err) {}
   };
@@ -251,7 +248,8 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
   const handleConfirmCategory = () => {
     try {
       if (selectedCategory) {
-        if (favorites && typeof (favorites as any).addToFavorites === 'function') {
+        const isRealContext = favorites && !(favorites as any)._isStub;
+        if (isRealContext && typeof (favorites as any).addToFavorites === 'function') {
           (favorites as any).addToFavorites(marker, selectedCategory);
         } else if (typeof onAddToFavorites === 'function') {
           try { onAddToFavorites(marker); } catch (err) {}
@@ -653,10 +651,11 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    // Предпочитаем внешний обработчик, если он передан (попап вне провайдера),
-                    // иначе делаем запись через контекст favorites. Не вызываем оба варианта.
+                    // Предпочитаем контекст если он реальный (не заглушка),
+                    // иначе вызываем prop callback.
                     try {
-                      if (favorites && typeof (favorites as any).addToFavorites === 'function') {
+                      const isRealContext = favorites && !(favorites as any)._isStub;
+                      if (isRealContext && typeof (favorites as any).addToFavorites === 'function') {
                         try { (favorites as any).addToFavorites(marker, selectedCategory || 'personal'); } catch (err) {}
                       } else if (typeof onAddToFavorites === 'function') {
                         try { onAddToFavorites(marker); } catch (err) {}
@@ -664,17 +663,15 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
                     } catch (err) {}
 
                     // Помечаем метку как выбранную в панели избранного (чекбокс)
-                    if (typeof setSelectedMarkerIds === 'function') {
-                      try {
-                        const current = (favorites && (favorites as any).selectedMarkerIds) || [];
-                        const next = Array.from(new Set([...(Array.isArray(current) ? current : []), String(marker.id)]));
-                        (setSelectedMarkerIds as any)(next);
-                      } catch (err) {}
-                    } else if (favorites && typeof (favorites as any).setSelectedMarkerIds === 'function') {
-                      try {
-                        (favorites as any).setSelectedMarkerIds((prev: string[]) => Array.from(new Set([...(prev || []), String(marker.id)])));
-                      } catch (err) {}
-                    }
+                    // Используем контекстный setSelectedMarkerIds с функциональным обновлением
+                    try {
+                      const ctxSetIds = (favorites && !(favorites as any)._isStub && typeof (favorites as any).setSelectedMarkerIds === 'function')
+                        ? (favorites as any).setSelectedMarkerIds
+                        : setSelectedMarkerIds;
+                      if (typeof ctxSetIds === 'function') {
+                        ctxSetIds((prev: string[]) => Array.from(new Set([...(prev || []), String(marker.id)])));
+                      }
+                    } catch (err) {}
 
                     // Закрываем форму выбора категории, но оставляем попап открытым
                     setShowCategorySelection(false);

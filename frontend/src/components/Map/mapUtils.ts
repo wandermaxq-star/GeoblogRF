@@ -105,11 +105,14 @@ export function createLayerIndicator(layerType: 'traffic' | 'bike') {
  * @returns {x, y} пиксельные координаты относительно контейнера
  */
 // Вариант с использованием фасада (если фасад доступен глобально или передается)
-export function latLngToContainerPoint(mapFacade: any, latlng: any) {
-    if (!mapFacade) return { x: 0, y: 0 };
-    // Вызываем метод фасада, который абстрагирует доступ к инстансу карты
+// Поддерживает как фабрику mapFacade, так и уже вызванный инстанс mapFacade()
+export function latLngToContainerPoint(mapFacadeOrInstance: any, latlng: any) {
+    if (!mapFacadeOrInstance) return { x: 0, y: 0 };
     try {
-        const point = mapFacade().latLngToContainerPoint(latlng);
+        // Если передана функция-фабрика — вызываем, иначе используем инстанс напрямую
+        const instance = typeof mapFacadeOrInstance === 'function' ? mapFacadeOrInstance() : mapFacadeOrInstance;
+        if (!instance || typeof instance.latLngToContainerPoint !== 'function') return { x: 0, y: 0 };
+        const point = instance.latLngToContainerPoint(latlng);
         return { x: point.x, y: point.y };
     } catch (e) {
         return { x: 0, y: 0 };

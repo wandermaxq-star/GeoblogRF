@@ -34,7 +34,6 @@ const GlassPanel: React.FC<GlassPanelProps> = ({
   constrainToMapArea = false,
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
 
   // Закрытие при клике вне панели
   useEffect(() => {
@@ -42,9 +41,8 @@ const GlassPanel: React.FC<GlassPanelProps> = ({
       if (
         closeOnOverlayClick &&
         isOpen &&
-        overlayRef.current &&
-        overlayRef.current === event.target &&
-        !panelRef.current?.contains(event.target as Node)
+        panelRef.current &&
+        !panelRef.current.contains(event.target as Node)
       ) {
         onClose();
       }
@@ -52,13 +50,10 @@ const GlassPanel: React.FC<GlassPanelProps> = ({
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
-      // Блокируем скролл body когда панель открыта
-      document.body.style.overflow = 'hidden';
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      document.body.style.overflow = '';
     };
   }, [isOpen, closeOnOverlayClick, onClose]);
 
@@ -109,14 +104,6 @@ const GlassPanel: React.FC<GlassPanelProps> = ({
 
   return (
     <>
-      {/* Overlay - убран для сохранения активности карты */}
-      {/* <div
-        ref={overlayRef}
-        className={`glass-panel-overlay ${isOpen ? 'glass-panel-overlay-open' : ''}`}
-        onClick={closeOnOverlayClick ? onClose : undefined}
-        aria-hidden="true"
-      /> */}
-
       {/* Panel */}
       <div
         ref={panelRef}

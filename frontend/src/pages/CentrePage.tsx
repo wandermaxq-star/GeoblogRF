@@ -1,7 +1,6 @@
 import { useAuth } from '../contexts/AuthContext';
 import { MirrorGradientContainer, usePanelRegistration } from '../components/MirrorGradientProvider';
 import { useEffect } from 'react';
-import '../styles/GlobalStyles.css';
 import InfluenceHub from '../components/InfluenceHub';
 
 export default function CentrePage() {

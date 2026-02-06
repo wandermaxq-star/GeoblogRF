@@ -1,4 +1,4 @@
-import styled, { css } from 'styled-components';
+import styled, { css, createGlobalStyle } from 'styled-components';
 
 // Типы для пропсов
 interface MapContainerProps {
@@ -7,7 +7,7 @@ interface MapContainerProps {
 }
 
 export const MapContainer = styled.div<MapContainerProps>`
-  /* Располагаем карту фиксированно под шапкой и растягиваем на ВЕСЬ ЭКРАН */
+  /* Располагаем карту фиксированно под шапкой и растягиваем на весь экран */
   position: fixed !important;
   top: var(--facade-map-top, 0px);
   left: 0 !important;
@@ -19,16 +19,17 @@ export const MapContainer = styled.div<MapContainerProps>`
   margin: 0 !important;
   padding: 0 !important;
   background: transparent !important;
-  z-index: 1000;
+  z-index: 0;
+  will-change: transform;
   pointer-events: auto;
   max-width: none !important;
   overflow: visible !important;
 
-  /* Двухоконный режим - карта ВСЕГДА занимает ВСЮ ширину экрана */
+  /* Двухоконный режим - карта занимает всю ширину левой панели */
   ${props => props.$isTwoPanel && css`
-    width: 100vw !important;  /* Изменено с 100% на 100vw - игнорируем родительские контейнеры */
+    width: 100% !important;
     height: calc(100vh - var(--facade-map-top, 0px)) !important;
-    right: 0 !important;  /* Изменено с auto на 0 - растягиваем до правого края */
+    right: auto !important;
   `}
 
   /* Полноэкранный режим (по умолчанию) */
@@ -83,9 +84,26 @@ export const MapWrapper = styled.div.attrs(() => ({
   top: 0 !important;
   left: 0 !important;
   background: transparent !important;
-  pointer-events: auto !important;
 
-  /* Стили кластеров перенесены в PageLayout.css для централизованного управления */
+  .marker-cluster-custom {
+    background: none;
+    border: none;
+  }
+
+  .marker-cluster {
+    background: #3498db;
+    border-radius: 50%;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 16px;
+    width: 40px;
+    height: 40px;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
 
   /* Стили для временной метки - черно-белая стильная иконка */
   .temp-marker-icon {
@@ -143,11 +161,9 @@ export const LoadingOverlay = styled.div`
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  pointer-events: auto;
 
   .loading-content {
     text-align: center;
-    pointer-events: auto;
   }
 
   .spinner {
@@ -177,7 +193,6 @@ export const ErrorMessage = styled.div`
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   text-align: center;
   z-index: 1000;
-  pointer-events: auto;
 
   button {
     margin-top: 10px;
@@ -187,7 +202,6 @@ export const ErrorMessage = styled.div`
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    pointer-events: auto;
 
     &:hover {
       background: #2980b9;
@@ -274,6 +288,18 @@ export const PopupContainer = styled.div`
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   border: 2px solid #ffffff; /* Белая рамка для стандартного попапа */
   border-radius: 8px;
+
+  /* Оранжевая рамка для выбранных (избранных) маркеров */
+  .selected > & {
+    border: 2px solid #ff9800;
+    box-shadow: 0 0 12px 2px #ff9800, 0 0 20px 4px rgba(255, 152, 0, 0.3);
+    animation: popupSelectedGlow 2s ease-in-out infinite alternate;
+  }
+
+  @keyframes popupSelectedGlow {
+    from { box-shadow: 0 0 12px 2px #ff9800, 0 0 20px 4px rgba(255, 152, 0, 0.3); }
+    to { box-shadow: 0 0 16px 3px #ff9800, 0 0 30px 6px rgba(255, 152, 0, 0.5); }
+  }
 `;
 
 export const CloseButton = styled.button`
@@ -459,24 +485,19 @@ export const SearchBarContainer = styled.div`
 `;
 
 export const GlobalMarkerStyles = styled.div`
+  /* Каплевидные маркеры — стили задаются inline в createMarkerIconHTML */
   .marker-icon, .marker-base {
-    width: 30px !important;
-    height: 30px !important;
-    border-radius: 50% !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     padding: 0 !important;
     margin: 0 !important;
     box-sizing: border-box !important;
-    background: inherit !important;
-    border: 2px solid #fff !important;
   }
-  .marker-icon i,
-  .marker-base i {
-    color: white !important;
-    font-size: 1.3em !important;
-    line-height: 1 !important;
+  /* Сброс дефолтных стилей Leaflet для div-icon (белый фон, бордер) */
+  .leaflet-div-icon {
+    background: transparent !important;
+    border: none !important;
   }
   .marker-user-poi {
     border: 2px solid #e67e22;
@@ -577,20 +598,37 @@ export const BikeLanesLayer = styled.div`
   }
 `;
 
-/* Глобальные стили для всех Leaflet попапов и кластеров */
-export const GlobalLeafletPopupStyles = styled.div`
+/* Глобальные стили для всех Leaflet попапов */
+export const GlobalLeafletPopupStyles = createGlobalStyle`
   .leaflet-popup-content-wrapper {
     border-radius: 8px !important;
   }
-  
   .leaflet-popup-tip {
     border-radius: 2px;
   }
-  
+
+  /* Кастомный попап маркера — убираем Leaflet-хром, чтобы MarkerPopup рендерился без двойной рамки */
+  .custom-marker-popup .leaflet-popup-content-wrapper {
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+  }
+  .custom-marker-popup .leaflet-popup-tip-container {
+    display: none !important;
+  }
+  .custom-marker-popup .leaflet-popup-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
+  }
+  .custom-marker-popup .leaflet-popup-close-button {
+    display: none !important;
+  }
+
   /* Убедимся, что элементы управления Leaflet отображаются поверх стеклянных панелей */
   .leaflet-control {
     z-index: 1300 !important;
   }
-  
-  /* Стили кластеров маркеров перенесены в PageLayout.css для централизованного управления */
 `;

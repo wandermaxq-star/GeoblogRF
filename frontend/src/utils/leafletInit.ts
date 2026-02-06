@@ -30,10 +30,10 @@ if (Leaflet && Leaflet.Icon && Leaflet.Icon.Default) {
     });
 }
 
-// Side-effect import: ensure Leaflet MarkerCluster plugin is loaded and styles are bundled.
-// We use dynamic import so it executes after Leaflet was attached to window.
-void import('leaflet.markercluster').catch(() => { /* ignore - plugin may be missing in some envs */ });
-void import('leaflet.markercluster/dist/MarkerCluster.css').catch(() => { /* ignore */ });
-void import('leaflet.markercluster/dist/MarkerCluster.Default.css').catch(() => { /* ignore */ });
+// Подключаем плагин MarkerCluster — он расширяет L объектом L.markerClusterGroup
+// Импорт должен быть ПОСЛЕ установки window.L, т.к. плагин читает L из window
+import 'leaflet.markercluster';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 
-console.debug('[leafletInit] Leaflet initialized globally (markercluster import attempted)');
+console.debug('[leafletInit] Leaflet initialized globally');

@@ -23,6 +23,10 @@ export interface ContentState {
   // Мобильная версия
   isMobile: boolean;
 
+  // Показывать ли карту на фоне (если false — карта скрывается)
+  showBackgroundMap: boolean;
+  setShowBackgroundMap: (show: boolean) => void;
+
   // Методы для управления левой панелью
   setLeftContent: (content: ContentType) => void;
   openLeftPanel: (content: ContentType) => void;
@@ -55,6 +59,8 @@ export const useContentStore = create<ContentState>()(
     leftContent: 'map',
     rightContent: null,
     isMobile: typeof window !== 'undefined' ? window.innerWidth < 768 : false,
+    // По умолчанию показываем карту на фоне (можно скрыть через setShowBackgroundMap)
+    showBackgroundMap: true,
 
     // Установка левого контента
     setLeftContent: (content: ContentType) => {
@@ -131,6 +137,11 @@ export const useContentStore = create<ContentState>()(
     // КРИТИЧНО: Синхронное обновление
     resetAllPanels: () => {
       set({ leftContent: null, rightContent: null });
+    },
+
+    // Показывать/скрывать фоновую карту
+    setShowBackgroundMap: (show: boolean) => {
+      set({ showBackgroundMap: show });
     },
 
     // Получить активный контент (для мобильной версии)

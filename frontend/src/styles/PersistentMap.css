@@ -10,6 +10,10 @@
   pointer-events: auto;
 }
 
+/* Для двухоконного режима позиционирование фокуса карты осуществляется через JS (см. Map.tsx) —
+   контейнер карты должен оставаться 100% ширины, чтобы интерактивность и слои работали корректно. */
+
+
 /* Если нужно, чтобы карта была фоновым слоем на весь viewport, добавьте модификатор */
 .facade-map-root--fixed {
   position: fixed;
@@ -61,4 +65,92 @@
 .glass-sidebar--dark {
   background: rgba(10,12,16,0.32);
   border: 1px solid rgba(255,255,255,0.06);
+}
+
+/* POSTS MODE: ensure map is interactive and above controls while keeping glass panels visible underneath */
+.page-container.posts-mode .facade-map-root {
+  /* Bring map above buttons/search so it is always interactive */
+  z-index: 1300;
+  pointer-events: auto !important;
+}
+
+/* Lower controls / dropdowns in posts-mode so they don't block the map
+   (buttons & region dropdown still available but placed below the map) */
+.page-container.posts-mode .map-action-buttons-container,
+.page-container.posts-mode .region-selector-dropdown,
+.page-container.posts-mode .region-selector-container {
+  z-index: 1100;
+}
+
+/* Keep posts panel visually above the map but allow clicks through transparent areas.
+   We set pointer-events: none on the panel (so background clicks reach the map),
+   and enable pointer-events on interactive children (.post-item, header, scroll area). */
+.page-container.posts-mode .page-main-panel {
+  z-index: 1400;
+  pointer-events: none; /* allow clicks to reach the map where there is no content */
+}
+
+/* Ensure Leaflet markers and popups are above posts (markers remain visible and interactive) */
+.page-container.posts-mode .facade-map-root .leaflet-marker-icon,
+.page-container.posts-mode .facade-map-root .leaflet-marker-shadow {
+  z-index: 2200 !important; /* above map and panels */
+  pointer-events: auto !important;
+  opacity: 1 !important;
+}
+.page-container.posts-mode .facade-map-root .leaflet-popup,
+.page-container.posts-mode .facade-map-root .leaflet-popup-pane {
+  z-index: 2300 !important;
+  pointer-events: auto !important;
+}
+
+/* Also ensure map panes themselves don't get clipped by layout stacking */
+.page-container.posts-mode .facade-map-root .leaflet-pane {
+  z-index: 2150 !important;
+}
+
+/* Map Debug полностью исключён из визуализации и логики.
+   Стили map-debug-mode удалены — кнопки настроек и избранного
+   никогда не скрываются при сворачивании панелей. */
+
+/* ============================
+   Глобальные стили для попапов и маркеров карты — видимость во всех режимах
+   ============================ */
+
+/* Попапы карты отображаются поверх всех панелей */
+.facade-map-root .leaflet-popup-pane,
+.facade-map-root .leaflet-tooltip-pane {
+  z-index: 1500 !important;
+}
+
+/* Мини-попапы маркеров должны быть видны в двухоконном режиме */
+.mini-marker-popup-vertical,
+.event-mini-popup {
+  z-index: 9999 !important;
+  pointer-events: auto !important;
+}
+
+/* Маркеры всегда интерактивны и видимы */
+.facade-map-root .leaflet-marker-icon,
+.facade-map-root .leaflet-marker-shadow {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+}
+
+/* Leaflet попапы всегда интерактивны */
+.facade-map-root .leaflet-popup {
+  pointer-events: auto !important;
+}
+
+/* Контейнер карты всегда интерактивен когда виден */
+.facade-map-root:not(.map-hidden) .leaflet-container {
+  pointer-events: auto !important;
+}
+
+/* Двухоконный режим: карта и панели корректно z-indexed */
+.facade-map-root.two-panel-mode {
+  pointer-events: auto !important;
+}
+
+.facade-map-root.two-panel-mode .leaflet-container {
+  pointer-events: auto !important;
 }

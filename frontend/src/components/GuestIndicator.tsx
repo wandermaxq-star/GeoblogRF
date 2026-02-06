@@ -19,10 +19,12 @@ export default function GuestIndicator() {
 
   const totalContent = guestCounts.markers + guestCounts.routes + guestCounts.events + guestCounts.posts + guestCounts.blogs;
 
+  // Не показываем на страницах posts-mode (временно скрываем)
+  if (typeof document !== 'undefined' && document.querySelector('.page-container.posts-mode')) return null;
   if (!isGuest || !isVisible) return null;
 
   return (
-    <div className="fixed top-20 right-4 z-40 bg-white/95 backdrop-blur-sm border border-blue-200 rounded-lg shadow-lg p-4 max-w-sm">
+    <div className="guest-indicator fixed top-20 right-4 z-40 bg-white/95 backdrop-blur-sm border border-blue-200 rounded-lg shadow-lg p-4 max-w-sm">
       <div className="flex items-start gap-3">
         <button
           onClick={() => setIsVisible(false)}

@@ -5,7 +5,6 @@ import { ParticipantsPanel } from "../components/chat/ParticipantsPanel";
 import { Room, Message, User, RouteRoom, EventRoom, CreateRouteRoomData, CreateEventRoomData } from '../types/chat';
 import { FaBars, FaUsers, FaTimes, FaComments } from 'react-icons/fa';
 import { MirrorGradientContainer, usePanelRegistration } from '../components/MirrorGradientProvider';
-import '../styles/GlobalStyles.css';
 import '../styles/PageLayout.css';
 
 // API URL для загрузки комнат

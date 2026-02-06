@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom';
 import { useLayoutState } from '../contexts/LayoutContext';
 import { MirrorGradientContainer, usePanelRegistration } from '../components/MirrorGradientProvider';
+import PageLayout from '../components/PageLayout';
 import { listPosts, createPost, PostDTO, toggleReaction } from '../services/postsService';
 import { FaPlus, FaCog, FaEdit, FaFileAlt, FaCloud, FaTimes } from 'react-icons/fa';
 import { useContentStore } from '../stores/contentStore';
-import '../styles/GlobalStyles.css';
 import '../styles/PageLayout.css';
 import CreatePostModal from '../components/Posts/CreatePostModal';
 import PostCard from '../components/Posts/PostCard';
@@ -43,6 +43,8 @@ const PostsPage: React.FC = () => {
   const [moderationCount, setModerationCount] = useState(0);
   const [showDraftsPanel, setShowDraftsPanel] = useState(false);
   const [draftsCount, setDraftsCount] = useState(0);
+  // Степень матовости/прозрачности: 'light' | 'dark' (светлый по умолчанию)
+  const [glassVariant, setGlassVariant] = useState<'light'|'dark'>('light');
 
   // Проверяем двухоконный режим - есть ли левая панель (карта/планировщик)
   const leftContent = useContentStore((state) => state.leftContent);
@@ -543,13 +545,19 @@ const PostsPage: React.FC = () => {
   // Если открыт конструктор постов, показываем его
   if (showPostConstructor) {
     return (
-      <MirrorGradientContainer className="page-layout-container page-container posts-mode">
-        <Suspense fallback={<div className="text-center p-8">Загрузка конструктора...</div>}>
-          <LazyPostConstructor
-            onSave={handlePostConstructorSave}
-            onClose={() => setShowPostConstructor(false)}
-          />
-        </Suspense>
+      <MirrorGradientContainer className={`page-layout-container page-container posts-mode glass-${glassVariant}`}>
+        <div className="page-main-area">
+          <div className="page-content-wrapper">
+            <div className="page-main-panel relative">
+              <Suspense fallback={<div className="text-center p-8">Загрузка конструктора...</div>}>
+                <LazyPostConstructor
+                  onSave={handlePostConstructorSave}
+                  onClose={() => setShowPostConstructor(false)}
+                />
+              </Suspense>
+            </div>
+          </div>
+        </div>
       </MirrorGradientContainer>
     );
   }
@@ -585,18 +593,27 @@ const PostsPage: React.FC = () => {
   // Если открыт пост без интерактивного контента, показываем обычный режим
   if (selectedPost && !showInteractivePost) {
     return (
-      <MirrorGradientContainer className="page-layout-container page-container posts-mode">
-        <Suspense fallback={<div className="text-center p-8">Загрузка деталей поста...</div>}>
-          <LazyPostDetail post={selectedPost} onBack={handleBackToList} />
-        </Suspense>
+      <MirrorGradientContainer className={`page-layout-container page-container posts-mode glass-${glassVariant}`}>
+        <div className="page-main-area">
+          <div className="page-content-wrapper">
+            <div className="page-main-panel relative">
+              <Suspense fallback={<div className="text-center p-8">Загрузка деталей поста...</div>}>
+                <LazyPostDetail post={selectedPost} onBack={handleBackToList} />
+              </Suspense>
+            </div>
+          </div>
+        </div>
       </MirrorGradientContainer>
     );
   }
 
   return (
-    <MirrorGradientContainer className="page-layout-container page-container posts-mode">
-      {/* СТАТИЧНЫЙ ЗАГОЛОВОК */}
-      <div className="posts-static-header">
+    <MirrorGradientContainer className={`page-layout-container page-container posts-mode glass-${glassVariant}`}>
+      <div className="page-main-area">
+        <div className="page-content-wrapper">
+          <div className="page-main-panel relative">
+            {/* СТАТИЧНЫЙ ЗАГОЛОВОК */}
+            <div className="posts-static-header">
               <div className="posts-title-row">
                 <h1 className="posts-main-title">Лента контента</h1>
                 {/* Кнопка закрытия панели - только в двухоконном режиме */}
@@ -655,6 +672,13 @@ const PostsPage: React.FC = () => {
                     <span>Создать пост</span>
                   </button>
                 </div>
+
+                {/* Переключатель варианта стекла — светлый / тёмный */}
+                <div className="glass-variant-toggle" role="tablist" aria-label="Вариант стекла">
+                  <button className={`variant-btn ${glassVariant === 'light' ? 'active' : ''}`} onClick={() => setGlassVariant('light')} title="Светлый (как на скрине)">Светл</button>
+                  <button className={`variant-btn ${glassVariant === 'dark' ? 'active' : ''}`} onClick={() => setGlassVariant('dark')} title="Тёмный (как в Избранном)">Тёмн</button>
+                </div> 
+
               </div>
             </div>
 
@@ -710,6 +734,9 @@ const PostsPage: React.FC = () => {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

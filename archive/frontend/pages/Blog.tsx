@@ -1,5 +1,4 @@
 import { MirrorGradientContainer, usePanelRegistration } from '../components/MirrorGradientProvider';
-import '../styles/GlobalStyles.css';
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import BlogSection, { BlogForm } from '../components/Blog/BlogSection';

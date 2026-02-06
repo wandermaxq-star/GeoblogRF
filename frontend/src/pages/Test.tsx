@@ -7,7 +7,6 @@ import { externalEventsService } from '../services/externalEventsService';
 
 import StarRating from '../components/ui/StarRating';
 import { useRating } from '../hooks/useRating';
-import '../styles/GlobalStyles.css';
 import './ChatNew.css';
 import { projectManager } from '../services/projectManager';
 
