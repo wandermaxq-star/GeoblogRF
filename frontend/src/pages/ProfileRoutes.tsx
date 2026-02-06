@@ -22,10 +22,13 @@ const ProfileRoutes: React.FC = () => {
   }, [auth, navigate]);
 
   const handleExport = (route: any, format: 'gpx' | 'kml' | 'geojson') => {
-    // Если старый mapFacade предоставляет экспорт — вызовем его для обратной совместимости (и для тестов)
+    // Поддерживаем оба варианта экспорта из mapFacade:
+    // - mapFacade() -> { exportTrack: fn }
+    // - mapFacade -> { exportTrack: fn }
     try {
-      if (mapFacade().exportTrack && typeof mapFacade().exportTrack === 'function') {
-        mapFacade().exportTrack(route.track || route, format);
+      const mf = typeof mapFacade === 'function' ? mapFacade() : mapFacade;
+      if (mf && mf.exportTrack && typeof mf.exportTrack === 'function') {
+        mf.exportTrack(route.track || route, format);
         return;
       }
     } catch (e) {

@@ -4,16 +4,19 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import Sidebar from '../src/components/Sidebar';
 import { LayoutProvider } from '../src/contexts/LayoutContext';
 import { useContentStore } from '../src/stores/contentStore';
+import { GuestProvider } from '../src/contexts/GuestContext';
 
 // Простая тестовая обёртка, проверяет что по клику открывается planner
 test('Sidebar opens planner and navigates to /planner', async () => {
   // Сбрасываем состояние стора
   useContentStore.setState({ leftContent: null, rightContent: 'posts' });
 
-  const { getByText } = render(
+  const { getByText, getByRole } = render(
     <MemoryRouter initialEntries={["/"]}>
       <LayoutProvider>
-        <Sidebar />
+        <GuestProvider>
+          <Sidebar />
+        </GuestProvider>
         <Routes>
           <Route path="/planner" element={<div data-testid="planner-page">PLANNER</div>} />
           <Route path="/" element={<div data-testid="home">HOME</div>} />
@@ -22,11 +25,11 @@ test('Sidebar opens planner and navigates to /planner', async () => {
     </MemoryRouter>
   );
 
-  // Находим кнопку по тексту (появляется только при раскрытии сайдбара - симулируем клик по сайдбару для раскрытия)
-  const sidebar = getByText('Навигация');
+  // Кликаем по самому навигационному элементу (nav) чтобы раскрыть сайдбар
+  const sidebar = getByRole('navigation');
   fireEvent.click(sidebar);
 
-  // Теперь кликаем по кнопке Планировщик
+  // Теперь кликаем по кнопке Планировщик (текст появляется после раскрытия)
   const plannerBtn = getByText('Планировщик');
   fireEvent.click(plannerBtn);
 
