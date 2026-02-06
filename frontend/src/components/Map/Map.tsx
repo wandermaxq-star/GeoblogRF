@@ -1092,26 +1092,7 @@ const Map: React.FC<MapProps> = ({
                 leafletMarker.on('click', (e: any) => {
                     e.originalEvent.stopPropagation();
                     setMiniPopup(null);
-                    // Open the standard leafet popup for this marker instead of rendering overlay
-                    try {
-                        if (typeof markerData?.id !== 'undefined') {
-                            // find the layer by markerData.id
-                            if (markerClusterGroupRef.current && typeof markerClusterGroupRef.current.eachLayer === 'function') {
-                                markerClusterGroupRef.current.eachLayer((layer: any) => {
-                                    if (layer && layer.markerData && String(layer.markerData.id) === String(markerData.id)) {
-                                        try { layer.openPopup && layer.openPopup(); } catch (err) { }
-                                    }
-                                });
-                            } else if (mapRef.current) {
-                                // fallback: iterate all layers
-                                (mapRef.current as any).eachLayer((layer: any) => {
-                                    if (layer && layer.markerData && String(layer.markerData.id) === String(markerData.id)) {
-                                        try { layer.openPopup && layer.openPopup(); } catch (err) { }
-                                    }
-                                });
-                            }
-                        }
-                    } catch (err) { console.debug('[Map] open popup failed:', err); }
+                    setSelectedMarkerIdForPopup(markerData.id);
                 });
 
                 if (showHints) {
@@ -1646,23 +1627,9 @@ const Map: React.FC<MapProps> = ({
                 onOpenFull={() => {
                     const markerId = miniPopup?.marker?.id;
                     setMiniPopup(null);
-                    if (!markerId) return;
-                    try {
-                        // prefer cluster group search first
-                        if (markerClusterGroupRef.current && typeof markerClusterGroupRef.current.eachLayer === 'function') {
-                            markerClusterGroupRef.current.eachLayer((layer: any) => {
-                                if (layer && layer.markerData && String(layer.markerData.id) === String(markerId)) {
-                                    try { layer.openPopup && layer.openPopup(); } catch (err) { }
-                                }
-                            });
-                        } else if (mapRef.current) {
-                            (mapRef.current as any).eachLayer((layer: any) => {
-                                if (layer && layer.markerData && String(layer.markerData.id) === String(markerId)) {
-                                    try { layer.openPopup && layer.openPopup(); } catch (err) { }
-                                }
-                            });
-                        }
-                    } catch (err) { console.debug('[Map] open popup from mini failed:', err); }
+                    if (markerId) {
+                        setSelectedMarkerIdForPopup(markerId);
+                    }
                 }}
                 isSelected={false}
             />
