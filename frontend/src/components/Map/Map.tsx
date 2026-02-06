@@ -601,7 +601,7 @@ const Map: React.FC<MapProps> = ({
                     mapRef.current = (facadeApi as any).map as any;
                 } else if (facadeApi && (facadeApi as any).mapInstance) {
                     mapRef.current = (facadeApi as any).mapInstance as any;
-                                } else {
+                } else {
                     // FACADE: Используем OSMMapRenderer вместо прямого вызова L.map
                     try {
                         const mapRenderer = new OSMMapRenderer();
@@ -609,18 +609,19 @@ const Map: React.FC<MapProps> = ({
 
                         // Получаем инстанс карты Leaflet
                         mapRef.current = mapRenderer.getMap();
-
-                        // КРИТИЧНО: Регистрируем карту в фасаде, чтобы
-                        // mapFacade().createMarker() и другие helper-методы работали
-                        if (mapRef.current) {
-                            mapFacade().registerBackgroundApi(
-                                { map: mapRef.current, mapInstance: mapRef.current, containerId: 'map' },
-                                'map'
-                            );
-                        }
                     } catch (e) {
                         console.error("Ошибка инициализации OSMMapRenderer", e);
                     }
+                }
+
+                // КРИТИЧНО: Всегда регистрируем карту в фасаде, чтобы
+                // mapFacade().createMarker() и другие helper-методы работали
+                // независимо от того, каким путём получен инстанс карты.
+                if (mapRef.current) {
+                    mapFacade().registerBackgroundApi(
+                        { map: mapRef.current, mapInstance: mapRef.current, containerId: 'map' },
+                        'map'
+                    );
                 }
 
                 if (!mapRef.current) {
@@ -729,7 +730,10 @@ const Map: React.FC<MapProps> = ({
                             iconAnchor: [10, 10],
                         });
 
-                        const newTempMarker = mapFacade().createMarker([clickedLatLng.lat, clickedLatLng.lng], { icon: tempIcon });
+                        let newTempMarker = mapFacade().createMarker([clickedLatLng.lat, clickedLatLng.lng], { icon: tempIcon });
+                        if (!newTempMarker && L && mapRef.current) {
+                            try { newTempMarker = L.marker([clickedLatLng.lat, clickedLatLng.lng], { icon: tempIcon }).addTo(mapRef.current); } catch (_) {}
+                        }
                         setTempMarker(newTempMarker);
 
                         const placeFound = await handlePlaceDiscovery(clickedLatLng.lat, clickedLatLng.lng);
@@ -887,6 +891,7 @@ const Map: React.FC<MapProps> = ({
     // --- MARKERS RENDER ---
     useEffect(() => {
         if (!mapRef.current || !L) return;
+        if (!isMapReady) return; // Ждём пока карта полностью инициализирована
         if (!markersData || markersData.length === 0) return;
 
         const { radiusOn, radius } = filters;
@@ -952,7 +957,15 @@ const Map: React.FC<MapProps> = ({
                     className: `marker-category-${markerCategory}${isHot ? ' marker-hot' : ''}${markerCategory === 'user_poi' ? ' marker-user-poi' : ''}${isPending ? ' marker-pending' : ''}`,
                 });
 
-                const leafletMarker = mapFacade().createMarker([lat, lng], { icon: customIcon });
+                let leafletMarker = mapFacade().createMarker([lat, lng], { icon: customIcon });
+                // Прямой fallback через Leaflet если фасад не смог создать маркер
+                if (!leafletMarker && L && mapRef.current) {
+                    try {
+                        leafletMarker = L.marker([lat, lng], { icon: customIcon }).addTo(mapRef.current);
+                    } catch (directErr) {
+                        console.debug('[Map] Direct L.marker fallback failed:', directErr);
+                    }
+                }
                 if (!leafletMarker) {
                     console.warn('[Map] createMarker returned null for marker', markerData?.id);
                     return;
@@ -1134,7 +1147,11 @@ const Map: React.FC<MapProps> = ({
                         popupAnchor: [0, -iconSize],
                     });
 
-                    const eventMarker = mapFacade().createMarker([lat, lng], { icon: eventIcon });
+                    let eventMarker = mapFacade().createMarker([lat, lng], { icon: eventIcon });
+                    if (!eventMarker && L && mapRef.current) {
+                        try { eventMarker = L.marker([lat, lng], { icon: eventIcon }).addTo(mapRef.current); } catch (_) {}
+                    }
+                    if (!eventMarker) return;
                     (eventMarker as any).eventData = event;
 
                     eventMarker.on('click', (e: any) => {
@@ -1323,8 +1340,11 @@ const Map: React.FC<MapProps> = ({
                         iconSize: [40, 40],
                         iconAnchor: [20, 40]
                     });
-                    const routeMarker = mapFacade().createMarker([lat, lng], { icon: routeIcon });
-                    (routeMarker as any).isRouteLayer = true;
+                    let routeMarker = mapFacade().createMarker([lat, lng], { icon: routeIcon });
+                    if (!routeMarker && L && mapRef.current) {
+                        try { routeMarker = L.marker([lat, lng], { icon: routeIcon }).addTo(mapRef.current); } catch (_) {}
+                    }
+                    if (routeMarker) (routeMarker as any).isRouteLayer = true;
                 }
             });
         }

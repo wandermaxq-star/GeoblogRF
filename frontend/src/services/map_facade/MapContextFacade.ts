@@ -81,6 +81,35 @@ export class MapContextFacade {
   private pendingExternalMarkers: any[] = [];
   private readonly isInitializing = false;
 
+  /**
+   * Безопасно получает инстанс Leaflet карты.
+   * OSMMapRenderer.getMap() бросает Error если карта не инициализирована,
+   * поэтому нельзя использовать `getMap?.() ?? fallback` — исключение перехватывается
+   * внешним try/catch и fallback никогда не срабатывает.
+   */
+  private getMapSafe(): any {
+    // 1. Пробуем получить через рендерер
+    try {
+      if (this.currentRenderer && typeof (this.currentRenderer as any).getMap === 'function') {
+        const m = (this.currentRenderer as any).getMap();
+        if (m) return m;
+      }
+    } catch (_) { /* getMap() throws when not initialized — это нормально */ }
+    // 2. Прямой доступ к свойству .map / .mapInstance рендерера
+    try {
+      const r = this.currentRenderer as any;
+      if (r?.mapInstance) return r.mapInstance;
+      if (r?.map) return r.map;
+    } catch (_) { /* ignore */ }
+    // 3. Fallback на INTERNAL.api
+    try {
+      const internal = (this as any).INTERNAL;
+      if (internal?.api?.map) return internal.api.map;
+      if (internal?.api?.mapInstance) return internal.api.mapInstance;
+    } catch (_) { /* ignore */ }
+    return null;
+  }
+
   constructor(dependencies: MapFacadeDependencies) {
     this.deps = dependencies;
     // Ensure INTERNAL object exists and provide reactive externalMarkers early
@@ -513,7 +542,7 @@ export class MapContextFacade {
   // These helpers keep Leaflet usage centralized in the facade so components don't import/use Leaflet directly.
   addTileLayer(url: string, options?: any): any {
     try {
-      const map: any = (this.currentRenderer as any)?.getMap?.() ?? (this as any).INTERNAL?.api?.map;
+      const map: any = this.getMapSafe();
       const L = (window as any).L;
       if (!map || !L) return null;
       const layer = L.tileLayer(url, options || {}).addTo(map);
@@ -526,7 +555,7 @@ export class MapContextFacade {
 
   setZoomControl(position: string = 'topright'): any {
     try {
-      const map: any = (this.currentRenderer as any)?.getMap?.() ?? (this as any).INTERNAL?.api?.map;
+      const map: any = this.getMapSafe();
       const L = (window as any).L;
       if (!map || !L) return null;
       const control = L.control.zoom({ position }).addTo(map);
@@ -551,9 +580,12 @@ export class MapContextFacade {
 
   createMarker(latlng: [number, number], opts?: any): any {
     try {
-      const map: any = (this.currentRenderer as any)?.getMap?.() ?? (this as any).INTERNAL?.api?.map;
+      const map: any = this.getMapSafe();
       const L = (window as any).L;
-      if (!map || !L) return null;
+      if (!map || !L) {
+        console.debug('[MapContextFacade] createMarker: map=', !!map, 'L=', !!L);
+        return null;
+      }
       const marker = L.marker(latlng, opts || {}).addTo(map);
       return marker;
     } catch (e) {
@@ -576,7 +608,7 @@ export class MapContextFacade {
 
   createPolyline(latlngs: Array<[number, number]>, opts?: any): any {
     try {
-      const map: any = (this.currentRenderer as any)?.getMap?.() ?? (this as any).INTERNAL?.api?.map;
+      const map: any = this.getMapSafe();
       const L = (window as any).L;
       if (!map || !L) return null;
       const pl = L.polyline(latlngs, opts || {}).addTo(map);
@@ -595,14 +627,14 @@ export class MapContextFacade {
 
   createPolygon(latlngs: Array<[number, number]>, opts?: any): any {
     const L = (window as any).L;
-    const map: any = (this.currentRenderer as any)?.getMap?.() ?? (this as any).INTERNAL?.api?.map;
+    const map: any = this.getMapSafe();
     if (!map || !L) return null;
     return L.polygon(latlngs, opts || {}).addTo(map);
   }
 
   createCircle(center: [number, number], opts?: any): any {
     const L = (window as any).L;
-    const map: any = (this.currentRenderer as any)?.getMap?.() ?? (this as any).INTERNAL?.api?.map;
+    const map: any = this.getMapSafe();
     if (!map || !L) return null;
     return L.circle(center, opts || {}).addTo(map);
   }
@@ -747,7 +779,7 @@ export class MapContextFacade {
    */
   latLngToContainerPoint(latlng: any): { x: number; y: number } {
     try {
-      const map: any = (this.currentRenderer as any)?.getMap?.() ?? (this as any).INTERNAL?.api?.map;
+      const map: any = this.getMapSafe();
       if (!map || typeof map.latLngToContainerPoint !== 'function') return { x: 0, y: 0 };
       const pt = map.latLngToContainerPoint(latlng);
       return { x: pt.x, y: pt.y };

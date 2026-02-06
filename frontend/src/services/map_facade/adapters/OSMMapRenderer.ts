@@ -169,10 +169,7 @@ export class OSMMapRenderer implements IMapRenderer {
     this.mapInstance.on('zoom', handler);
   }
 
-  public getMap(): L.Map {
-    if (!this.mapInstance) {
-      throw new Error('Карта не инициализирована');
-    }
+  public getMap(): L.Map | null {
     return this.mapInstance;
   }
 

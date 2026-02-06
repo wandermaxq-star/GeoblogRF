@@ -60,6 +60,15 @@ export const mapFacade = (() => {
 
     try {
       mapFacadeInstance = new MapContextFacade(defaultDeps);
+      // КРИТИЧНО: Синхронизируем экспортированный INTERNAL с INTERNAL инстанса,
+      // чтобы Map.tsx и другие модули читали тот же объект, куда пишут
+      // registerBackgroundApi и initializeRenderer.
+      const instanceInternal = (mapFacadeInstance as any).INTERNAL;
+      if (instanceInternal) {
+        Object.assign(_INTERNAL, instanceInternal);
+        // Привязываем объект так, чтобы запись в _INTERNAL.api отражалась и в инстансе
+        (mapFacadeInstance as any).INTERNAL = _INTERNAL;
+      }
       return mapFacadeInstance;
     } catch (e) {
       console.error('Failed to instantiate MapContextFacade:', e);
@@ -70,9 +79,9 @@ export const mapFacade = (() => {
 export { MapContextFacade } from './MapContextFacade';
 export type { MapConfig, MapMarker, Route, RouteStats, Bounds, MapContext, DateRange, GeoPoint, PersistedRoute, UnifiedMarker, MapFacadeDependencies } from './IMapRenderer';
 
-// Ensure exported INTERNAL is the same object attached to the facade instance
-((mapFacade as any).INTERNAL) = (mapFacade as any).INTERNAL || {};
-export const INTERNAL = (mapFacade as any).INTERNAL;
+// Единый объект INTERNAL, который будет разделён между экспортом и инстансом
+const _INTERNAL: any = {};
+export const INTERNAL = _INTERNAL;
 
 // Re-export real service so import is actually used (keeps intent clear)
 export { offlineService } from '../offlineService';
