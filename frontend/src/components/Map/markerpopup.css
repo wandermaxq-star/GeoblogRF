@@ -203,3 +203,36 @@
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.1); }
 }
+
+/* === Подправляем отображение иконок Leaflet (PNG и fallback) === */
+.facade-map-root .leaflet-marker-icon {
+  width: 34px !important;
+  height: 44px !important;
+  display: inline-block !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: contain !important;
+}
+
+/* Стили для IMG внутри .leaflet-marker-icon — делаем их адаптивными */
+.facade-map-root .leaflet-marker-icon img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+}
+
+/* Если PNG отсутствует/ломается — fallback дивик с классом .marker-base выглядит красиво */
+.marker-icon, .marker-base {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  background: inherit !important;
+  border: 2px solid #fff !important;
+}

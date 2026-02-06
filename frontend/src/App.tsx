@@ -16,6 +16,7 @@ import { useIsMobile } from './hooks/use-mobile';
 import WelcomeModalWrapper from './components/Gamification/WelcomeModalWrapper';
 import ErrorBoundary from './components/ErrorBoundary';
 import ConditionalPage from './components/Mobile/ConditionalPage';
+import { GlobalMarkerStyles } from './components/Map/Map.styles';
 
 // Ленивая загрузка тяжёлых компонентов
 const HomePage = lazy(() => import('./pages/HomePage'));
@@ -103,6 +104,8 @@ export default function App() {
               <FavoritesProvider>
                 <LoadingProvider>
                   <GlobalLoadingOverlay />
+                  {/* Глобальные стили для маркеров (круглые / fallback) */}
+                  <GlobalMarkerStyles />
                 <Routes>
               {/* Страница авторизации */}
               <Route path="/login" element={

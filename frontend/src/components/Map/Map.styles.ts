@@ -474,16 +474,18 @@ export const SearchBarContainer = styled.div`
 
 export const GlobalMarkerStyles = styled.div`
   .marker-icon, .marker-base {
-    width: 30px !important;
-    height: 30px !important;
-    border-radius: 50% !important;
+    /* размеры сделаны под стандартные PNG 34x44, при fallback показываем компактную каплю */
+    width: 34px !important;
+    height: 44px !important;
+    border-radius: 8px !important; /* не круг — каплеобразный вид задаётся PNG; fallback — аккуратный прямоугольник с закруглением */
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     padding: 0 !important;
     margin: 0 !important;
     box-sizing: border-box !important;
-    background: inherit !important;
+    /* Не перезаписываем inline background-color, он должен применяться */
+    background: transparent !important;
     border: 2px solid #fff !important;
   }
   .marker-icon i,
