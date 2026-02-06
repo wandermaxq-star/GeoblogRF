@@ -40,7 +40,8 @@ import { getDistanceFromLatLonInKm } from '../../utils/russiaBounds';
 import { getMarkerIconPath, getCategoryColor, getFontAwesomeIconName } from '../../constants/markerCategories';
 import { mapFacade, INTERNAL } from '../../services/map_facade/index';
 import ErrorBoundary from '../ErrorBoundary';
-import { initMapDebug } from '../../utils/devMapDebug';
+// Map Debug полностью исключён из визуализации и логики
+// import { initMapDebug } from '../../utils/devMapDebug';
 import type { MapConfig } from '../../services/map_facade/index';
 import { useMapStateStore } from '../../stores/mapStateStore';
 import { useEventsStore, EventsState } from '../../stores/eventsStore';
@@ -236,6 +237,9 @@ const Map: React.FC<MapProps> = ({
         position: { x: number; y: number };
     } | null>(null);
 
+    // Счётчик для принудительного пересчёта позиций selectedMarkerPopups при движении/зуме карты
+    const [mapMoveVersion, setMapMoveVersion] = useState(0);
+
     // --- LEGEND STATE ---
     const [internalLegendOpen, setInternalLegendOpen] = useState(false);
     const legendOpen = externalLegendOpen !== undefined ? externalLegendOpen : internalLegendOpen;
@@ -295,11 +299,11 @@ const Map: React.FC<MapProps> = ({
         }
     }, [leftContent, rightContent, portalEl, mapDisplayMode.shouldShowFullscreen]);
 
-    // Dev helper: add a debug toggle to disable overlays and bring map forward for inspection
-    useEffect(() => {
-      const cleanup = initMapDebug?.();
-      return () => { try { cleanup && cleanup(); } catch (e) {} };
-    }, []);
+    // Map Debug полностью исключён — кнопка и логика отладки убраны
+    // useEffect(() => {
+    //   const cleanup = initMapDebug?.();
+    //   return () => { try { cleanup && cleanup(); } catch (e) {} };
+    // }, []);
 
     // --- FACADE MAP TOP OFFSET ---
 
@@ -1457,9 +1461,18 @@ const Map: React.FC<MapProps> = ({
         map.on('movestart', closeMiniPopup);
         map.on('zoomstart', closeMiniPopup);
 
+        // Обновляем позиции selectedMarkerPopups при завершении движения/зума
+        const updatePopupPositions = () => {
+            setMapMoveVersion(v => v + 1);
+        };
+        map.on('moveend', updatePopupPositions);
+        map.on('zoomend', updatePopupPositions);
+
         return () => {
             map.off('movestart', closeMiniPopup);
             map.off('zoomstart', closeMiniPopup);
+            map.off('moveend', updatePopupPositions);
+            map.off('zoomend', updatePopupPositions);
         };
     }, []);
 
@@ -1659,7 +1672,8 @@ const Map: React.FC<MapProps> = ({
     );
 
     // --- SELECTED MARKERS MINI POPUPS ---
-    const selectedMarkerPopups = selectedMarkerIds?.map((markerId: string) => {
+    // mapMoveVersion обеспечивает пересчёт позиций при движении/зуме карты
+    const selectedMarkerPopups = useMemo(() => selectedMarkerIds?.map((markerId: string) => {
         const marker = markersData.find(m => m.id === markerId) || markers?.find(m => m.id === markerId);
         if (!marker) return null;
 
@@ -1667,13 +1681,15 @@ const Map: React.FC<MapProps> = ({
             return null;
         }
 
+        const pos = latLngToContainerPoint(mapFacade(), mapFacade().latLng(Number(marker.latitude), Number(marker.longitude)));
+
         return (
             <div
                 key={`selected-${markerId}`}
                 style={{
                     position: 'absolute',
-                    left: latLngToContainerPoint(mapFacade(), mapFacade().latLng(Number(marker.latitude), Number(marker.longitude))).x,
-                    top: latLngToContainerPoint(mapFacade(), mapFacade().latLng(Number(marker.latitude), Number(marker.longitude))).y,
+                    left: pos.x,
+                    top: pos.y,
                     zIndex: 1199,
                     transform: 'translate(-50%, -100%)',
                 }}
@@ -1695,7 +1711,7 @@ const Map: React.FC<MapProps> = ({
                 />
             </div>
         );
-    });
+    }), [selectedMarkerIds, markersData, markers, selectedMarkerIdForPopup, miniPopup, mapMoveVersion]);
 
     // --- JSX RENDER ---
     const mapContent = (

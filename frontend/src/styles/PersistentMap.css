@@ -108,30 +108,9 @@
   z-index: 2150 !important;
 }
 
-/* Dev helper: bring map to front and disable overlays when body.map-debug-mode (used by devMapDebug) */
-body.map-debug-mode .page-overlay,
-body.map-debug-mode .overlay,
-body.map-debug-mode .chat-overlay,
-body.map-debug-mode .page-slide-panel,
-body.map-debug-mode .page-slide-panel.open,
-body.map-debug-mode .page-slide-panel.right.open,
-body.map-debug-mode .page-slide-panel.left.open {
-  pointer-events: none !important;
-  opacity: 0.32 !important;
-}
-
-body.map-debug-mode .page-side-button.right,
-body.map-debug-mode .fixed.right-4,
-body.map-debug-mode .page-side-buttons.right {
-  display: none !important;
-}
-
-body.map-debug-mode .facade-map-root {
-  z-index: 2147483647 !important; /* bring to front */
-  left: 0 !important;
-  right: 0 !important;
-  width: 100vw !important;
-}
+/* Map Debug полностью исключён из визуализации и логики.
+   Стили map-debug-mode удалены — кнопки настроек и избранного
+   никогда не скрываются при сворачивании панелей. */
 
 /* ============================
    Глобальные стили для попапов и маркеров карты — видимость во всех режимах

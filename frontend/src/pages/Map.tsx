@@ -144,6 +144,12 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
   const favoritesOpen = (favoritesContext as any)?.favoritesOpen ?? false;
   const setFavoritesOpen = (favoritesContext as any)?.setFavoritesOpen ?? (() => { });
 
+  // КРИТИЧНО: Берём favorites и selectedMarkerIds из КОНТЕКСТА, а не из локального state.
+  // Это обеспечивает синхронизацию: MarkerPopup добавляет через контекст → FavoritesPanel и карта видят изменения.
+  const favorites: MarkerData[] = (favoritesContext as any)?.favorites ?? [];
+  const selectedMarkerIds: string[] = (favoritesContext as any)?.selectedMarkerIds ?? [];
+  const setSelectedMarkerIds: React.Dispatch<React.SetStateAction<string[]>> = (favoritesContext as any)?.setSelectedMarkerIds ?? (() => {});
+
   // Отладочная информация (только в dev режиме)
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
@@ -215,11 +221,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
 
   const [flyToCoordinates, setFlyToCoordinates] = useState<[number, number] | null>(null);
   const [selectedMarkerIdForPopup, setSelectedMarkerIdForPopup] = useState<string | null>(null);
-  // Состояния для выбранных меток (чекбоксы)
-  const [selectedMarkerIds, setSelectedMarkerIds] = useState<string[]>([]);
-
-  // Состояния для избранного
-  const [favorites, setFavorites] = useState<MarkerData[]>([]);
+  // selectedMarkerIds и favorites теперь берутся из FavoritesContext (выше)
   // VIP статус (заглушка, если не используется)
   const isVip = false;
 
@@ -325,26 +327,17 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
     }
   }, [appliedFilters.categories, useLazyLoading, mapBounds, reloadMarkers]);
 
-  const addToFavorites = (marker: MarkerData) => {
-    // Используем функцию из контекста, если она доступна
-    // Контекст не используется, только локальная логика
-
-    // Fallback на старую логику, если контекст недоступен
-    setFavorites((prev: MarkerData[]) => {
-      // Проверяем только по ID - это основная проверка на дубликаты
-      const idExists = prev.some(m => m.id === marker.id);
-      if (idExists) {
-        return prev;
+  const addToFavorites = useCallback((marker: MarkerData) => {
+    // Используем контекстную функцию для единого источника данных
+    try {
+      const isRealContext = favoritesContext && !(favoritesContext as any)._isStub;
+      if (isRealContext && typeof (favoritesContext as any).addToFavorites === 'function') {
+        (favoritesContext as any).addToFavorites(marker);
       }
-
-      // Проверяем, что у метки есть ID
-      if (!marker.id) {
-        return prev;
-      }
-
-      return [...prev, marker];
-    });
-  };
+    } catch (err) {
+      console.warn('[MapPage] addToFavorites error:', err);
+    }
+  }, [favoritesContext]);
 
   // Загружаем маркеры при инициализации (только если НЕ используется ленивая загрузка)
   useEffect(() => {
@@ -616,9 +609,16 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
     });
   }, []);
 
-  const removeFromFavorites = (id: string) => {
-    setFavorites((prev: MarkerData[]) => prev.filter((m: MarkerData) => m.id !== id));
-  };
+  const removeFromFavorites = useCallback((id: string) => {
+    try {
+      const isRealContext = favoritesContext && !(favoritesContext as any)._isStub;
+      if (isRealContext && typeof (favoritesContext as any).removeFavoritePlace === 'function') {
+        (favoritesContext as any).removeFavoritePlace(id);
+      }
+    } catch (err) {
+      console.warn('[MapPage] removeFromFavorites error:', err);
+    }
+  }, [favoritesContext]);
 
   const favoritesCount = favorites && favorites.length ? favorites.length : 0;
 
