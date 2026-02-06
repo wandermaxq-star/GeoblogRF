@@ -1465,7 +1465,7 @@
 
 /* Дублирующий стиль удален - используется основной выше */
 
-/* Затемнение при открытых панелях */
+/* Затемнение при открытых панелях — не блокирует клики (карта остаётся активной) */
 .page-overlay {
   position: absolute;
   top: 0;
@@ -1477,9 +1477,11 @@
   visibility: hidden;
   transition: all 0.3s ease;
   z-index: 15;
+  pointer-events: none;
 }
 
 .page-overlay.active {
   opacity: 1;
   visibility: visible;
+  pointer-events: none;
 }

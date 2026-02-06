@@ -1,4 +1,4 @@
-import styled, { css } from 'styled-components';
+import styled, { css, createGlobalStyle } from 'styled-components';
 
 // Типы для пропсов
 interface MapContainerProps {
@@ -587,7 +587,7 @@ export const BikeLanesLayer = styled.div`
 `;
 
 /* Глобальные стили для всех Leaflet попапов */
-export const GlobalLeafletPopupStyles = styled.div`
+export const GlobalLeafletPopupStyles = createGlobalStyle`
   .leaflet-popup-content-wrapper {
     border-radius: 8px !important;
   }
