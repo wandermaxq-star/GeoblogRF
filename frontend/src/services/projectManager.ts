@@ -43,7 +43,9 @@ class ProjectManager {
   }
 
   async initializeMap(container: HTMLElement, config: MapConfig) {
-    if (this.mapInitialized && this.mapContainer === container) return this.mapApi;
+    // КРИТИЧНО: Проверяем что контейнер ещё в DOM. Если нет — нужна реинициализация.
+    const containerInDom = this.mapContainer && this.mapContainer.isConnected;
+    if (this.mapInitialized && this.mapContainer === container && containerInDom) return this.mapApi;
     this.mapContainer = container;
     this.mapConfig = config;
     this.mapApi = await mapFacade().initialize(container, config);

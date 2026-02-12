@@ -169,10 +169,19 @@
   width: 220px !important;
   max-width: 220px !important;
   top: 50% !important; /* Центрируем по вертикали */
-  left: 50% !important; /* Центрируем по горизонтали */
+  left: 50%; /* Центрируем по горизонтали (без !important, чтобы constrained мог переопределить) */
 }
 
 .add-marker-panel.glass-panel-center.glass-panel-open {
+  transform: translate(-50%, calc(-50% + 6vh + 4px)) scale(1);
+}
+
+/* Форма добавления метки в двухоконном режиме - центрируем по зоне карты */
+.add-marker-panel.glass-panel-constrained.glass-panel-center {
+  left: 25% !important;
+}
+
+.add-marker-panel.glass-panel-constrained.glass-panel-center.glass-panel-open {
   transform: translate(-50%, calc(-50% + 6vh + 4px)) scale(1);
 }
 

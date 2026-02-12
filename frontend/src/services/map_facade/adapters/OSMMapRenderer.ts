@@ -1,4 +1,5 @@
 import type { IMapRenderer, MapConfig, UnifiedMarker, PersistedRoute, GeoPoint, LatLng } from '../IMapRenderer';
+import type { DomainGeoPoint, PolylineStyle, IMapObjectHandle } from '../types';
 import L from 'leaflet';
 
 export class OSMMapRenderer implements IMapRenderer {
@@ -29,8 +30,18 @@ export class OSMMapRenderer implements IMapRenderer {
   latLng?(lat: number, lon: number) {
     throw new Error('Method not implemented.');
   }
-  createPolyline?(latlngs: Array<[number, number]>, opts?: any) {
-    throw new Error('Method not implemented.');
+  createPolyline?(points: DomainGeoPoint[], style?: PolylineStyle): IMapObjectHandle {
+    const id = 'polyline-' + Math.random().toString(36).slice(2, 9);
+    if (!this.mapInstance) {
+      return { id, remove: () => {} };
+    }
+    const polyline = L.polyline(points as Array<[number, number]>, style || {}).addTo(this.mapInstance);
+    return {
+      id,
+      remove: () => {
+        try { this.mapInstance?.removeLayer(polyline); } catch (e) {}
+      }
+    };
   }
   latLngBounds?(points: any) {
     throw new Error('Method not implemented.');
@@ -48,7 +59,13 @@ export class OSMMapRenderer implements IMapRenderer {
     throw new Error('Method not implemented.');
   }
   latLngToContainerPoint?(latlng: any): { x: number; y: number; } {
-    throw new Error('Method not implemented.');
+    try {
+      if (!this.mapInstance) return { x: 0, y: 0 };
+      const pt = (this.mapInstance as any).latLngToContainerPoint?.(latlng as any);
+      return { x: pt?.x ?? 0, y: pt?.y ?? 0 };
+    } catch (e) {
+      return { x: 0, y: 0 };
+    }
   }
   private containerId: string | null = null;
   private mapInstance: L.Map | null = null;
@@ -209,17 +226,50 @@ export class OSMMapRenderer implements IMapRenderer {
     // Реализация отрисовки маршрута (полилиния и т.д.)
   }
 
-  setView(center: GeoPoint, zoom: number): void {
+  setView(center: GeoPoint | LatLng, zoom: number): void {
     if (!this.mapInstance) {
       console.warn('[OSMMapRenderer] Map not initialized, cannot set view');
       return;
     }
     try {
-      this.mapInstance.setView([center.lat, center.lon], zoom);
+      if (Array.isArray(center)) {
+        this.mapInstance.setView([center[0], center[1]], zoom);
+      } else {
+        this.mapInstance.setView([center.lat, center.lon], zoom);
+      }
     } catch (e) {
       console.warn('[OSMMapRenderer] Failed to set view:', e);
     }
   }
+
+  getZoom?(): number {
+    try {
+      return this.mapInstance?.getZoom?.() ?? 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  addLayer?(layer: any): void {
+    try { this.mapInstance?.addLayer?.(layer); } catch (e) {}
+  }
+
+  removeLayer?(layer: any): void {
+    try { this.mapInstance?.removeLayer?.(layer); } catch (e) {}
+  }
+
+  project?(latlng: LatLng): { x: number; y: number } {
+    try {
+      if (!this.mapInstance) return { x: 0, y: 0 };
+      const point = (this.mapInstance as any).project?.(latlng);
+      if (point && typeof point.x === 'number' && typeof point.y === 'number') return { x: point.x, y: point.y };
+      const pt = (this.mapInstance as any).latLngToContainerPoint?.(latlng as any);
+      return { x: pt?.x ?? 0, y: pt?.y ?? 0 };
+    } catch (e) {
+      return { x: 0, y: 0 };
+    }
+  }
+
 
   destroy(): void {
     if (this.mapInstance) {

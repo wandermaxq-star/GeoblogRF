@@ -42,18 +42,26 @@ export async function getRoutePolyline(
 
     // Используем бэкенд-прокси для ORS API (ВАЖНО: абсолютный адрес на API, а не относительный к 5173)
     // Используем относительный путь через Vite proxy для ORS
+    // Формируем заголовки — нужен API ключ ORS
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    // ORS API требует авторизацию — добавляем ключ если есть
+    if (API_KEYS.ORS) {
+      headers['Authorization'] = API_KEYS.ORS;
+    }
+
     const response = await fetch(`/ors/v2/directions/${profile}/geojson`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers,
       body: JSON.stringify({
         coordinates: orsCoordinates,
-        radiuses: orsCoordinates.map(() => 500) // Радиус поиска 500м для каждой точки
+        radiuses: orsCoordinates.map(() => 500)
       })
     });
 
     if (!response.ok) {
+      // Тихий fallback на прямые линии (не спамим консоль)
       return points.slice();
     }
 

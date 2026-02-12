@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import styled from 'styled-components';
 import { 
   Heart, 
@@ -22,6 +22,9 @@ import PostReactions, { PostReactionComponent } from './PostReactions';
 import { toggleReaction } from '../../services/postsService';
 import { useAuth } from '../../contexts/AuthContext';
 import ModerationBadge from '../Moderation/ModerationBadge';
+import { GeoBadgeList, GeoRef } from '../Geo/GeoBadge';
+import { useGeoFocusStore } from '../../stores/geoFocusStore';
+import { useContentStore } from '../../stores/contentStore';
 
 interface PostCardProps {
   post: PostDTO;
@@ -35,7 +38,7 @@ interface PostCardProps {
   onToggleExpand?: () => void;
 }
 
-const PostContainer = styled.div<{ template?: string; isGuide?: boolean }>`
+const PostContainer = styled.div<{ template?: string; $isGuide?: boolean }>`
   /* Match FavoritesPanel item: fully transparent glass card allowing map gradient to show through */
   background: rgba(255, 255, 255, 0.08);
   background-image: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
@@ -87,8 +90,8 @@ const PostContainer = styled.div<{ template?: string; isGuide?: boolean }>`
   }}
 `;
 
-const PostHeader = styled.div<{ isGuide?: boolean }>`
-  padding: ${props => props.isGuide ? '8px 16px 6px' : '8px 16px 6px'};
+const PostHeader = styled.div<{ $isGuide?: boolean }>`
+  padding: ${props => props.$isGuide ? '8px 16px 6px' : '8px 16px 6px'};
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -156,11 +159,11 @@ const MoreButton = styled.button`
   }
 `;
 
-const PostContent = styled.div<{ isGuide?: boolean }>`
+const PostContent = styled.div<{ $isGuide?: boolean }>`
   padding: 0 20px 16px;
 `;
 
-const PostTitle = styled.h3<{ isGuide?: boolean }>`
+const PostTitle = styled.h3<{ $isGuide?: boolean }>`
   font-size: 16px;
   font-weight: 600;
   color: #222;
@@ -169,7 +172,7 @@ const PostTitle = styled.h3<{ isGuide?: boolean }>`
   text-shadow: none;
 `;
 
-const PostMeta = styled.div<{ isGuide?: boolean }>`
+const PostMeta = styled.div<{ $isGuide?: boolean }>`
   display: flex;
   justify-content: center;
   gap: 16px;
@@ -194,12 +197,12 @@ const XpBadge = styled.span`
   font-size: 12px;
 `;
 
-const PostText = styled.p<{ isGuide?: boolean }>`
-  font-size: ${props => props.isGuide ? '1.1rem' : '15px'};
+const PostText = styled.p<{ $isGuide?: boolean }>`
+  font-size: ${props => props.$isGuide ? '1.1rem' : '15px'};
   color: #444;
   line-height: 1.6;
   margin-bottom: 16px;
-  text-align: ${props => props.isGuide ? 'justify' : 'left'};
+  text-align: ${props => props.$isGuide ? 'justify' : 'left'};
 `;
 
 const InteractiveContent = styled.div`
@@ -234,7 +237,7 @@ const ActionButtons = styled.div`
   gap: 20px;
 `;
 
-const ActionButton = styled.button<{ liked?: boolean }>`
+const ActionButton = styled.button<{ $liked?: boolean }>`
   display: flex;
   align-items: center;
   gap: 6px;
@@ -246,11 +249,11 @@ const ActionButton = styled.button<{ liked?: boolean }>`
   transition: all 0.2s;
   font-size: 14px;
   font-weight: 500;
-  color: ${props => props.liked ? '#ff3040' : '#8e8e8e'};
+  color: ${props => props.$liked ? '#ff3040' : '#8e8e8e'};
 
   &:hover {
-    background: ${props => props.liked ? '#fff5f5' : '#f5f5f5'};
-    color: ${props => props.liked ? '#ff3040' : '#1a1a1a'};
+    background: ${props => props.$liked ? '#fff5f5' : '#f5f5f5'};
+    color: ${props => props.$liked ? '#ff3040' : '#1a1a1a'};
   }
 
   svg {
@@ -279,6 +282,21 @@ const PostCard: React.FC<PostCardProps> = ({
   const [isLiked, setIsLiked] = useState(post.is_liked);
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [reactions, setReactions] = useState<PostReaction[]>(post.reactions || []);
+  // Собираем гео-ссылки из полей поста
+  const geoRefs = useMemo<GeoRef[]>(() => {
+    const refs: GeoRef[] = [];
+    if (post.marker_id) refs.push({ type: 'marker', id: post.marker_id, title: post.title || 'Место' });
+    if (post.route_id) refs.push({ type: 'route', id: post.route_id, title: post.title || 'Маршрут' });
+    if (post.event_id) refs.push({ type: 'event', id: post.event_id, title: post.title || 'Событие' });
+    return refs;
+  }, [post.marker_id, post.route_id, post.event_id, post.title]);
+
+  // Клик по гео-иконке → открываем карту слева, посты остаются справа
+  const handleGeoOpen = useCallback((ref: GeoRef) => {
+    useGeoFocusStore.getState().setFocus({ type: ref.type, id: ref.id, title: ref.title });
+    useContentStore.getState().setLeftContent('map');
+    useContentStore.getState().setRightContent('posts');
+  }, []);
 
   // Преобразуем реакции в формат для компонента
   const reactionsForComponent = useMemo((): PostReactionComponent[] => {
@@ -453,14 +471,17 @@ const PostCard: React.FC<PostCardProps> = ({
   };
 
   return (
-    <PostContainer template={template} isGuide={guidePost || hasTitle} onClick={handleCardClick} style={{ position: 'relative' }}>
+    <PostContainer template={template} $isGuide={guidePost || hasTitle} onClick={handleCardClick} style={{ position: 'relative' }}>
       {getStatusBadge()}
       {/* Хедер поста */}
-      <PostHeader isGuide={useGradientHeader}>
+      <PostHeader $isGuide={useGradientHeader}>
         {useGradientHeader ? (
           <>
-            {post.title && <PostTitle isGuide={useGradientHeader}>{post.title}</PostTitle>}
-            <PostMeta isGuide={useGradientHeader}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {post.title && <PostTitle $isGuide={useGradientHeader}>{post.title}</PostTitle>}
+              <GeoBadgeList geoRefs={geoRefs} onOpen={handleGeoOpen} />
+            </div>
+            <PostMeta $isGuide={useGradientHeader}>
               <span>
                 <User size={16} />
                 {post.author_name || 'ГеоБлог.рф'}
@@ -483,7 +504,10 @@ const PostCard: React.FC<PostCardProps> = ({
                 {getInitials(post.author_name)}
               </Avatar>
               <UserDetails>
-                <UserName>{post.author_name}</UserName>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <UserName>{post.author_name}</UserName>
+                  <GeoBadgeList geoRefs={geoRefs} onOpen={handleGeoOpen} />
+                </div>
                 <PostTime>
                   <Clock size={12} />
                   {formatTime(post.created_at)}
@@ -498,18 +522,18 @@ const PostCard: React.FC<PostCardProps> = ({
       </PostHeader>
 
       {/* Контент поста */}
-      <PostContent isGuide={guidePost}>
+      <PostContent $isGuide={guidePost}>
         {guidePost && expanded ? (
           <GuideInline post={post} />
         ) : guidePost ? (
           <div style={{ padding: '0 40px' }}>
-            <PostText isGuide={guidePost}>{displayText}</PostText>
+            <PostText $isGuide={guidePost}>{displayText}</PostText>
           </div>
         ) : (
           <>
             {displayText && (
               <PostText
-                isGuide={guidePost}
+                $isGuide={guidePost}
                 style={!expanded ? { display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : undefined}
               >
                 {displayText}
@@ -580,7 +604,7 @@ const PostCard: React.FC<PostCardProps> = ({
       {/* Действия */}
       <PostActions>
         <ActionButtons>
-          <ActionButton liked={isLiked} onClick={handleLike}>
+          <ActionButton $liked={isLiked} onClick={handleLike}>
             <Heart size={18} fill={isLiked ? 'currentColor' : 'none'} />
             {likesCount}
           </ActionButton>

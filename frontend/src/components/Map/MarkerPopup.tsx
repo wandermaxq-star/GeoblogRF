@@ -375,12 +375,12 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
                     )}
                   </BookmarkButton>
                   <Photo
-                    src={marker.photo_urls?.[mainPhotoIdx] || 'https://via.placeholder.com/80?text=No+Image'}
+                    src={marker.photo_urls?.[mainPhotoIdx] || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Crect width='80' height='80' fill='%23ddd'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='10'%3ENo img%3C/text%3E%3C/svg%3E"}
                     alt="Фото объекта"
                     onClick={() => (marker.photo_urls?.length ?? 0) > 0 && openGallery(mainPhotoIdx)}
                     className={(marker.photo_urls?.length ?? 0) > 0 ? 'photo-clickable' : undefined}
                     onError={e => {
-                      (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80?text=No+Image';
+                      (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Crect width='80' height='80' fill='%23ddd'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='10'%3ENo img%3C/text%3E%3C/svg%3E";
                     }}
                   />
                   <button
@@ -558,29 +558,29 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
                 padding: '0 16px'
               }}>
                 <Actions style={{ flexWrap: 'nowrap' }}>
-                <ActionButton buttonColor={isLiked ? "#e74c3c" : "#7f8c8d"} onClick={handleLikeClick}>
+                <ActionButton $buttonColor={isLiked ? "#e74c3c" : "#7f8c8d"} onClick={handleLikeClick}>
                   <i className="fas fa-heart"></i>
                   <span>{likeCount}</span>
                 </ActionButton>
-                <ActionButton buttonColor="#2ecc71" onClick={handleDiscussClick}>
+                <ActionButton $buttonColor="#2ecc71" onClick={handleDiscussClick}>
                   <i className="fas fa-comments"></i>
                   {marker.comments_count > 0 && <span>{marker.comments_count}</span>}
                 </ActionButton>
-                <ActionButton buttonColor="#f39c12" onClick={handleShareClick}>
+                <ActionButton $buttonColor="#f39c12" onClick={handleShareClick}>
                   <i className="fas fa-share-alt"></i>
                   {marker.shares_count > 0 && <span>{marker.shares_count}</span>}
                 </ActionButton>
-                <ActionButton buttonColor="#34495e" onClick={handleBuildRoute}>
+                <ActionButton $buttonColor="#34495e" onClick={handleBuildRoute}>
                   <i className="fas fa-route"></i>
                 </ActionButton>
                 {onAddToBlog && (
-                  <ActionButton buttonColor="#9b59b6" onClick={() => onAddToBlog(marker)}>
+                  <ActionButton $buttonColor="#9b59b6" onClick={() => onAddToBlog(marker)}>
                     <i className="fas fa-pen-nib"></i>
                   </ActionButton>
                 )}
                 <div style={{ position: 'relative', display: 'inline-block' }} ref={settingsRef}>
                   <ActionButton
-                    buttonColor="#888"
+                    $buttonColor="#888"
                     onClick={e => {
                       e.stopPropagation();
                       setSettingsOpen(v => !v);

@@ -51,6 +51,9 @@
 }
 
 /* Facade map root fills viewport and respects topbar offset */
+/* pointer-events: none — facade-контейнер пустой обёрткой,
+   реальная карта и маркеры рендерятся в #global-map-root.
+   Facade НЕ должен перехватывать клики/hover. */
 .facade-map-root {
   position: fixed;
   top: var(--facade-map-top, 0px);
@@ -132,15 +135,7 @@
 
 /* --- Facade map mode --- */
 .facade-map-root {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: var(--glass-radius);
-  box-shadow: var(--glass-shadow);
-  border: 1px solid var(--glass-border);
   overflow: visible;
-  transition: all 0.3s ease;
 }
 
-.facade-map-root:hover {
-  transform: translateY(-10px);
-  box-shadow: var(--glass-shadow-hover);
-}
+/* Hover-эффект отключён — карта не должна сдвигаться при наведении */

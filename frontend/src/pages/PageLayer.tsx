@@ -80,19 +80,22 @@ const PageLayer: React.FC<PageLayerProps> = ({ side }) => {
 
         const isActive = effectiveActive === pageId;
 
+        // Карта рендерится через portal на body — обёртки здесь должны
+        // пропускать клики, иначе невидимый div перекроет Leaflet.
+        const isMapOnLeft = side === 'left' && pageId === 'map';
+
         return (
           <div
             key={`${side}-${pageId}`}
             style={{
-              // Убрали класс absolute inset-0 - он создавал лишнюю рамку
               display: isActive ? 'block' : 'none',
               width: '100%',
               height: '100%',
               position: 'relative',
-              pointerEvents: isActive ? 'auto' : 'none',
+              pointerEvents: isMapOnLeft ? 'none' : (isActive ? 'auto' : 'none'),
             }}
           >
-            <div className={isInsetPanel ? 'panel-inset' : ''} style={isInsetPanel ? undefined : { width: '100%', height: '100%', pointerEvents: 'auto' }}>
+            <div className={isInsetPanel ? 'panel-inset' : ''} style={isInsetPanel ? undefined : { width: '100%', height: '100%', pointerEvents: isMapOnLeft ? 'none' : 'auto' }}>
               {/* КРИТИЧНО: Все компоненты оборачиваем в Suspense для избежания синхронных обновлений */}
               <Suspense
                 key={`suspense-${side}-${pageId}`}

@@ -982,10 +982,9 @@
   pointer-events: none;
 }
 
-/* ИСПРАВЛЕНО: Опускаем все UI элементы ниже карты */
+/* MapActionButtons — z-index не снижаем, т.к. они рендерятся вне portal с position: fixed */
 .page-container.map-mode .map-action-buttons-container,
 .page-container.map-mode .map-action-buttons-container * {
-  z-index: 1;
   pointer-events: auto;
 }
 
@@ -1049,12 +1048,14 @@
   pointer-events: none;
 }
 
-/* ИСПРАВЛЕНО: Селективные правила для planner-mode */
-.page-container.planner-mode .calendar-action-buttons-container,
-.page-container.planner-mode .calendar-action-buttons-container * {
+/* ИСПРАВЛЕНО: Селективные правила для planner-mode — восстановление pointer-events */
+/* Кнопки действий планировщика */
+.page-container.planner-mode .planner-action-buttons-container,
+.page-container.planner-mode .planner-action-buttons-container * {
   pointer-events: auto;
 }
 
+/* GlassPanel (настройки, избранное) */
 .page-container.planner-mode .glass-panel,
 .page-container.planner-mode .glass-panel * {
   pointer-events: auto;
@@ -1062,6 +1063,26 @@
 
 .page-container.planner-mode .page-side-buttons,
 .page-container.planner-mode .page-side-buttons * {
+  pointer-events: auto;
+}
+
+/* КРИТИЧНО: Карта Planner и все её содержимое должны принимать взаимодействие */
+.page-container.planner-mode .map-content-container,
+.page-container.planner-mode .map-area,
+.page-container.planner-mode .full-height-content,
+.page-container.planner-mode #planner-map-container,
+.page-container.planner-mode #planner-map-container * {
+  pointer-events: auto;
+}
+
+/* Панель RegionSelector + зоны (inline pointerEvents: auto уже есть, но дублируем для надёжности) */
+.page-container.planner-mode [style*="z-index: 9999"],
+.page-container.planner-mode [style*="z-index: 9999"] * {
+  pointer-events: auto;
+}
+
+/* Модальные окна в planner-mode */
+.page-container.planner-mode .fixed {
   pointer-events: auto;
 }
 

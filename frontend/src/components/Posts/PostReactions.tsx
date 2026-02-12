@@ -102,7 +102,7 @@ const AddReactionButton = styled.button`
   }
 `;
 
-const EmojiPicker = styled.div<{ visible: boolean }>`
+const EmojiPicker = styled.div<{ $visible: boolean }>`
   position: absolute;
   bottom: 100%;
   left: 0;
@@ -112,7 +112,7 @@ const EmojiPicker = styled.div<{ visible: boolean }>`
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   border: 1px solid #e5e7eb;
   padding: 12px;
-  display: ${props => props.visible ? 'grid' : 'none'};
+  display: ${props => props.$visible ? 'grid' : 'none'};
   grid-template-columns: repeat(5, 1fr);
   gap: 8px;
   z-index: 1000;
@@ -266,7 +266,7 @@ const PostReactions: React.FC<PostReactionsProps> = ({
           <Smile size={18} />
         </AddReactionButton>
 
-        <EmojiPicker visible={showPicker} ref={pickerRef}>
+        <EmojiPicker $visible={showPicker} ref={pickerRef}>
           {EMOJI_REACTIONS.map((emojiInfo) => {
             const existingReaction = reactions.find(r => r.emoji === emojiInfo.emoji);
             return (

@@ -5,7 +5,8 @@ import { yandexMapsService } from '../../yandexMapsService';
 export class YandexPlannerRenderer implements IMapRenderer {
   private map: any = null;
   private markersCollection: any = null;
-  private routeObject: any = null;
+  // Поддержка множественных маршрутов: ключ = id маршрута, значение = объект на карте
+  private routeObjects: Map<string, any> = new Map();
   private routeGeometryHandler: ((coords: Array<[number, number]>) => void) | null = null;
   private clickHandlers: Array<(coords: [number, number]) => void> = [];
 
@@ -115,6 +116,7 @@ export class YandexPlannerRenderer implements IMapRenderer {
       clear: this.clear.bind(this),
       renderMarkers: this.renderMarkers.bind(this),
       renderRoute: this.renderRoute.bind(this),
+      removeRoute: this.removeRoute.bind(this),
       onClick: this.onClick.bind(this),
       onRouteGeometry: (h: (coords: Array<[number, number]>) => void) => { this.routeGeometryHandler = h; },
       // Методы для двухоконного режима
@@ -141,35 +143,112 @@ export class YandexPlannerRenderer implements IMapRenderer {
     }
   }
 
-  renderRoute(route: PersistedRoute): void {
+  // Удаляет конкретный маршрут по id
+  removeRoute(routeId: string): void {
+    if (!this.map) return;
+    const existing = this.routeObjects.get(routeId);
+    if (existing) {
+      try { this.map.geoObjects.remove(existing); } catch { /* ignore */ }
+      this.routeObjects.delete(routeId);
+    }
+  }
+
+  async renderRoute(route: PersistedRoute): Promise<void> {
     if (!this.map) return;
     try {
-      if (this.routeObject) {
-        this.map.geoObjects.remove(this.routeObject);
-        this.routeObject = null;
+      // Удаляем предыдущую версию ЭТОГО маршрута (не всех!)
+      const routeId = (route as any).id || 'default';
+      const existing = this.routeObjects.get(routeId);
+      if (existing) {
+        this.map.geoObjects.remove(existing);
+        this.routeObjects.delete(routeId);
       }
 
-      // Try different shapes of route data
-      let coords: Array<[number, number]> = [];
-      if (route.geometry && Array.isArray(route.geometry)) {
-        coords = route.geometry as Array<[number, number]>;
-      } else if (route.waypoints && Array.isArray(route.waypoints)) {
-        coords = route.waypoints.map((w: any) => [w.lat, w.lon]);
+      const ymaps = (window as any).ymaps;
+
+      // Собираем waypoints из различных форматов данных маршрута
+      let waypoints: Array<[number, number]> = [];
+      if (route.waypoints && Array.isArray(route.waypoints)) {
+        waypoints = route.waypoints.map((w: any) => [w.lat, w.lon]);
       } else if ((route as any).points && Array.isArray((route as any).points)) {
-        coords = (route as any).points.map((p: any) => Array.isArray(p) ? [p[0], p[1]] : [p.lat, p.lon]);
+        waypoints = (route as any).points.map((p: any) => Array.isArray(p) ? [p[0], p[1]] : [p.lat, p.lon]);
       }
 
-      if (!coords || coords.length < 2) return;
+      // Если есть полная геометрия (> 10 точек) — рисуем полилинией (дорожная геометрия уже есть)
+      const geometry: Array<[number, number]> | null = 
+        (route.geometry && Array.isArray(route.geometry) && route.geometry.length > 10)
+          ? route.geometry as Array<[number, number]>
+          : null;
 
-      this.routeObject = new (window as any).ymaps.Polyline(coords, {}, { strokeWidth: 4, strokeColor: '#2196F3' });
-      this.map.geoObjects.add(this.routeObject);
+      if (geometry) {
+        // Есть сохранённая дорожная геометрия — рисуем полилинией (уже по дорогам)
+        const polyline = new ymaps.Polyline(
+          geometry,
+          {},
+          { strokeWidth: 4, strokeColor: (route as any).color || '#2196F3', strokeOpacity: 0.8 }
+        );
+        this.map.geoObjects.add(polyline);
+        this.routeObjects.set(routeId, polyline);
+        if (this.routeGeometryHandler) {
+          try { this.routeGeometryHandler(geometry); } catch (e) { /* ignore */ }
+        }
+        return;
+      }
 
-      // Notify route geometry handlers if any
-      if (this.routeGeometryHandler) {
-        try { this.routeGeometryHandler(coords); } catch (e) { /* ignore */ }
+      // Нет полной геометрии — строим маршрут по дорогам через ymaps.route()
+      const coords = waypoints.length >= 2 ? waypoints : (
+        route.geometry && Array.isArray(route.geometry) && route.geometry.length >= 2
+          ? route.geometry as Array<[number, number]>
+          : []
+      );
+
+      if (coords.length < 2) return;
+
+      // ymaps.route() строит автомобильный маршрут по дорогам
+      try {
+        const routeResult = await ymaps.route(coords, {
+          mapStateAutoApply: false,
+          routingMode: 'auto'
+        });
+        routeResult.getPaths().each((path: any) => {
+          path.options.set({
+            strokeWidth: 4,
+            strokeColor: (route as any).color || '#2196F3',
+            strokeOpacity: 0.8
+          });
+        });
+        this.routeObjects.set(routeId, routeResult);
+        this.map.geoObjects.add(routeResult);
+
+        // Извлекаем геометрию маршрута для обработчиков
+        if (this.routeGeometryHandler) {
+          try {
+            const paths = routeResult.getPaths();
+            const routeCoords: Array<[number, number]> = [];
+            paths.each((path: any) => {
+              const segments = path.getSegments();
+              segments.forEach((seg: any) => {
+                const segCoords = seg.getCoordinates();
+                segCoords.forEach((c: any) => routeCoords.push([c[0], c[1]]));
+              });
+            });
+            if (routeCoords.length > 0) {
+              this.routeGeometryHandler(routeCoords);
+            }
+          } catch (e) { /* ignore */ }
+        }
+      } catch (routeErr) {
+        // Fallback на Polyline если ymaps.route() недоступен
+        console.warn('[YandexPlannerRenderer] ymaps.route() failed, falling back to Polyline:', routeErr);
+        const fallbackLine = new ymaps.Polyline(coords, {}, { strokeWidth: 4, strokeColor: (route as any).color || '#2196F3' });
+        this.map.geoObjects.add(fallbackLine);
+        this.routeObjects.set(routeId, fallbackLine);
+        if (this.routeGeometryHandler) {
+          try { this.routeGeometryHandler(coords); } catch (e) { /* ignore */ }
+        }
       }
     } catch (e) {
-      // ignore
+      console.warn('[YandexPlannerRenderer] renderRoute error:', e);
     }
   }
 
@@ -354,6 +433,8 @@ export class YandexPlannerRenderer implements IMapRenderer {
         }
         // Удаляем пользовательские слои/объекты
         this.customLayers.forEach(l => { try { this.map.geoObjects.remove(l); } catch (e) { /* ignore */ } });
+        // Удаляем маршруты
+        this.routeObjects.forEach(r => { try { this.map.geoObjects.remove(r); } catch (e) { /* ignore */ } });
         // Удаляем полилинии
         this.polylines.forEach(p => { try { this.map.geoObjects.remove(p); } catch (e) { /* ignore */ } });
         this.map.destroy();
@@ -361,7 +442,7 @@ export class YandexPlannerRenderer implements IMapRenderer {
     } catch (e) { /* ignore */ }
     this.map = null;
     this.markersCollection = null;
-    this.routeObject = null;
+    this.routeObjects.clear();
     this.polylines.clear();
     this.eventHandlerWrappers.clear();
     this.customLayers = [];

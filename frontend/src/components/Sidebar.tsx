@@ -144,7 +144,10 @@ const Sidebar: React.FC = () => {
         // Это гарантирует что MainLayout увидит уже установленный leftContent
         // и не будет его перезаписывать
         store.setLeftContent(item.id as ContentType);
-        if (!store.rightContent) {
+        // Для карты — добавляем посты справа, для планировщика — одноэкранный режим
+        if (item.id === 'planner') {
+          store.setRightContent(null);
+        } else if (!store.rightContent) {
           store.setRightContent('posts');
         }
 

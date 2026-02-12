@@ -243,7 +243,7 @@ export const PostMap: React.FC<PostMapProps> = ({
           } else {
             try {
               const [lon, lat] = [marker.longitude, marker.latitude];
-              const p = mapFacade().project([lon, lat]);
+              const p = mapFacade().project([lat, lon]);
               setMiniPopup({ marker, position: { x: p.x, y: p.y }, markerElement: element });
             } catch {
               return;
@@ -257,7 +257,7 @@ export const PostMap: React.FC<PostMapProps> = ({
         } else {
           try {
             const [lon, lat] = [marker.longitude, marker.latitude];
-            const p = mapFacade().project([lon, lat]);
+            const p = mapFacade().project([lat, lon]);
             setMiniPopup({ marker, position: { x: p.x, y: p.y } });
           } catch {
             return;
@@ -904,7 +904,7 @@ export const PostMap: React.FC<PostMapProps> = ({
             // Fallback на координаты, если не получилось через DOM
             try {
               const [lon, lat] = [marker.lon, marker.lat];
-              const p = mapFacade().project([lon, lat]);
+              const p = mapFacade().project([lat, lon]);
               // Fallback: используем координаты напрямую (метка неподвижна)
               standardPopupPositionRef.current = { x: p.x, y: p.y };
             } catch { }
@@ -915,7 +915,7 @@ export const PostMap: React.FC<PostMapProps> = ({
         if (!standardPopupPositionRef.current) {
           try {
             const [lon, lat] = [marker.lon, marker.lat];
-            const p = mapFacade().project([lon, lat]);
+            const p = mapFacade().project([lat, lon]);
             const markerDescentOffset = 20;
             standardPopupPositionRef.current = { x: p.x, y: p.y + markerDescentOffset };
           } catch { }

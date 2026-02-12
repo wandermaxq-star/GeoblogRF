@@ -833,16 +833,25 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
     try { localStorage.setItem('favorites-selected-ids', JSON.stringify(newIds)); } catch {}
   };
 
-  // При открытии панели — подтягиваем последние выбранные ID из localStorage
+  // При открытии панели — восстанавливаем выбранные ID из localStorage,
+  // но ТОЛЬКО те, что реально существуют в текущем списке избранного.
+  // Не накапливаем призрачные ID.
   useEffect(() => {
     if (!isOpen) return;
+    const existingIds = new Set(favorites.map(f => f.id));
     try {
       const raw = localStorage.getItem('favorites-selected-ids');
-      const ids = raw ? JSON.parse(raw) : [];
-      if (Array.isArray(ids)) {
-        onSelectedMarkersChange(Array.from(new Set([...selectedMarkerIds, ...ids])));
+      const stored: string[] = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(stored)) {
+        // Берём только те, что есть в текущих favorites
+        const validStored = stored.filter(id => existingIds.has(id));
+        // Сохраняем очищенный список обратно
+        localStorage.setItem('favorites-selected-ids', JSON.stringify(validStored));
+        onSelectedMarkersChange(validStored);
       }
-    } catch {}
+    } catch {
+      onSelectedMarkersChange([]);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
@@ -1163,14 +1172,21 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
                 <div className="selection-controls">
                   <button 
                     className="selection-btn"
-                    onClick={() => onSelectedMarkersChange(favorites.map(m => m.id))}
+                    onClick={() => {
+                      const allIds = favorites.map(m => m.id);
+                      onSelectedMarkersChange(allIds);
+                      try { localStorage.setItem('favorites-selected-ids', JSON.stringify(allIds)); } catch {}
+                    }}
                     title="Выбрать все метки"
                   >
                     Все
                   </button>
                   <button 
                     className="selection-btn"
-                    onClick={() => onSelectedMarkersChange([])}
+                    onClick={() => {
+                      onSelectedMarkersChange([]);
+                      try { localStorage.setItem('favorites-selected-ids', '[]'); } catch {}
+                    }}
                     title="Снять выбор со всех меток"
                   >
                     Сброс

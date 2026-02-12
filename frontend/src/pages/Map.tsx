@@ -12,7 +12,7 @@ import { useUserLocation } from '../hooks/useUserLocation';
 import { useMapStateStore, mapStateHelpers } from '../stores/mapStateStore';
 
 import {
-  FaStar, FaMap, FaCog, FaSearch, FaRoute
+  FaStar, FaMap, FaCog, FaSearch, FaRoute, FaMapMarkerAlt
 } from 'react-icons/fa';
 import FavoritesPanel from '../components/FavoritesPanel';
 import MapActionButtons from '../components/Map/MapActionButtons';
@@ -30,6 +30,7 @@ import { MirrorGradientContainer, usePanelRegistration } from '../components/Mir
 import { useLayoutState } from '../contexts/LayoutContext';
 import { useLoading } from '../contexts/LoadingContext';
 import { useContentStore, ContentType } from '../stores/contentStore';
+import { useGeoFocusStore } from '../stores/geoFocusStore';
 import { useGuest } from '../contexts/GuestContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getAllZones, checkPoint } from '../services/zoneService';
@@ -42,6 +43,7 @@ import { offlineContentStorage, OfflineMarkerDraft } from '../services/offlineCo
 
 import MapComponent from '../components/Map/Map';
 import { MapContainer } from '../components/Map/Map.styles';
+import CategoryQuickFilter from '../components/Map/CategoryQuickFilter';
 
 const useDebounce = (value: string, delay: number) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -404,7 +406,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
   useEffect(() => {
     if (selectedMarkerId && allMarkers.length > 0) {
       const selectedMarker = allMarkers.find(marker => marker.id === selectedMarkerId);
-      if (selectedMarker) {
+      if (selectedMarker && Number.isFinite(selectedMarker.latitude) && Number.isFinite(selectedMarker.longitude)) {
         setSelectedMarkerIdForPopup(selectedMarkerId);
         setCenter([selectedMarker.latitude, selectedMarker.longitude]);
         setZoom(15);
@@ -416,6 +418,25 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
       }
     }
   }, [selectedMarkerId, allMarkers, showOnlySelected]);
+
+  // GeoFocus: клик по гео-иконке в PostCard/ActivityCard → фокусируем карту на объекте
+  const geoFocusTarget = useGeoFocusStore((s) => s.target);
+  const geoFocusSeq = useGeoFocusStore((s) => s.seq);
+  useEffect(() => {
+    if (!geoFocusTarget || allMarkers.length === 0) return;
+    const { type, id } = geoFocusTarget;
+
+    if (type === 'marker') {
+      const marker = allMarkers.find((m) => m.id === id);
+      if (marker && Number.isFinite(marker.longitude) && Number.isFinite(marker.latitude)) {
+        setFlyToCoordinates([marker.longitude, marker.latitude]);
+        setSelectedMarkerIdForPopup(marker.id);
+      }
+    }
+    // route / event — пока только маркеры; можно расширить позже
+    // Не сбрасываем target, чтобы при повторном клике сработал flyTo
+    // (seq гарантирует реактивность)
+  }, [geoFocusSeq, geoFocusTarget, allMarkers]);
 
   // ОТКЛЮЧЕНО: Автоматическое центрирование по геолокации
   // Это сбрасывало сохранённое состояние карты
@@ -552,11 +573,20 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
   };
 
   const handleMarkerSelect = (marker: MarkerData) => {
-    setFlyToCoordinates([marker.longitude, marker.latitude]);
+    if (Number.isFinite(marker.longitude) && Number.isFinite(marker.latitude)) {
+      setFlyToCoordinates([marker.longitude, marker.latitude]);
+    }
     setSelectedMarkerIdForPopup(marker.id);
     setSearchQuery('');
     setIsDropdownVisible(false);
   };
+
+  // Мгновенное обновление категорий из виджета CategoryQuickFilter
+  const handleQuickCategoryChange = useCallback((categories: string[]) => {
+    const newFilters = { ...appliedFilters, categories };
+    setAppliedFilters(newFilters);
+    setDraftFilters(prev => ({ ...prev, categories }));
+  }, [appliedFilters]);
 
   const handleApply = () => {
     setAppliedFilters(draftFilters);
@@ -973,8 +1003,8 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
             <div
               className="absolute flex items-center gap-3"
               style={{
-                // Отступ сверху - больше в двухоконном режиме
-                top: isTwoPanelMode ? '70px' : '20px',
+                // Отступ сверху: ниже topbar (64px) + отступ
+                top: isTwoPanelMode ? '80px' : '80px',
                 // В двухоконном режиме центр активной зоны карты = 25% от левого края
                 // В одноэкранном режиме - по центру (50%)
                 left: isTwoPanelMode ? '25%' : '50%',
@@ -1090,53 +1120,56 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
                   Зоны
                 </span>
               </button>
+
+              {/* Кнопка добавления метки — в одном ряду с поиском */}
+              <button
+                onClick={() => setIsAddingMarkerMode(!isAddingMarkerMode)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200"
+                style={{
+                  background: isAddingMarkerMode ? 'rgba(76, 201, 240, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+                  border: `1px solid ${isAddingMarkerMode ? 'rgba(76, 201, 240, 0.5)' : 'rgba(255, 255, 255, 0.15)'}`,
+                  color: isAddingMarkerMode ? '#4cc9f0' : 'rgba(255, 255, 255, 0.9)'
+                }}
+                title={isAddingMarkerMode ? 'Отменить добавление метки' : 'Добавить метку на карту'}
+              >
+                <FaMapMarkerAlt className="w-4 h-4" />
+                <span className="text-sm font-medium whitespace-nowrap">
+                  {isAddingMarkerMode ? 'Отмена' : 'Метка'}
+                </span>
+              </button>
             </div>
 
-            {/* Кнопки действий карты - в двухоконном режиме рендерим ВНЕ MapContainer чтобы избежать overflow: hidden */}
-            {
-              isTwoPanelMode && (
-                <MapActionButtons
-                  onSettingsClick={() => setSettingsOpen(true)}
-                  onFavoritesClick={() => {
-                    if (process.env.NODE_ENV === 'development') {
-                    }
-                    setFavoritesOpen(true);
-                  }}
-                  favoritesCount={favoritesCount}
-                  onLegendClick={() => setLegendOpen(true)}
-                  onAddMarkerClick={() => setIsAddingMarkerMode(true)}
-                  isAddingMarkerMode={isAddingMarkerMode}
-                  onRecordTrackClick={handleRecordTrackClick}
-                  isRecording={isRecording}
-                  isTwoPanelMode={isTwoPanelMode}
-                />
-              )
-            }
+            {/* Виджет быстрого выбора категорий — всегда виден на карте */}
+            <CategoryQuickFilter
+              selectedCategories={appliedFilters.categories}
+              onCategoriesChange={handleQuickCategoryChange}
+              isTwoPanelMode={isTwoPanelMode}
+            />
+
+            {/* Кнопки действий карты — ВСЕГДА видны на карте, рендерим вне портала для корректного z-index */}
+            <MapActionButtons
+              onSettingsClick={() => setSettingsOpen(true)}
+              onFavoritesClick={() => {
+                if (process.env.NODE_ENV === 'development') {
+                }
+                setFavoritesOpen(true);
+              }}
+              favoritesCount={favoritesCount}
+              onLegendClick={() => setLegendOpen(true)}
+              onAddMarkerClick={() => setIsAddingMarkerMode(true)}
+              isAddingMarkerMode={isAddingMarkerMode}
+              onRecordTrackClick={handleRecordTrackClick}
+              isRecording={isRecording}
+              isTwoPanelMode={isTwoPanelMode}
+            />
 
             {/* Область карты (рендерим в portal, чтобы избежать обрезания родительскими панелями) */}
             {typeof document !== 'undefined' && facadeMapRootEl && ReactDOM.createPortal(
-              <MapContainer className={`facade-map-root map-area ${isTwoPanelMode ? 'two-panel-mode' : 'single-panel-mode'}`}>
+              <MapContainer
+                className={`facade-map-root map-area ${isTwoPanelMode ? 'two-panel-mode' : 'single-panel-mode'}`}
+              >
 
-                {/* Кнопки управления по бокам карты - в однооконном режиме внутри MapContainer */}
-                {!isTwoPanelMode && (
-                  <MapActionButtons
-                    onSettingsClick={() => setSettingsOpen(true)}
-                    onFavoritesClick={() => {
-                      if (process.env.NODE_ENV === 'development') {
-                      }
-                      setFavoritesOpen(true);
-                    }}
-                    favoritesCount={favoritesCount}
-                    onLegendClick={() => setLegendOpen(true)}
-                    onAddMarkerClick={() => setIsAddingMarkerMode(true)}
-                    isAddingMarkerMode={isAddingMarkerMode}
-                    onRecordTrackClick={handleRecordTrackClick}
-                    isRecording={isRecording}
-                    isTwoPanelMode={isTwoPanelMode}
-                  />
-                )}
-
-                {/* Кнопка "Избранное" теперь в компоненте Map */}
+                {/* MapActionButtons рендерятся вне портала — выше по дереву */}
 
                 {/* Индикатор загрузки геолокации убран - геолокация работает в фоне, не блокирует карту */}
 

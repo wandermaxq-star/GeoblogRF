@@ -61,6 +61,8 @@ export class MapContextFacade {
   // Добавлены новые реестры для событий перемещения и зума
   private readonly moveHandlers: Array<() => void> = [];
   private readonly zoomHandlers: Array<() => void> = []; 
+  private readonly moveStartHandlers: Array<() => void> = [];
+  private readonly zoomStartHandlers: Array<() => void> = [];
 
   private splitScreenState = {
     left: 'osm' as MapContext | 'calendar',
@@ -168,21 +170,37 @@ export class MapContextFacade {
   }
 
   private switchToRenderer(context: MapContext): void {
-    // КРИТИЧНО: Сохраняем маркеры ПЕРЕД уничтожением рендерера
-    // Это решает проблему потери маркеров при переключении контекста
+    // КРИТИЧНО: Сохраняем маркеры ПЕРЕД переключением рендерера
     const savedMarkers = this.pendingExternalMarkers.length > 0
-      ? this.pendingExternalMarkers
-      : ((this as any).INTERNAL?.externalMarkers || []);
+      ? [...this.pendingExternalMarkers]
+      : ((this as any).INTERNAL?.externalMarkers ? [...((this as any).INTERNAL.externalMarkers)] : []);
 
     if (savedMarkers.length > 0) {
       console.debug('[MapContextFacade] Saving markers before renderer switch:', savedMarkers.length);
     }
 
-    // Пытаемся взять готовый рендерер из пула; если нет — создаём новый
+    // Пытаемся взять готовый рендерер из пула
     const pooled = this.rendererPool[context];
 
     if (pooled) {
-      this.currentRenderer = pooled;
+      // Проверяем, что рендерер из пула в рабочем состоянии (map инициализирован)
+      const r = pooled as any;
+      const hasMap = r.map || r.mapInstance;
+      if (hasMap) {
+        this.currentRenderer = pooled;
+      } else {
+        // Рендерер в пуле устарел (map уничтожен) — удаляем из пула, создаём новый
+        console.debug('[MapContextFacade] Pooled renderer stale, creating new for:', context);
+        delete this.rendererPool[context];
+        if (!this.isOnline) {
+          this.switchToOfflineRenderer(context);
+        } else {
+          this.switchToOnlineRenderer(context);
+        }
+        if (this.currentRenderer) {
+          this.rendererPool[context] = this.currentRenderer;
+        }
+      }
     } else {
       if (!this.isOnline) {
         this.switchToOfflineRenderer(context);
@@ -196,20 +214,10 @@ export class MapContextFacade {
 
     this.bindRendererEventHandlers();
 
-    // КРИТИЧНО: Восстанавливаем маркеры после переключения
+    // Сохраняем маркеры в pending — они будут отрисованы после init() через renderInitialMarkers
+    // НЕ пытаемся рендерить сразу, т.к. рендерер может быть ещё не инициализирован (map === null)
     if (savedMarkers.length > 0) {
-      console.debug('[MapContextFacade] Restoring markers after renderer switch:', savedMarkers.length);
-      // Пробуем отдать их сразу активному рендереру; если не получится — кладём в pending
-      if (this.currentRenderer?.renderMarkers) {
-        try {
-          this.currentRenderer.renderMarkers(savedMarkers as any);
-          this.pendingExternalMarkers = [];
-        } catch (err) {
-          this.pendingExternalMarkers = savedMarkers;
-        }
-      } else {
-        this.pendingExternalMarkers = savedMarkers;
-      }
+      this.pendingExternalMarkers = savedMarkers;
     }
   }
 
@@ -273,6 +281,24 @@ export class MapContextFacade {
         r.onMapZoom(() => {
           this.zoomHandlers.forEach(h => {
             try { h(); } catch (error_) { console.debug('[MapContextFacade] zoom handler error:', error_); }
+          });
+        });
+      }
+
+      // Bind MoveStart handlers
+      if (r.onMapMoveStart && this.moveStartHandlers.length > 0) {
+        r.onMapMoveStart(() => {
+          this.moveStartHandlers.forEach(h => {
+            try { h(); } catch (error_) { console.debug('[MapContextFacade] moveStart handler error:', error_); }
+          });
+        });
+      }
+
+      // Bind ZoomStart handlers
+      if (r.onMapZoomStart && this.zoomStartHandlers.length > 0) {
+        r.onMapZoomStart(() => {
+          this.zoomStartHandlers.forEach(h => {
+            try { h(); } catch (error_) { console.debug('[MapContextFacade] zoomStart handler error:', error_); }
           });
         });
       }
@@ -594,6 +620,56 @@ export class MapContextFacade {
     }
   }
 
+  getMap(): any {
+    return this.getMapSafe();
+  }
+
+  addLayer(layer: any): void {
+    try {
+      if (this.currentRenderer?.addLayer) {
+        this.currentRenderer.addLayer(layer);
+        return;
+      }
+      const map: any = this.getMapSafe();
+      map?.addLayer?.(layer);
+    } catch (e) {
+      console.debug('[MapContextFacade] addLayer failed:', e);
+    }
+  }
+
+  removeLayer(layer: any): void {
+    try {
+      if (this.currentRenderer?.removeLayer) {
+        this.currentRenderer.removeLayer(layer);
+        return;
+      }
+      const map: any = this.getMapSafe();
+      map?.removeLayer?.(layer);
+    } catch (e) {
+      console.debug('[MapContextFacade] removeLayer failed:', e);
+    }
+  }
+
+  project(latlng: [number, number]): { x: number; y: number } {
+    try {
+      if (this.currentRenderer?.project) {
+        return this.currentRenderer.project(latlng as any);
+      }
+      const map: any = this.getMapSafe();
+      if (map?.project) {
+        const p = map.project(latlng as any);
+        return { x: p?.x ?? 0, y: p?.y ?? 0 };
+      }
+      if (map?.latLngToContainerPoint) {
+        const p = map.latLngToContainerPoint(latlng as any);
+        return { x: p?.x ?? 0, y: p?.y ?? 0 };
+      }
+    } catch (e) {
+      console.debug('[MapContextFacade] project failed:', e);
+    }
+    return { x: 0, y: 0 };
+  }
+
   point(x: number, y: number): any {
     const L = (window as any).L;
     if (!L) return null;
@@ -752,6 +828,20 @@ export class MapContextFacade {
     } catch (error_) { console.debug('[MapContextFacade] onMapMove setup failed:', error_); }
   }
 
+  offMapMove(handler: () => void): void {
+    try {
+      const idx = this.moveHandlers.indexOf(handler);
+      if (idx >= 0) this.moveHandlers.splice(idx, 1);
+      const r = this.currentRenderer as any;
+      if (r?.offMapMove) {
+        r.offMapMove(handler);
+        return;
+      }
+      const map: any = this.getMapSafe();
+      map?.off?.('move', handler as any);
+    } catch (error_) { console.debug('[MapContextFacade] offMapMove failed:', error_); }
+  }
+
   /**
    * Подписка на событие изменения зума.
    */
@@ -765,6 +855,78 @@ export class MapContextFacade {
         });
       }
     } catch (error_) { console.debug('[MapContextFacade] onMapZoom setup failed:', error_); }
+  }
+
+  offMapZoom(handler: () => void): void {
+    try {
+      const idx = this.zoomHandlers.indexOf(handler);
+      if (idx >= 0) this.zoomHandlers.splice(idx, 1);
+      const r = this.currentRenderer as any;
+      if (r?.offMapZoom) {
+        r.offMapZoom(handler);
+        return;
+      }
+      const map: any = this.getMapSafe();
+      map?.off?.('zoom', handler as any);
+    } catch (error_) { console.debug('[MapContextFacade] offMapZoom failed:', error_); }
+  }
+
+  onMapMoveStart(handler: () => void): void {
+    this.moveStartHandlers.push(handler);
+    try {
+      const r = this.currentRenderer as any;
+      if (r?.onMapMoveStart) {
+        r.onMapMoveStart(() => {
+          try { handler(); } catch (error_) { console.debug('[MapContextFacade] onMapMoveStart handler error:', error_); }
+        });
+        return;
+      }
+      const map: any = this.getMapSafe();
+      map?.on?.('movestart', handler as any);
+    } catch (error_) { console.debug('[MapContextFacade] onMapMoveStart setup failed:', error_); }
+  }
+
+  offMapMoveStart(handler: () => void): void {
+    try {
+      const idx = this.moveStartHandlers.indexOf(handler);
+      if (idx >= 0) this.moveStartHandlers.splice(idx, 1);
+      const r = this.currentRenderer as any;
+      if (r?.offMapMoveStart) {
+        r.offMapMoveStart(handler);
+        return;
+      }
+      const map: any = this.getMapSafe();
+      map?.off?.('movestart', handler as any);
+    } catch (error_) { console.debug('[MapContextFacade] offMapMoveStart failed:', error_); }
+  }
+
+  onMapZoomStart(handler: () => void): void {
+    this.zoomStartHandlers.push(handler);
+    try {
+      const r = this.currentRenderer as any;
+      if (r?.onMapZoomStart) {
+        r.onMapZoomStart(() => {
+          try { handler(); } catch (error_) { console.debug('[MapContextFacade] onMapZoomStart handler error:', error_); }
+        });
+        return;
+      }
+      const map: any = this.getMapSafe();
+      map?.on?.('zoomstart', handler as any);
+    } catch (error_) { console.debug('[MapContextFacade] onMapZoomStart setup failed:', error_); }
+  }
+
+  offMapZoomStart(handler: () => void): void {
+    try {
+      const idx = this.zoomStartHandlers.indexOf(handler);
+      if (idx >= 0) this.zoomStartHandlers.splice(idx, 1);
+      const r = this.currentRenderer as any;
+      if (r?.offMapZoomStart) {
+        r.offMapZoomStart(handler);
+        return;
+      }
+      const map: any = this.getMapSafe();
+      map?.off?.('zoomstart', handler as any);
+    } catch (error_) { console.debug('[MapContextFacade] offMapZoomStart failed:', error_); }
   }
 
   // Fit bounds with an options object to support different providers

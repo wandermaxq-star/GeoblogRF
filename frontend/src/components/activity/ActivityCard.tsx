@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import styled from 'styled-components';
 import { ActivityItem, activityService } from '../../services/activityService';
 import { 
@@ -11,6 +11,9 @@ import {
   FaTools, FaDownload, FaPlus, FaMinus, FaShieldAlt, FaRocket, FaFlag,
   FaExclamationTriangle, FaLink, FaUnlink, FaKey, FaUpload
 } from 'react-icons/fa';
+import { GeoBadgeList, GeoRef, GeoRefType } from '../Geo/GeoBadge';
+import { useGeoFocusStore } from '../../stores/geoFocusStore';
+import { useContentStore } from '../../stores/contentStore';
 
 const CardContainer = styled.div<{ isRead: boolean }>`
   /* Transparent glass card similar to Favorites/Posts */
@@ -150,6 +153,37 @@ interface ActivityCardProps {
 }
 
 const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onMarkAsRead }) => {
+  // Собираем гео-ссылки из activity_type и target_id
+  const geoRefs = useMemo<GeoRef[]>(() => {
+    const refs: GeoRef[] = [];
+    if (!activity.target_id) return refs;
+
+    // Определяем тип гео-объекта по activity_type или target_type
+    const at = activity.activity_type;
+    const tt = activity.target_type;
+    let geoType: GeoRefType | null = null;
+
+    if (at.startsWith('marker_') || tt === 'marker') geoType = 'marker';
+    else if (at.startsWith('route_') || tt === 'route') geoType = 'route';
+    else if (at.startsWith('event_') || tt === 'event') geoType = 'event';
+
+    if (geoType) {
+      refs.push({
+        type: geoType,
+        id: activity.target_id,
+        title: activity.metadata?.title || activity.metadata?.name || undefined,
+      });
+    }
+    return refs;
+  }, [activity.activity_type, activity.target_type, activity.target_id, activity.metadata]);
+
+  // Клик по гео-иконке → открываем карту слева, ленту активности справа
+  const handleGeoOpen = useCallback((ref: GeoRef) => {
+    useGeoFocusStore.getState().setFocus({ type: ref.type, id: ref.id, title: ref.title });
+    useContentStore.getState().setLeftContent('map');
+    useContentStore.getState().setRightContent('feed');
+  }, []);
+
   const handleCardClick = () => {
     if (!activity.is_read && onMarkAsRead) {
       onMarkAsRead(activity.id);
@@ -301,9 +335,12 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onMarkAsRead }) =
         </ActivityIcon>
         
         <ActivityContent>
-          <div>
-            <UserName>{activity.username}</UserName>
-            <ActivityText>{getActivityText()}</ActivityText>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div>
+              <UserName>{activity.username}</UserName>
+              <ActivityText>{getActivityText()}</ActivityText>
+            </div>
+            <GeoBadgeList geoRefs={geoRefs} onOpen={handleGeoOpen} />
           </div>
           <ActivityTime>{getFormattedTime()}</ActivityTime>
         </ActivityContent>
@@ -331,6 +368,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onMarkAsRead }) =
           Поделиться
         </ActionButton>
       </ActionButtons>
+
     </CardContainer>
   );
 };

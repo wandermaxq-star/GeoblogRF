@@ -4,7 +4,7 @@ import { useActivityStats } from '../hooks/useActivityStats';
 import { useNavigate } from 'react-router-dom';
 
 const Header = ({
-  avatar = "https://via.placeholder.com/40/29BFB5/FFFFFF?text=A",
+  avatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' fill='%2329BFB5'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='16'%3EA%3C/text%3E%3C/svg%3E",
   hasNewMessages = true,
   openSearch = () => {},
   openSettings = () => {},

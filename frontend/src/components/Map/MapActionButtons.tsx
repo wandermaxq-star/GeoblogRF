@@ -101,15 +101,7 @@ const MapActionButtons: React.FC<MapActionButtonsProps> = ({
       className={`map-action-buttons-container ${isDarkMode ? 'dark' : ''} ${isTwoPanelMode ? 'two-panel-mode' : ''}`}
       role="toolbar"
       aria-label="Действия на карте"
-      style={isTwoPanelMode ? {
-        position: 'fixed', // Фиксированное позиционирование относительно viewport
-        right: 'calc(50% + 12px)', // Прижимаем к панели постов
-        // Центр области контента: topbar=64px, bottom=0px
-        // top = 64px + (100vh - 64px) / 2 = 64px + 50vh - 32px = 50vh + 32px
-        top: 'calc(64px + (100vh - 64px) / 2)',
-        transform: 'translateY(-50%)', // Центрируем по вертикали
-        transition: 'right 0.3s ease-in-out'
-      } : undefined}
+      style={{ pointerEvents: 'none' }}
     >
       {buttons.map((button) => {
         const Icon = button.icon;

@@ -25,11 +25,10 @@ export const MapContainer = styled.div<MapContainerProps>`
   max-width: none !important;
   overflow: visible !important;
 
-  /* Двухоконный режим - карта занимает всю ширину левой панели */
+  /* Двухоконный режим - карта всё равно на полный viewport */
   ${props => props.$isTwoPanel && css`
-    width: 100% !important;
+    width: 100vw !important;
     height: calc(100vh - var(--facade-map-top, 0px)) !important;
-    right: auto !important;
   `}
 
   /* Полноэкранный режим (по умолчанию) */
@@ -45,14 +44,14 @@ export const MapContainer = styled.div<MapContainerProps>`
     pointer-events: none !important;
   }
 
-  /* Двухоконный режим */
+  /* Двухоконный режим — карта всегда на полный viewport */
   &.two-panel-mode {
-    width: 100% !important;
+    width: 100vw !important;
     height: calc(100vh - var(--facade-map-top, 0px)) !important;
     
     /* Leaflet контейнер в двухоконном режиме */
     .leaflet-container {
-      width: 100% !important;
+      width: 100vw !important;
       height: 100% !important;
     }
   }
@@ -76,6 +75,7 @@ export const MapContainerClasses = styled.div``;
 export const MapWrapper = styled.div.attrs(() => ({
   // Убеждаемся, что элемент имеет правильные атрибуты
 }))`
+  position: relative;
   width: 100%;
   height: 100%;
   min-height: 400px;
@@ -84,6 +84,7 @@ export const MapWrapper = styled.div.attrs(() => ({
   top: 0 !important;
   left: 0 !important;
   background: transparent !important;
+  pointer-events: auto;
 
   .marker-cluster-custom {
     background: none;
@@ -415,11 +416,11 @@ export const Actions = styled.div`
   overflow-wrap: break-word;
 `;
 
-export const ActionButton = styled.button<{ buttonColor?: string }>`
+export const ActionButton = styled.button<{ $buttonColor?: string }>`
   background: none;
   border: none;
   font-size: 0.8em;
-  color: ${props => props.buttonColor || '#3498db'}; // Используем переданный цвет или дефолтный синий
+  color: ${props => props.$buttonColor || '#3498db'}; // Используем переданный цвет или дефолтный синий
   cursor: pointer;
   display: flex;
   align-items: center;

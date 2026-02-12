@@ -42,14 +42,14 @@ class AnalyticsOrchestrator {
         event_type: event.event_type,
         user_id: event.user_id,
         properties: event.properties
-      })).catch((err) => console.error('productAnalyticsService.trackConversion error', err));
+      })).catch(() => { /* analytics non-critical */ });
 
       // Поведенческая аналитика
       Promise.resolve(behavioralAnalyticsService.analyzeBehaviorPattern({
         user_id: event.user_id,
         event_type: event.event_type,
         properties: event.properties
-      })).catch((err) => console.error('behavioralAnalyticsService.analyzeBehaviorPattern error', err));
+      })).catch(() => { /* analytics non-critical */ });
 
       // Performance monitoring (если есть длительность) — тоже неблокирующий вызов
       if (event.properties?.duration) {
@@ -58,14 +58,14 @@ class AnalyticsOrchestrator {
             event_type: event.event_type,
             duration: event.properties.duration,
             component: event.properties.component
-          })).catch((err) => console.error('performanceMonitoringService.trackUserTiming error', err));
-        } catch (e) {
-          console.error('performanceMonitoringService invocation error', e);
+          })).catch(() => { /* analytics non-critical */ });
+        } catch {
+          // analytics non-critical
         }
       }
     } catch (error) {
       // На уровне оркестратора — логируем редкие синхронные ошибки и продолжаем
-      console.error('Ошибка трекинга пользовательского пути (orchestrator):', error);
+      // Тихо: аналитика не критична
     }
   }
 
@@ -103,7 +103,7 @@ class AnalyticsOrchestrator {
         user_engagement: userEngagement
       };
     } catch (error) {
-      console.error('Ошибка трекинга поведения карты:', error);
+      // Тихо: аналитика не критична
       return {
         geographic_patterns: {},
         performance_metrics: {},
@@ -167,7 +167,7 @@ class AnalyticsOrchestrator {
         timestamp: Date.now()
       };
     } catch (error) {
-      console.error('Ошибка получения комплексных метрик:', error);
+      // Тихо: аналитика не критична
       throw error;
     }
   }

@@ -29,7 +29,9 @@ import { MockEvent } from '../components/TravelCalendar/mockEvents';
 import { useLayoutState } from '../contexts/LayoutContext';
 import { useContentStore } from '../stores/contentStore';
 import { projectManager } from '../services/projectManager';
+import { mapFacade } from '../services/map_facade';
 import { useRussiaRestrictions } from '../hooks/useRussiaRestrictions';
+import { geocodeAddress } from '../services/geocodingService';
 import { getCategoryById } from '../components/TravelCalendar/TravelCalendar';
 import { isWithinRussiaBounds } from '../utils/russiaBounds';
 import RegionSelector from '../components/Regions/RegionSelector';
@@ -345,6 +347,80 @@ const Planner: React.FC<PlannerProps> = function Planner() {
     return () => clearTimeout(timeout);
   }, [isPlannerActive, isMapReady]);
 
+  // === КРИТИЧНО: Единая функция рендеринга маркеров на Яндекс карте ===
+  // Вызывается напрямую из каждого обработчика, не через цепочку useEffect
+  const renderMarkersOnMap = useCallback((markers: MapMarker[]) => {
+    try {
+      const mapApi = projectManager.getMapApi?.();
+      if (!mapApi) {
+        console.warn('[Planner] renderMarkersOnMap: mapApi not ready');
+        return;
+      }
+
+      // Способ 1: Используем renderMarkers из API (привязан к рендереру через bind)
+      if (typeof mapApi.renderMarkers === 'function') {
+        const unifiedMarkers = markers.map(m => ({
+          id: m.id || `m-${Date.now()}`,
+          coordinates: { lat: Number(m.lat), lon: Number(m.lon) },
+          title: m.title || m.name || '',
+        }));
+        mapApi.renderMarkers(unifiedMarkers);
+        console.log('[Planner] Rendered', markers.length, 'markers via mapApi.renderMarkers');
+        return;
+      }
+
+      // Способ 2 (fallback): Рендерим напрямую на карту через ymaps API
+      const ymaps = (window as any).ymaps;
+      const map = mapApi?.map || mapApi?.mapInstance;
+      if (!map || !ymaps) {
+        console.warn('[Planner] renderMarkersOnMap: map or ymaps not ready for fallback');
+        return;
+      }
+
+      const collection = new ymaps.GeoObjectCollection();
+      markers.forEach(m => {
+        const lat = Number(m.lat);
+        const lon = Number(m.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+        const placemark = new ymaps.Placemark(
+          [lat, lon],
+          { balloonContent: m.title || m.name || '', iconCaption: m.title || m.name || '' },
+          { preset: 'islands#blueCircleDotIcon' }
+        );
+        collection.add(placemark);
+      });
+      if ((window as any).__plannerMarkersCollection) {
+        try { map.geoObjects.remove((window as any).__plannerMarkersCollection); } catch {}
+      }
+      map.geoObjects.add(collection);
+      (window as any).__plannerMarkersCollection = collection;
+      console.log('[Planner] Rendered', markers.length, 'markers via fallback collection');
+    } catch (e) {
+      console.warn('[Planner] renderMarkersOnMap error:', e);
+    }
+  }, []);
+
+  // === Единая функция добавления точки на карту и в состояние ===
+  const addPointAndRender = useCallback((point: { id: string; latitude: number; longitude: number; title: string; description?: string }) => {
+    // 1. Добавляем в контекст RoutePlanner
+    addRoutePoint(point);
+    // 2. Обновляем facadeMarkers и рендерим на карте немедленно
+    setFacadeMarkers(prev => {
+      const newMarker: MapMarker = {
+        id: point.id,
+        lat: point.latitude,
+        lon: point.longitude,
+        title: point.title,
+        name: point.title,
+        description: point.description || '',
+      };
+      const updated = [...prev, newMarker];
+      // Рендерим асинхронно чтобы не блокировать setState
+      setTimeout(() => renderMarkersOnMap(updated), 0);
+      return updated;
+    });
+  }, [addRoutePoint, renderMarkersOnMap]);
+
   // Автоматическое управление событиями в маршруте при смене selectedEvent
   useEffect(() => {
     if (!selectedEvent) return;
@@ -369,7 +445,7 @@ const Planner: React.FC<PlannerProps> = function Planner() {
       selectedEvent.longitude != null &&
       !isNaN(selectedEvent.latitude) && !isNaN(selectedEvent.longitude)) {
       // Автоматически добавляем событие в маршрут
-      addRoutePoint({
+      addPointAndRender({
         id: currentEventId,
         latitude: selectedEvent.latitude,
         longitude: selectedEvent.longitude,
@@ -377,7 +453,7 @@ const Planner: React.FC<PlannerProps> = function Planner() {
         description: selectedEvent.description || undefined
       });
     }
-  }, [selectedEvent, routePointsFromContext, removeRoutePoint, addRoutePoint]);
+  }, [selectedEvent, routePointsFromContext, removeRoutePoint, addPointAndRender]);
 
   // Центрирование карты на выбранное событие
   useEffect(() => {
@@ -423,9 +499,8 @@ const Planner: React.FC<PlannerProps> = function Planner() {
       return;
     }
 
-    // Добавляем событие как точку маршрута в контекст
-    // useEffect автоматически синхронизирует routePointsFromContext с facadeMarkers
-    addRoutePoint({
+    // Добавляем событие как точку маршрута + рендерим на карте
+    addPointAndRender({
       id: `event-${event.id}`,
       latitude: event.latitude,
       longitude: event.longitude,
@@ -437,25 +512,206 @@ const Planner: React.FC<PlannerProps> = function Planner() {
     setSettingsOpen(true);
 
     alert(`✅ Событие "${event.title}" добавлено в маршрут!`);
-  }, [addRoutePoint]);
+  }, [addPointAndRender]);
 
   // УБРАНО: Маркеры событий теперь добавляются через синхронизацию routePointsFromContext с facadeMarkers
   // FacadeMap автоматически отрисовывает маркеры из facadeMarkers, поэтому не нужно добавлять их напрямую через mapFacade
 
   // Очистка при смене провайдера - убрано, так как только Яндекс
 
-  // Стабильный обработчик клика по карте (без зависимости от состояния)
+  // Стабильный обработчик клика по карте
   const handleMapClick = useCallback((coordinates: [number, number]) => {
-    // Добавляем точку в routePointsFromContext - useEffect синхронизирует с facadeMarkers
     const pointId = `marker-${Date.now()}`;
-    addRoutePoint({
+    addPointAndRender({
       id: pointId,
       latitude: coordinates[0],
       longitude: coordinates[1],
       title: `Точка ${(routePointsFromContext?.length || 0) + 1}`,
       description: undefined
     });
-  }, [addRoutePoint, routePointsFromContext]);
+  }, [addPointAndRender, routePointsFromContext]);
+
+  // КРИТИЧНО: Синхронизация routePointsFromContext → facadeMarkers
+  // Нужна для случаев когда addRoutePoint вызывается НЕ через нашу addPointAndRender
+  // (например, из событий)
+  useEffect(() => {
+    if (!routePointsFromContext || routePointsFromContext.length === 0) {
+      return;
+    }
+    const newMarkers: MapMarker[] = routePointsFromContext.map((rp: any, idx: number) => ({
+      id: rp.id || `rp-${idx}`,
+      lat: rp.latitude,
+      lon: rp.longitude,
+      title: rp.title || `Точка ${idx + 1}`,
+      name: rp.title || `Точка ${idx + 1}`,
+      description: rp.description || '',
+    }));
+    setFacadeMarkers(newMarkers);
+    // Если карта готова — рендерим сразу
+    if (isMapReady) {
+      renderMarkersOnMap(newMarkers);
+    }
+  }, [routePointsFromContext, isMapReady, renderMarkersOnMap]);
+
+  // === СИНХРОНИЗАЦИЯ: чекбоксы избранного → маркеры на карте ===
+  // Когда пользователь ставит/снимает галочку в панели избранного,
+  // соответствующий маркер появляется/исчезает на карте планировщика.
+  const prevSelectedIdsRef = useRef<string[]>([]);
+  useEffect(() => {
+    if (!isMapReady) return;
+    const favoritesAsMarkers: MarkerData[] = (favorites as any)?.favorites || [];
+    const rawPlaces = (favorites as any)?.favoritePlaces || [];
+    const prevIds = prevSelectedIdsRef.current;
+    const currentIds = selectedMarkerIds;
+
+    // Определяем добавленные и удалённые ID
+    const addedIds = currentIds.filter(id => !prevIds.includes(id));
+    const removedIds = prevIds.filter(id => !currentIds.includes(id));
+    prevSelectedIdsRef.current = currentIds;
+
+    // Удаляем снятые маркеры (инлайн, т.к. handleRemoveMarker определён ниже)
+    removedIds.forEach(id => {
+      try { if (id) projectManager.getMapApi().removeMarker(id); } catch { }
+      setFacadeMarkers(prev => {
+        const updated = prev.filter(m => m.id !== id);
+        setTimeout(() => renderMarkersOnMap(updated), 0);
+        return updated;
+      });
+      if (removeRoutePoint) removeRoutePoint(id);
+    });
+
+    // Добавляем новые маркеры
+    addedIds.forEach(id => {
+      // Не добавляем, если уже есть на карте
+      if (facadeMarkers.some(m => m.id === id)) return;
+
+      // Ищем маркер в favorites
+      const marker = favoritesAsMarkers.find((m: any) => m.id === id)
+        || (() => {
+          const fp = rawPlaces.find((m: any) => m.id === id);
+          if (!fp) return null;
+          return {
+            ...fp,
+            title: fp.title || fp.name || 'Без названия',
+            latitude: fp.latitude ?? (Array.isArray(fp.coordinates) ? fp.coordinates[0] : undefined),
+            longitude: fp.longitude ?? (Array.isArray(fp.coordinates) ? fp.coordinates[1] : undefined),
+          } as MarkerData;
+        })();
+
+      if (!marker) return;
+      let lat = Number(marker.latitude);
+      let lon = Number(marker.longitude);
+      if (isNaN(lat) || isNaN(lon)) return;
+      if (!isWithinRussiaBounds(lat, lon) && isWithinRussiaBounds(lon, lat)) {
+        const tmp = lat; lat = lon; lon = tmp;
+      }
+      addPointAndRender({
+        id: marker.id || `fav-${Date.now()}`,
+        latitude: lat,
+        longitude: lon,
+        title: marker.title || 'Без названия',
+        description: undefined
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMarkerIds, isMapReady]);
+
+  // КРИТИЧНО: Регистрация обработчика клика по Яндекс карте
+  // Используем ref чтобы не дублировать обработчики
+  const clickRegisteredRef = useRef(false);
+  const handleMapClickRef = useRef(handleMapClick);
+  handleMapClickRef.current = handleMapClick;
+
+  useEffect(() => {
+    if (!isMapReady || clickRegisteredRef.current) return;
+
+    // Способ 1: через mapApi.onClick (привязан к рендереру через bind - самый надёжный)
+    try {
+      const mapApi = projectManager.getMapApi?.();
+      if (mapApi && typeof mapApi.onClick === 'function') {
+        mapApi.onClick((coords: [number, number]) => {
+          handleMapClickRef.current(coords);
+        });
+        clickRegisteredRef.current = true;
+        console.log('[Planner] Click handler registered via mapApi.onClick');
+      }
+    } catch (e0) {
+      console.warn('[Planner] mapApi.onClick failed:', e0);
+    }
+
+    // Способ 2: через mapFacade onClick
+    if (!clickRegisteredRef.current) {
+      try {
+        const facade = mapFacade();
+        if (facade && typeof facade.onClick === 'function') {
+          facade.onClick((coords: [number, number]) => {
+            handleMapClickRef.current(coords);
+          });
+          clickRegisteredRef.current = true;
+          console.log('[Planner] Click handler registered via facade.onClick');
+        }
+      } catch (e1) {
+        console.warn('[Planner] facade.onClick failed:', e1);
+      }
+    }
+
+    // Способ 3: напрямую через Яндекс API (fallback)
+    if (!clickRegisteredRef.current) {
+      try {
+        const mapApi = projectManager.getMapApi?.();
+        const map = mapApi?.map || mapApi?.mapInstance;
+        if (map && map.events) {
+          map.events.add('click', (e: any) => {
+            const coords = e.get('coords');
+            if (coords && Array.isArray(coords)) {
+              handleMapClickRef.current([coords[0], coords[1]]);
+            }
+          });
+          clickRegisteredRef.current = true;
+          console.log('[Planner] Click handler registered via direct Yandex API');
+        }
+      } catch (e2) {
+        console.warn('[Planner] Direct click registration failed:', e2);
+      }
+    }
+  }, [isMapReady]);
+
+  // Синхронизация facadeRoutes → рендеринг маршрутов на Яндекс карте
+  // Отслеживаем уже отрисованные маршруты чтобы не перерисовывать и корректно удалять
+  const renderedRouteIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!isMapReady) return;
+    const mapApi = projectManager.getMapApi?.();
+    if (!mapApi || typeof mapApi.renderRoute !== 'function') {
+      console.warn('[Planner] mapApi.renderRoute not available');
+      return;
+    }
+
+    const currentIds = new Set(facadeRoutes.map(r => r.id).filter(Boolean));
+
+    // 1. Удаляем маршруты, которых больше нет в facadeRoutes
+    for (const renderedId of renderedRouteIdsRef.current) {
+      if (!currentIds.has(renderedId)) {
+        console.log('[Planner] Removing route from map:', renderedId);
+        try { mapApi.removeRoute?.(renderedId); } catch { }
+        renderedRouteIdsRef.current.delete(renderedId);
+      }
+    }
+
+    // 2. Рендерим новые маршруты (которых ещё нет на карте)
+    for (const route of facadeRoutes) {
+      if (!route.id || !route.points || route.points.length < 2) continue;
+      if (renderedRouteIdsRef.current.has(route.id)) continue; // уже отрисован
+
+      console.log('[Planner] Rendering route via mapApi.renderRoute:', route.id, route.points.length, 'points');
+      try {
+        mapApi.renderRoute({ id: route.id, geometry: route.points, color: route.color });
+        renderedRouteIdsRef.current.add(route.id);
+      } catch (e) {
+        console.warn('[Planner] Failed to render route:', route.id, e);
+      }
+    }
+  }, [isMapReady, facadeRoutes]);
 
   // НОВЫЕ ФУНКЦИИ ДЛЯ МАРШРУТОВ
   // Ключ для принудительной переинициализации карты при удалении маршрутов
@@ -544,14 +800,10 @@ const Planner: React.FC<PlannerProps> = function Planner() {
       // Добавляем в состояние - FacadeMap автоматически отрисует через useEffect
       setFacadeRoutes(prev => [...prev, r]);
     } else {
-      // Удаляем из состояния и принудительно перерисовываем карту
-      setFacadeRoutes(prev => prev.filter(r => r.id !== `fav-route-${rid}`));
-      try {
-        const mapApi = projectManager.getMapApi();
-        mapApi.clear({ force: true });
-      } catch { }
-      // Принудительный ре-инициализатор для FacadeMap
-      setMapResetKey(k => k + 1);
+      // Удаляем маршрут из состояния — рендер-эффект удалит его с карты через removeRoute
+      const routeIdToRemove = `fav-route-${rid}`;
+      setFacadeRoutes(prev => prev.filter(r => r.id !== routeIdToRemove));
+      renderedRouteIdsRef.current.delete(routeIdToRemove);
     }
   }, [extractRoutePoints]);
 
@@ -632,15 +884,13 @@ const Planner: React.FC<PlannerProps> = function Planner() {
         return null;
       }
 
-      // Для routing service нужен формат [lon, lat]
-      const orsPoints = normalized.map(([lat, lon]) => [lon, lat] as [number, number]);
-
-      // Попытка запросить маршрут через routing-сервис
+      // getRoutePolyline принимает [lat, lon] и сам конвертирует в [lon, lat] для ORS внутри
+      // НЕ делаем двойной swap — передаём normalized напрямую!
       let builtPolyline: [number, number][] | null = null;
       try {
-        const result = await getRoutePolyline(orsPoints, 'driving-car');
+        const result = await getRoutePolyline(normalized, 'driving-car');
         if (Array.isArray(result) && result.length >= 2) {
-          builtPolyline = normalizePolyline(result);
+          builtPolyline = result; // getRoutePolyline уже возвращает [lat, lon]
         }
       } catch {
         // Ошибка запроса - используем fallback ниже
@@ -653,7 +903,7 @@ const Planner: React.FC<PlannerProps> = function Planner() {
 
       // Создаем Route объект и добавляем в состояние
       const route: Route = {
-        id: `route-${Date.now()}`,
+        id: `auto-route-${Date.now()}`,
         points: builtPolyline,
         color: '#3B82F6'
       };
@@ -662,16 +912,17 @@ const Planner: React.FC<PlannerProps> = function Planner() {
       setFacadeRoutes(prev => {
         // Удаляем старые авто-маршруты
         const filtered = prev.filter(r => !r.id?.startsWith('auto-route-'));
+        // Очищаем старые авто-маршруты из renderedRouteIds чтобы рендер-эффект их удалил с карты
+        prev.forEach(r => {
+          if (r.id?.startsWith('auto-route-')) {
+            renderedRouteIdsRef.current.delete(r.id);
+          }
+        });
         return [...filtered, route];
       });
 
-      // Сохраняем точки в контекст планировщика
-      setRoutePoints?.(normalized.map((p, idx) => ({
-        id: String(idx + 1),
-        latitude: p[0],
-        longitude: p[1],
-        title: `Точка ${idx + 1}`
-      })));
+      // НЕ вызываем setRoutePoints здесь — точки уже управляются через addPointAndRender.
+      // Вызов setRoutePoints → routePointsFromContext → setFacadeMarkers → autoRoute → бесконечный цикл!
 
       return route;
     } catch {
@@ -679,11 +930,69 @@ const Planner: React.FC<PlannerProps> = function Planner() {
     } finally {
       setIsBuilding(false);
     }
-  }, [setRoutePoints, setFacadeRoutes]);
+  }, [setFacadeRoutes]);
+
+  // АВТОПОСТРОЕНИЕ: При изменении facadeMarkers (2+ точки) автоматически строим маршрут
+  // Используем ref для предотвращения бесконечного цикла и повторных запросов
+  const autoRouteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastAutoRouteKeyRef = useRef<string>('');
+  const isAutoRoutingRef = useRef(false);
+
+  useEffect(() => {
+    console.log('[Planner] Auto-route check: isMapReady=', isMapReady, 'markers=', facadeMarkers.length, 'isAutoRouting=', isAutoRoutingRef.current,
+      'coords=', facadeMarkers.map(m => `${m.id}(${m.lat},${m.lon})`));
+    if (!isMapReady || facadeMarkers.length < 2 || isAutoRoutingRef.current) return;
+
+    // Создаём ключ из координат маркеров для сравнения
+    const markersKey = facadeMarkers.map(m => `${m.lat},${m.lon}`).join('|');
+    if (markersKey === lastAutoRouteKeyRef.current) {
+      console.log('[Planner] Auto-route: same key, skipping');
+      return; // Уже построен для этих точек
+    }
+
+    // Debounce: ждём 800ms после последнего добавления точки
+    if (autoRouteTimerRef.current) clearTimeout(autoRouteTimerRef.current);
+    console.log('[Planner] Auto-route: scheduling build in 800ms for key:', markersKey);
+    autoRouteTimerRef.current = setTimeout(async () => {
+      if (isAutoRoutingRef.current) return;
+      isAutoRoutingRef.current = true;
+      try {
+        const routePoints = facadeMarkers.map(m => [Number(m.lat), Number(m.lon)] as [number, number]);
+        console.log('[Planner] Auto-building route for', routePoints.length, 'points:', routePoints);
+        lastAutoRouteKeyRef.current = markersKey;
+        const result = await buildAndSetRoute(routePoints);
+        console.log('[Planner] Auto-route result:', result ? `route ${result.id} with ${result.points?.length} points` : 'null');
+      } catch (e) {
+        console.warn('[Planner] Auto route build failed:', e);
+      } finally {
+        isAutoRoutingRef.current = false;
+      }
+    }, 800);
+
+    return () => {
+      if (autoRouteTimerRef.current) clearTimeout(autoRouteTimerRef.current);
+    };
+  }, [isMapReady, facadeMarkers, buildAndSetRoute]);
 
   const handleBuildRouteFromFavorites = useCallback(async (markerIds: string[]) => {
+    // КРИТИЧНО: Используем favorites (MarkerData[]) из контекста — данные уже нормализованы
+    const favoritesAsMarkers: MarkerData[] = (favorites as any)?.favorites || [];
+    const rawPlaces = (favorites as any)?.favoritePlaces || [];
+
     const selectedMarkers = markerIds
-      .map(id => (favorites as any)?.favoritePlaces?.find((m: any) => m.id === id))
+      .map(id => {
+        const fromMarkers = favoritesAsMarkers.find((m: any) => m.id === id);
+        if (fromMarkers) return fromMarkers;
+        // Fallback: ищем в сырых FavoritePlace и нормализуем координаты
+        const fp = rawPlaces.find((m: any) => m.id === id);
+        if (!fp) return null;
+        return {
+          ...fp,
+          title: fp.title || fp.name || 'Без названия',
+          latitude: fp.latitude ?? (Array.isArray(fp.coordinates) ? fp.coordinates[0] : undefined),
+          longitude: fp.longitude ?? (Array.isArray(fp.coordinates) ? fp.coordinates[1] : undefined),
+        } as MarkerData;
+      })
       .filter((m): m is MarkerData => Boolean(m));
 
     if (selectedMarkers.length < 2) {
@@ -691,14 +1000,32 @@ const Planner: React.FC<PlannerProps> = function Planner() {
       return;
     }
 
-    // Используем единую функцию buildAndSetRoute
+    // Добавляем все маркеры на карту через addPointAndRender
+    selectedMarkers.forEach(marker => {
+      let lat = Number(marker.latitude);
+      let lon = Number(marker.longitude);
+      if (isNaN(lat) || isNaN(lon)) return;
+      // Коррекция lat/lon если перевёрнуты
+      if (!isWithinRussiaBounds(lat, lon) && isWithinRussiaBounds(lon, lat)) {
+        const tmp = lat; lat = lon; lon = tmp;
+      }
+      addPointAndRender({
+        id: marker.id || `fav-${Date.now()}-${Math.random()}`,
+        latitude: lat,
+        longitude: lon,
+        title: marker.title || 'Без названия',
+        description: undefined
+      });
+    });
+
+    // Строим маршрут через единую функцию
     const routePoints = selectedMarkers.map(m => [Number(m.latitude), Number(m.longitude)]);
     const route = await buildAndSetRoute(routePoints);
 
     if (route) {
       alert(`✅ Маршрут построен из ${selectedMarkers.length} точек!`);
     }
-  }, [favorites, buildAndSetRoute]);
+  }, [favorites, buildAndSetRoute, addPointAndRender]);
 
   const handleClearAllClickMarkers = useCallback(() => {
     try {
@@ -709,10 +1036,14 @@ const Planner: React.FC<PlannerProps> = function Planner() {
     } catch {
       // Игнорируем ошибки
     }
+    // Очищаем маркеры на Яндекс карте через renderMarkersOnMap
+    renderMarkersOnMap([]);
     setFacadeMarkers([]);
     setFacadeRoutes([]);
+    renderedRouteIdsRef.current.clear();
+    lastAutoRouteKeyRef.current = '';
     alert('✅ Карта очищена');
-  }, []);
+  }, [renderMarkersOnMap]);
 
   const handleFinalSaveRoute = useCallback(async (routeData: RouteCreationData) => {
 
@@ -916,7 +1247,12 @@ const Planner: React.FC<PlannerProps> = function Planner() {
   // Функция удаления маркера через фасад
   const handleRemoveMarker = (markerId: string) => {
     try { if (markerId) projectManager.getMapApi().removeMarker(markerId); } catch { }
-    setFacadeMarkers(prev => prev.filter(m => m.id !== markerId));
+    setFacadeMarkers(prev => {
+      const updated = prev.filter(m => m.id !== markerId);
+      // Перерисовываем оставшиеся маркеры
+      setTimeout(() => renderMarkersOnMap(updated), 0);
+      return updated;
+    });
     // Также удаляем из routePoints контекста, если это точка маршрута
     if (removeRoutePoint) {
       removeRoutePoint(markerId);
@@ -924,13 +1260,30 @@ const Planner: React.FC<PlannerProps> = function Planner() {
   };
 
   const handleMoveToPlanner = async (ids: string[]) => {
+    // КРИТИЧНО: Используем favorites (MarkerData[]) из контекста — данные уже нормализованы
+    // FavoritePlace имеет name/coordinates, а favorites из контекста — title/latitude/longitude
+    const favoritesAsMarkers: MarkerData[] = (favorites as any)?.favorites || [];
+    // Также пробуем favoritePlaces для обратной совместимости
+    const rawPlaces = (favorites as any)?.favoritePlaces || [];
 
-    // Получаем метки из избранного
-    const favoritePlaces = (favorites as any)?.favoritePlaces || [];
     const selectedMarkers = ids
-      .map(id => favoritePlaces.find((m: any) => m.id === id))
+      .map(id => {
+        // Сначала ищем в готовых MarkerData
+        const fromMarkers = favoritesAsMarkers.find((m: any) => m.id === id);
+        if (fromMarkers) return fromMarkers;
+        // Fallback: ищем в сырых FavoritePlace и нормализуем
+        const fp = rawPlaces.find((m: any) => m.id === id);
+        if (!fp) return null;
+        return {
+          ...fp,
+          title: fp.title || fp.name || 'Без названия',
+          latitude: fp.latitude ?? (Array.isArray(fp.coordinates) ? fp.coordinates[0] : undefined),
+          longitude: fp.longitude ?? (Array.isArray(fp.coordinates) ? fp.coordinates[1] : undefined),
+          category: fp.category || fp.type || 'other',
+          address: fp.address || fp.location || '',
+        } as MarkerData;
+      })
       .filter((m): m is MarkerData => Boolean(m));
-
 
     if (selectedMarkers.length === 0) {
       alert('❌ Не найдено меток для переноса');
@@ -943,6 +1296,7 @@ const Planner: React.FC<PlannerProps> = function Planner() {
       let lon = Number(marker.longitude);
 
       if (isNaN(lat) || isNaN(lon)) {
+        console.warn('[Planner] Marker has invalid coordinates:', marker.id, lat, lon);
         return;
       }
 
@@ -951,8 +1305,8 @@ const Planner: React.FC<PlannerProps> = function Planner() {
         const tmp = lat; lat = lon; lon = tmp;
       }
 
-      // Добавляем точку в routePointsFromContext - useEffect синхронизирует с facadeMarkers
-      addRoutePoint({
+      // Добавляем точку + рендерим на карте немедленно
+      addPointAndRender({
         id: marker.id,
         latitude: lat,
         longitude: lon,
@@ -960,8 +1314,6 @@ const Planner: React.FC<PlannerProps> = function Planner() {
         description: undefined
       });
     });
-
-    // Маршрут будет построен автоматически через useEffect, который следит за facadeMarkers
 
     // Открываем настройки и показываем добавленные точки
     setSettingsOpen(true);
@@ -977,9 +1329,8 @@ const Planner: React.FC<PlannerProps> = function Planner() {
   }, []);
 
   const handleCoordinateSubmit = useCallback((lat: number, lon: number) => {
-    // Добавляем точку в routePointsFromContext - useEffect синхронизирует с facadeMarkers
     const pointId = `marker-${Date.now()}`;
-    addRoutePoint({
+    addPointAndRender({
       id: pointId,
       latitude: lat,
       longitude: lon,
@@ -987,20 +1338,42 @@ const Planner: React.FC<PlannerProps> = function Planner() {
       description: undefined
     });
     setShowCoordinateInput(false);
-  }, [addRoutePoint]);
+  }, [addPointAndRender]);
 
-  const handleSearchSubmit = useCallback((address: string, coordinates: [number, number]) => {
-    // Добавляем точку в routePointsFromContext - useEffect синхронизирует с facadeMarkers
+  const handleSearchSubmit = useCallback(async (address: string, coordinates?: [number, number]) => {
     const pointId = `marker-${Date.now()}`;
-    addRoutePoint({
+    let lat: number, lon: number;
+
+    if (coordinates && coordinates[0] !== 55.751244) {
+      // Координаты переданы явно (не хардкод)
+      lat = coordinates[0];
+      lon = coordinates[1];
+    } else {
+      // Геокодим адрес через Яндекс Geocoder
+      try {
+        const result = await geocodeAddress(address);
+        if (result) {
+          lat = result.latitude;
+          lon = result.longitude;
+        } else {
+          alert(`❌ Адрес "${address}" не найден`);
+          return;
+        }
+      } catch (e) {
+        alert(`❌ Ошибка поиска адреса: ${e}`);
+        return;
+      }
+    }
+
+    addPointAndRender({
       id: pointId,
-      latitude: coordinates[0],
-      longitude: coordinates[1],
+      latitude: lat,
+      longitude: lon,
       title: address,
       description: undefined
     });
     setShowSearchForm(false);
-  }, [addRoutePoint]);
+  }, [addPointAndRender]);
 
   // Перестановка точек маршрута из списка в настройках
   const handleReorderPoints = useCallback((newOrder: string[]) => {
@@ -1039,8 +1412,8 @@ const Planner: React.FC<PlannerProps> = function Planner() {
                 <div
                   className="absolute flex items-center gap-3"
                   style={{
-                    // Отступ сверху - больше в двухоконном режиме
-                    top: isTwoPanelMode ? '80px' : '16px',
+                    // Отступ сверху: ниже topbar (64px) + отступ
+                    top: isTwoPanelMode ? '80px' : '80px',
                     // В двухоконном режиме центр активной зоны карты = 25% от левого края
                     // В одноэкранном режиме - по центру (50%)
                     left: isTwoPanelMode ? '25%' : '50%',
@@ -1209,45 +1582,9 @@ const Planner: React.FC<PlannerProps> = function Planner() {
                 </div>
               </GlassPanel>
 
-              {/* Правая выдвигающаяся панель с избранным - использует GlassPanel внутри */}
+              {/* Правая выдвигающаяся панель с избранным — используем готовый favorites из контекста (уже MarkerData[]) */}
               <FavoritesPanel
-                favorites={(favorites?.favoritePlaces || []).map((p: any) => ({
-                  id: p.id,
-                  latitude: p.latitude,
-                  longitude: p.longitude,
-                  title: p.title || '',
-                  description: p.description || '',
-                  address: p.address || '',
-                  category: p.category || '',
-                  subcategory: p.subcategory || '',
-                  rating: p.rating || 0,
-                  rating_count: p.rating_count || 0,
-                  photo_urls: p.photo_urls || [],
-                  hashtags: p.hashtags || [],
-                  is_verified: p.is_verified || false,
-                  creator_id: p.creator_id || '',
-                  author_name: p.author_name || '',
-                  created_at: p.created_at || '',
-                  updated_at: p.updated_at || '',
-                  likes_count: p.likes_count || 0,
-                  comments_count: p.comments_count || 0,
-                  shares_count: p.shares_count || 0,
-                  visibility: p.visibility || '',
-                  marker_type: p.marker_type || 'standard',
-                  is_active: p.is_active || false,
-                  metadata: p.metadata || {},
-                  views_count: p.views_count || 0,
-                  subcategory_id: p.subcategory_id || '',
-                  content_id: p.content_id || '',
-                  content_type: p.content_type || '',
-                  used_in_blogs: p.used_in_blogs || false,
-                  is_user_modified: p.is_user_modified || false,
-                  completeness_score: p.completeness_score || 0,
-                  completenessScore: p.completenessScore || 0,
-                  is_draft: p.is_draft || false,
-                  status: p.status || 'active',
-                  is_pending: p.is_pending || false,
-                }))}
+                favorites={(favorites as any)?.favorites || []}
                 routes={(favorites?.favoriteRoutes || []).map((r: any) => ({
                   id: r.id,
                   title: r.title || '',
@@ -1276,7 +1613,7 @@ const Planner: React.FC<PlannerProps> = function Planner() {
                 onMoveToMap={() => { }}
                 onLoadRoute={(route) => handleLoadRoute(route.id)}
                 onRouteToggle={(route, checked) => handleRouteToggle(route, checked)}
-                mode="map"
+                mode="planner"
                 initialTab={favoritesTab}
                 selectedMarkerIds={selectedMarkerIds}
                 onSelectedMarkersChange={setSelectedMarkerIds}
@@ -1344,6 +1681,7 @@ const Planner: React.FC<PlannerProps> = function Planner() {
                   <div className="bg-white p-6 rounded-lg w-96">
                     <h3 className="text-lg font-semibold mb-4">Поиск адреса</h3>
                     <input
+                      id="planner-address-input"
                       type="text"
                       placeholder="Введите адрес..."
                       className="w-full p-2 border rounded mb-4"
@@ -1351,13 +1689,22 @@ const Planner: React.FC<PlannerProps> = function Planner() {
                         if (e.key === 'Enter') {
                           const address = (e.target as HTMLInputElement).value;
                           if (address) {
-                            // Упрощенный поиск - используем координаты Москвы
-                            handleSearchSubmit(address, [55.751244, 37.618423]);
+                            // Геокодируем адрес через Яндекс Geocoder
+                            handleSearchSubmit(address);
                           }
                         }
                       }}
                     />
                     <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          const input = document.getElementById('planner-address-input') as HTMLInputElement;
+                          if (input?.value) handleSearchSubmit(input.value);
+                        }}
+                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                      >
+                        Найти
+                      </button>
                       <button
                         onClick={() => setShowSearchForm(false)}
                         className="px-4 py-2 bg-gray-300 rounded"

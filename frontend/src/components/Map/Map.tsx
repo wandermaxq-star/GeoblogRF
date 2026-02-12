@@ -59,7 +59,7 @@ import {
 
 const MapMessage = styled.div`
   position: absolute;
-  top: 20px;
+  top: 150px;
   left: 50%;
   transform: translateX(-50%);
   background-color: var(--glass-bg-dark);
@@ -211,6 +211,9 @@ const Map: React.FC<MapProps> = ({
     const leftContent = useContentStore((state: ContentState) => state.leftContent);
     const rightContent = useContentStore((state: ContentState) => state.rightContent);
     const isTwoPanelMode = rightContent !== null;
+    // Карта "живая" (с маркерами, попапами, кликами) только когда она является активным контентом левой панели.
+    // В остальных случаях (posts/activity на фоне) карта — статичная декорация.
+    const isMapInteractive = leftContent === 'map';
     const openEvents = useEventsStore((state: EventsState) => state.openEvents);
     const selectedEvent = useEventsStore((state: EventsState) => state.selectedEvent);
     const setSelectedEvent = useEventsStore((state: EventsState) => state.setSelectedEvent);
@@ -279,10 +282,9 @@ const Map: React.FC<MapProps> = ({
     }, [tempMarker]);
 
     // --- PORTAL VISIBILITY ---
+    // --- PORTAL VISIBILITY ---
     useEffect(() => {
         if (!portalEl) return;
-        // ИСПРАВЛЕНО: Портал показывается всегда когда карта активна (leftContent === 'map'),
-        // или когда shouldShowFullscreen === true, или когда левая панель не задана (карта по умолчанию).
         const shouldShowPortal = leftContent === 'map' || rightContent === 'map' || leftContent === null || mapDisplayMode.shouldShowFullscreen;
         if (!shouldShowPortal) {
             portalEl.style.display = 'none';
@@ -292,12 +294,20 @@ const Map: React.FC<MapProps> = ({
             portalEl.style.display = 'block';
             portalEl.style.visibility = 'visible';
             portalEl.style.pointerEvents = 'auto';
-            // Когда портал снова показан, даём Leaflet немного времени и инвалидируем размер
             setTimeout(() => {
                 try { mapRef.current?.invalidateSize(); } catch (e) { }
             }, 150);
         }
     }, [leftContent, rightContent, portalEl, mapDisplayMode.shouldShowFullscreen]);
+
+    // Очищаем попапы и интерактивные элементы когда карта становится фоновой (не активной)
+    useEffect(() => {
+        if (!isMapInteractive) {
+            setMiniPopup(null);
+            setEventMiniPopup(null);
+            setSelectedMarkerIdForPopup(null);
+        }
+    }, [isMapInteractive]);
 
     // Map Debug полностью исключён — кнопка и логика отладки убраны
     // useEffect(() => {
@@ -310,7 +320,9 @@ const Map: React.FC<MapProps> = ({
     // Динамическое управление видимостью и классом контейнера карты
     useEffect(() => {
         const mapContainer = document.querySelector('.leaflet-container') as HTMLElement | null;
-        const facadeMapRoot = document.querySelector('.facade-map-root') as HTMLElement | null;
+        // Используем mapContainerRef (#map) вместо .facade-map-root — класс facade-map-root
+        // убран с MapWrapper чтобы исключить конфликты CSS (position:fixed + pointer-events:none)
+        const mapWrapperEl = mapContainerRef.current;
         
         if (mapContainer) {
             // ИСПРАВЛЕНО: Карта всегда видима и интерактивна когда shouldShowFullscreen === true
@@ -318,7 +330,8 @@ const Map: React.FC<MapProps> = ({
             if (mapDisplayMode.shouldShowFullscreen) {
                 mapContainer.style.display = 'block';
                 mapContainer.style.visibility = 'visible';
-                mapContainer.style.pointerEvents = 'auto';
+                // Интерактивность карты только когда она является активным контентом
+                mapContainer.style.pointerEvents = isMapInteractive ? 'auto' : 'none';
                 mapContainer.style.zIndex = '1';
             } else {
                 // Скрываем карту ТОЛЬКО когда она действительно не нужна
@@ -329,15 +342,15 @@ const Map: React.FC<MapProps> = ({
             }
         }
         
-        // Добавляем класс для стилизации в зависимости от режима
-        if (facadeMapRoot) {
-            facadeMapRoot.classList.remove('two-panel-mode', 'single-panel-mode', 'map-hidden');
+        // Добавляем класс для стилизации в зависимости от режима (на #map wrapper)
+        if (mapWrapperEl) {
+            mapWrapperEl.classList.remove('two-panel-mode', 'single-panel-mode', 'map-hidden');
             if (!mapDisplayMode.shouldShowFullscreen) {
-                facadeMapRoot.classList.add('map-hidden');
+                mapWrapperEl.classList.add('map-hidden');
             } else if (mapDisplayMode.isTwoPanelMode) {
-                facadeMapRoot.classList.add('two-panel-mode');
+                mapWrapperEl.classList.add('two-panel-mode');
             } else {
-                facadeMapRoot.classList.add('single-panel-mode');
+                mapWrapperEl.classList.add('single-panel-mode');
             }
         }
         
@@ -355,7 +368,7 @@ const Map: React.FC<MapProps> = ({
                 } catch (e) {}
             }, 350);
         }
-    }, [mapDisplayMode.shouldShowFullscreen, mapDisplayMode.isTwoPanelMode, mapDisplayMode.isOnlyPostsAndActivity, leftContent]);
+    }, [mapDisplayMode.shouldShowFullscreen, mapDisplayMode.isTwoPanelMode, mapDisplayMode.isOnlyPostsAndActivity, leftContent, isMapInteractive]);
 
     useEffect(() => {
         // On resize, invalidate Leaflet size when map is visible — don't set CSS vars here (MainLayout manages --facade-map-top)
@@ -401,7 +414,9 @@ const Map: React.FC<MapProps> = ({
                 }
             }
 
-            setTimeout(() => { try { mapRef.current?.invalidateSize(); } catch (e) {} }, 120);
+            // invalidateSize ПОСЛЕ завершения CSS transition (300ms) — иначе Leaflet считает неправильный размер
+            setTimeout(() => { try { mapRef.current?.invalidateSize(); } catch (e) {} }, 350);
+            setTimeout(() => { try { mapRef.current?.invalidateSize(); } catch (e) {} }, 600);
         } catch (e) {
             // best-effort
         }
@@ -788,10 +803,14 @@ const Map: React.FC<MapProps> = ({
 
         return () => {
             if (mapRef.current) {
-                Object.values(activePopupRoots.current).forEach((root) => {
-                    try { root.unmount(); } catch (err) { }
-                });
+                // Defer unmount to avoid "synchronously unmount a root while React was already rendering" warning
+                const rootsToUnmount = Object.values(activePopupRoots.current);
                 activePopupRoots.current = {};
+                setTimeout(() => {
+                    rootsToUnmount.forEach((root) => {
+                        try { root.unmount(); } catch (err) { }
+                    });
+                }, 0);
 
                 if (tempMarkerRef.current) {
                     try { mapRef.current.removeLayer(tempMarkerRef.current); } catch (e) { }
@@ -898,6 +917,16 @@ const Map: React.FC<MapProps> = ({
     useEffect(() => {
         if (!mapRef.current || !L) return;
         if (!isMapReady) return; // Ждём пока карта полностью инициализирована
+
+        // Если карта не является активным контентом (фон для posts/activity) — убираем маркеры
+        if (!isMapInteractive) {
+            if (markerClusterGroupRef.current) {
+                try { mapRef.current.removeLayer(markerClusterGroupRef.current); } catch (e) { }
+                markerClusterGroupRef.current = null;
+            }
+            return;
+        }
+
         if (!markersData || markersData.length === 0) return;
 
         const { radiusOn, radius } = filters;
@@ -931,7 +960,7 @@ const Map: React.FC<MapProps> = ({
                 return mapFacade().createDivIcon({
                     html: `<div class="marker-cluster"><span>${count}</span></div>`,
                     className: 'marker-cluster-custom',
-                    iconSize: [40, 40]
+                    iconSize: [34, 34]
                 });
             }
         });
@@ -955,7 +984,7 @@ const Map: React.FC<MapProps> = ({
                     ? getDistanceFromLatLonInKm(searchRadiusCenterLat, searchRadiusCenterLng, markerData.latitude, markerData.longitude) <= radius
                     : false;
 
-                const [iconWidth, iconHeight] = isInRadius ? [44, 58] : [34, 44];
+                const [iconWidth, iconHeight] = isInRadius ? [35, 46] : [27, 35];
                 const markerIconUrl = getMarkerIconPath(markerCategory);
                 const markerCategoryStyle = markerCategoryStyles[markerCategory] || markerCategoryStyles.default;
                 const iconColor = isPending ? '#ff9800' : (isInRadius ? themeColor : (getCategoryColor(markerCategory) || markerCategoryStyle.color));
@@ -1117,8 +1146,8 @@ const Map: React.FC<MapProps> = ({
                 leafletMarker.on('click', (e: any) => {
                     e.originalEvent.stopPropagation();
                     setMiniPopup(null);
-                    // Открываем Leaflet-попап (MarkerPopup рендерится в popupopen handler)
-                    leafletMarker.openPopup();
+                    // Небольшая задержка чтобы React убрал miniPopup до открытия Leaflet-попапа
+                    setTimeout(() => { leafletMarker.openPopup(); }, 50);
                 });
 
                 if (showHints) {
@@ -1161,7 +1190,7 @@ const Map: React.FC<MapProps> = ({
                     const categoryIcon = categoryIconMap[event.categoryId] || 'fa-calendar';
 
                     const isSelected = selectedEvent?.id === event.id;
-                    const iconSize = isSelected ? 50 : 40;
+                    const iconSize = isSelected ? 40 : 32;
 
                     const eventIcon = mapFacade().createDivIcon({
                         className: `event-marker-icon ${isSelected ? 'event-marker-selected' : ''}`,
@@ -1211,7 +1240,7 @@ const Map: React.FC<MapProps> = ({
         return () => {
             if (clusterColorStyle && document.head.contains(clusterColorStyle)) document.head.removeChild(clusterColorStyle);
         };
-    }, [markersData, isDarkMode, filters, searchRadiusCenter, mapSettings, openEvents, selectedEvent, leftContent, rightContent, isMapReady]);
+    }, [markersData, isDarkMode, filters, searchRadiusCenter, mapSettings, openEvents, selectedEvent, leftContent, rightContent, isMapReady, isMapInteractive]);
 
     // --- UNIFIED POPUP HANDLER ---
     useEffect(() => {
@@ -1222,12 +1251,6 @@ const Map: React.FC<MapProps> = ({
 
             const markerId = String(layer.markerData.id);
             const isSelected = selectedMarkerIds?.includes(markerId) || false;
-            const shouldClose = (selectedMarkerIdForPopup && selectedMarkerIdForPopup === markerId) || 
-                (isSelected && (selectedMarkerIds?.length || 0) > 0);
-
-            if (shouldClose && typeof layer.closePopup === 'function') {
-                try { layer.closePopup(); } catch (e) { }
-            }
 
             const popup = layer.getPopup?.();
             if (popup) {
@@ -1408,7 +1431,12 @@ const Map: React.FC<MapProps> = ({
     // --- FLY TO ---
     useEffect(() => {
         if (flyToCoordinates && mapRef.current) {
-            mapRef.current.flyTo(flyToCoordinates, mapRef.current.getZoom(), { animate: true, duration: 1.2 });
+            const [lng, lat] = flyToCoordinates;
+            if (Number.isFinite(lng) && Number.isFinite(lat)) {
+                mapRef.current.flyTo(flyToCoordinates, mapRef.current.getZoom(), { animate: true, duration: 1.2 });
+            } else {
+                console.warn('[Map] flyTo skipped — invalid coordinates:', flyToCoordinates);
+            }
         }
     }, [flyToCoordinates]);
 
@@ -1588,6 +1616,7 @@ const Map: React.FC<MapProps> = ({
 
     // --- SELECTED MARKER POPUP ---
     const selectedMarkerPopup = useMemo(() => {
+        if (!isMapInteractive) return null;
         if (!selectedMarkerIdForPopup) return null;
         const marker = markersData.find(m => m.id === selectedMarkerIdForPopup);
         if (!marker) return null;
@@ -1620,7 +1649,7 @@ const Map: React.FC<MapProps> = ({
     }, [selectedMarkerIdForPopup, markersData, selectedMarkerIds]);
 
     // --- EVENT MINI POPUP ---
-    const eventPopup = eventMiniPopup && eventMiniPopup.position && (
+    const eventPopup = isMapInteractive && eventMiniPopup && eventMiniPopup.position && (
         <div
             style={{
                 position: 'absolute',
@@ -1646,24 +1675,45 @@ const Map: React.FC<MapProps> = ({
     );
 
     // --- MAIN MINI POPUP ---
-    const miniPopupElement = miniPopup && (
+    const miniPopupElement = isMapInteractive && miniPopup && (
         <div
             style={{
                 position: 'absolute',
                 left: miniPopup.position.x,
                 top: miniPopup.position.y,
-                zIndex: 1200,
+                zIndex: 9999,
                 transform: 'translate(-50%, -100%)',
+                pointerEvents: 'auto',
             }}
-            onMouseLeave={() => { setMiniPopup(null); }}
+            ref={(el) => {
+                // Останавливаем перехват кликов Leaflet'ом на этом div'е
+                if (el && (window as any).L?.DomEvent) {
+                    (window as any).L.DomEvent.disableClickPropagation(el);
+                    (window as any).L.DomEvent.disableScrollPropagation(el);
+                }
+            }}
+            onMouseLeave={() => {
+                setTimeout(() => { setMiniPopup(prev => prev === miniPopup ? null : prev); }, 150);
+            }}
         >
             <MiniMarkerPopup
                 marker={miniPopup.marker}
                 onOpenFull={() => {
-                    const layer = miniPopup?.layer;
+                    const markerId = miniPopup?.marker?.id;
                     setMiniPopup(null);
-                    if (layer && typeof layer.openPopup === 'function') {
-                        layer.openPopup();
+                    if (markerId && markerClusterGroupRef.current) {
+                        // Открываем стандартный Leaflet-попап через кластерную группу
+                        markerClusterGroupRef.current.eachLayer((layer: any) => {
+                            if (layer.markerData && String(layer.markerData.id) === markerId) {
+                                if (typeof markerClusterGroupRef.current?.zoomToShowLayer === 'function') {
+                                    markerClusterGroupRef.current.zoomToShowLayer(layer, () => {
+                                        setTimeout(() => { layer.openPopup(); }, 100);
+                                    });
+                                } else {
+                                    layer.openPopup();
+                                }
+                            }
+                        });
                     }
                 }}
                 isSelected={false}
@@ -1673,7 +1723,7 @@ const Map: React.FC<MapProps> = ({
 
     // --- SELECTED MARKERS MINI POPUPS ---
     // mapMoveVersion обеспечивает пересчёт позиций при движении/зуме карты
-    const selectedMarkerPopups = useMemo(() => selectedMarkerIds?.map((markerId: string) => {
+    const selectedMarkerPopups = useMemo(() => !isMapInteractive ? null : selectedMarkerIds?.map((markerId: string) => {
         const marker = markersData.find(m => m.id === markerId) || markers?.find(m => m.id === markerId);
         if (!marker) return null;
 
@@ -1702,7 +1752,13 @@ const Map: React.FC<MapProps> = ({
                         if (markerClusterGroupRef.current) {
                             markerClusterGroupRef.current.eachLayer((layer: any) => {
                                 if (layer.markerData && String(layer.markerData.id) === markerId) {
-                                    layer.openPopup();
+                                    if (typeof markerClusterGroupRef.current.zoomToShowLayer === 'function') {
+                                        markerClusterGroupRef.current.zoomToShowLayer(layer, () => {
+                                            setTimeout(() => { layer.openPopup(); }, 100);
+                                        });
+                                    } else {
+                                        layer.openPopup();
+                                    }
                                 }
                             });
                         }
@@ -1726,13 +1782,12 @@ const Map: React.FC<MapProps> = ({
 
             <MapWrapper
                 id="map"
-                className="facade-map-root"
+                className="leaflet-map-wrapper"
                 ref={mapContainerRef}
                 style={{
                     ...mapStyle,
-                    transform: isTwoPanelMode ? 'translateX(-20%)' : 'none',
-                    width: isTwoPanelMode ? '140%' : '100%',
-                    transition: 'transform 0.3s ease, width 0.3s ease',
+                    width: '100%',
+                    height: '100%',
                 }}
             >
             {/* Error boundary wrapping map internals — allows graceful recovery */}

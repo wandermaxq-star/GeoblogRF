@@ -7,6 +7,7 @@ import {
 import { CATEGORIES } from '../../constants/categories';
 import { markerService } from '../../services/markerService';
 import { GlassPanel, GlassHeader, GlassAccordion, GlassButton, GlassInput } from '../Glass';
+import { useContentStore } from '../../stores/contentStore';
 
 const HEADER_FOOTER_BG = '#dadada';
 const HEADER_FOOTER_TEXT = '#222';
@@ -570,6 +571,9 @@ export const ElegantAccordionForm: React.FC<ElegantAccordionFormProps> = ({
     }
   };
 
+  const rightContent = useContentStore(s => s.rightContent);
+  const isTwoPanelMode = rightContent !== null;
+
   return (
     <GlassPanel
       isOpen={true}
@@ -579,6 +583,7 @@ export const ElegantAccordionForm: React.FC<ElegantAccordionFormProps> = ({
       closeOnOverlayClick={true}
       showCloseButton={false}
       className="add-marker-panel"
+      constrainToMapArea={isTwoPanelMode}
     >
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', height: '100%', maxHeight: '42vh' }}>
         <GlassHeader
@@ -890,7 +895,7 @@ export const ElegantAccordionForm: React.FC<ElegantAccordionFormProps> = ({
                                       display: 'block'
                                     }}
                                     onError={(e) => {
-                                      (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80?text=Error';
+                                      (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Crect width='80' height='80' fill='%23ddd'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='10'%3ENo img%3C/text%3E%3C/svg%3E";
                                     }}
                                   />
                                   {selectedPhotos.includes(photoUrl) && (

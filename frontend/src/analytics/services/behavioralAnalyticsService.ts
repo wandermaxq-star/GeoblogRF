@@ -33,7 +33,10 @@ class BehavioralAnalyticsService {
       this.cache.set(cacheKey, { data, timestamp: Date.now() });
       return data;
     } catch (error: any) {
-      console.error('Ошибка загрузки поведенческой аналитики:', error);
+      // Тихо: аналитика не критична
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('Ошибка загрузки поведенческой аналитики:', error?.message);
+      }
       return this.getMockData();
     }
   }
@@ -48,6 +51,10 @@ class BehavioralAnalyticsService {
   }): Promise<void> {
     try {
       const token = storageService.getItem('token');
+      // Без токена нет смысла отправлять — сервер вернёт 403
+      if (!token) return;
+      // Circuit breaker: если endpoint уже возвращал 403, не спамим
+      if ((this as any)._trackDisabled) return;
       await apiClient.post('/analytics/track', {
         event_type: event.event_type,
         user_id: event.user_id,
@@ -56,8 +63,14 @@ class BehavioralAnalyticsService {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-    } catch (error) {
-      console.error('Ошибка трекинга поведения:', error);
+    } catch (error: any) {
+      const status = error?.response?.status;
+      if (status === 401 || status === 403) {
+        // Circuit breaker: отключаем дальнейшие запросы на этот endpoint
+        (this as any)._trackDisabled = true;
+        return;
+      }
+      console.debug('Ошибка трекинга поведения:', error?.message || error);
     }
   }
 

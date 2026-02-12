@@ -1,14 +1,6 @@
 /* Фоновая карта и стеклянные панели */
-.facade-map-root {
-  /* По умолчанию карта позиционируется относительно родителя — это
-    позволяет размещать карту внутри колонок/панелей и опускать её вниз. */
-  position: absolute;
-  inset: 0; /* top:0; right:0; bottom:0; left:0; — заполнит родителя при width/height:100% */
-  z-index: 0;
-  /* По умолчанию делаем карту интерактивной — если нужно сделать фон неинтерактивным,
-    используйте модификатор .facade-map-root--non-interactive */
-  pointer-events: auto;
-}
+/* .facade-map-root стили определены в _modes.css — единый источник.
+   Здесь НЕ переопределяем position/size чтобы избежать конфликтов каскада. */
 
 /* Для двухоконного режима позиционирование фокуса карты осуществляется через JS (см. Map.tsx) —
    контейнер карты должен оставаться 100% ширины, чтобы интерактивность и слои работали корректно. */
@@ -71,7 +63,7 @@
 .page-container.posts-mode .facade-map-root {
   /* Bring map above buttons/search so it is always interactive */
   z-index: 1300;
-  pointer-events: auto !important;
+  /* pointer-events управляется inline-стилем — facade-контейнер прозрачен для кликов */
 }
 
 /* Lower controls / dropdowns in posts-mode so they don't block the map
@@ -142,15 +134,6 @@
 }
 
 /* Контейнер карты всегда интерактивен когда виден */
-.facade-map-root:not(.map-hidden) .leaflet-container {
-  pointer-events: auto !important;
-}
-
-/* Двухоконный режим: карта и панели корректно z-indexed */
-.facade-map-root.two-panel-mode {
-  pointer-events: auto !important;
-}
-
-.facade-map-root.two-panel-mode .leaflet-container {
-  pointer-events: auto !important;
-}
+/* Facade-контейнер не содержит настоящего leaflet-container.
+   Реальная карта и маркеры рендерятся в #global-map-root.
+   pointer-events управляются там. */

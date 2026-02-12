@@ -88,19 +88,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     // Если путь указывает на карту или планировщик - открываем соответствующую панель
     // НО НЕ трогаем если уже установлено через Sidebar
     if (location.pathname === '/map') {
-      // Синхронизируем ТОЛЬКО если leftContent null или уже 'map'
-      if (!leftContentAlreadySet) {
-        store.setLeftContent('map');
-      }
+      // Карта всегда однооконная — сбрасываем правую панель
+      store.setLeftContent('map');
+      store.setRightContent(null);
     } else if (location.pathname === '/planner') {
-      // Синхронизируем ТОЛЬКО если leftContent null
-      if (!leftContentAlreadySet) {
-        store.setLeftContent('planner');
-      }
+      // Планировщик всегда однооконный — сбрасываем правую панель
+      store.setLeftContent('planner');
+      store.setRightContent(null);
     } else if (location.pathname === '/calendar') {
-      if (!leftContentAlreadySet) {
-        store.setLeftContent('calendar');
-      }
+      store.setLeftContent('calendar');
+      store.setRightContent(null);
     } else if (location.pathname === '/' || location.pathname === '/posts') {
       // Главная страница или посты - открываем только посты (без карты)
       // Но только если явно перешли на / или /posts

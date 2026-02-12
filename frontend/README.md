@@ -31,15 +31,22 @@
 
 ### 🗺️ Навигация и карты
 - **Интерактивная карта** с поддержкой нескольких провайдеров (Yandex Maps, Leaflet)
-- **Единый фасад карт** (`mapFacade`) для работы с разными провайдерами
-- **Планировщик маршрутов** с сохранением в базе данных
+- **Единый фасад карт** (`map_facade/MapContextFacade`) для работы с разными провайдерами
+- **projectManager** — singleton для инициализации и управления картой, предоставляет `getMapApi()`
+- **Планировщик маршрутов** (Yandex Maps) — 4 способа добавления точек:
+  - Клик по карте
+  - Поиск по адресу (Яндекс Geocoder)
+  - Ввод координат
+  - Чекбоксы избранного
+- **Автоматическое построение маршрута** при 2+ точках (ORS / ymaps.route() / fallback)
+- **Множественные маршруты** — сохранённые и авто-маршруты на одной карте
 - **Система меток** с категориями и избранным
 - **Кастомные каплевидные маркеры** для постов
 - **Маркеры событий** - круглые маркеры с иконкой календаря для событий из календаря
-- **Мини-попапы событий** - glassmorphism попапы с информацией о событии (название, категория, рейтинг)
+- **Мини-попапы событий** - glassmorphism попапы с информацией о событии
 - **Слои карты** (стандартная, спутниковая, гибридная, OpenTopoMap)
 - **Автоматическое масштабирование** для маршрутов
-- **Геопривязка** через Nominatim API
+- **Геокодирование** через Яндекс Geocoder API
 - **Интеграция с календарем** - события из календаря отображаются на карте и в планировщике
 
 ### 🎮 Система геймификации
@@ -144,8 +151,9 @@ frontend/
 │   │   │   ├── ActivityCard.tsx
 │   │   │   ├── ActivityStats.tsx
 │   │   │   └── ...
-│   │   ├── Analytics/     # Компоненты аналитики
-│   │   │   └── AnalyticsProvider.tsx     # Провайдер аналитики
+│   │   ├── AnalyticsProvider.tsx          # Провайдер аналитики
+│   │   ├── Calendar/      # Компоненты календаря
+│   │   │   └── ...
 │   │   ├── Gamification/  # Компоненты геймификации
 │   │   │   ├── LevelCard.tsx            # Карточка уровня
 │   │   │   ├── DailyGoalsWidget.tsx     # Виджет ежедневных целей
@@ -153,6 +161,8 @@ frontend/
 │   │   │   ├── LevelUpAnimation.tsx     # Анимация повышения уровня
 │   │   │   ├── WelcomeModal.tsx         # Приветственное окно
 │   │   │   └── WelcomeModalWrapper.tsx  # Обертка модального окна
+│   │   ├── Glass/         # Glass-эффекты
+│   │   │   └── ...
 │   │   ├── Notifications/ # Компоненты уведомлений
 │   │   │   ├── NotificationToast.tsx     # Toast уведомления
 │   │   │   ├── NotificationProvider.tsx  # Провайдер уведомлений
@@ -170,19 +180,30 @@ frontend/
 │   │   │   ├── EventBlocksEditor.tsx
 │   │   │   ├── EventBlocksSelector.tsx
 │   │   │   └── EventDetailPage.tsx
-│   │   ├── Map/           # Компоненты карты (Leaflet)
-│   │   │   ├── Map.tsx                  # Основная карта
+│   │   ├── Map/           # Компоненты карты
+│   │   │   ├── Map.tsx                  # Основная карта (Leaflet)
+│   │   │   ├── Map.styles.ts            # Styled-components стили карты
 │   │   │   ├── MapActionButtons.tsx     # Стеклянная колонка кнопок действий
+│   │   │   ├── MapFilters.tsx           # Фильтры карты
+│   │   │   ├── MapLegend.tsx            # Легенда карты
 │   │   │   ├── MarkerPopup.tsx          # Попап маркера
 │   │   │   ├── MiniMarkerPopup.tsx      # Мини попап
 │   │   │   ├── EventMiniPopup.tsx       # Мини-попап для событий из календаря
+│   │   │   ├── useMapMarkers.tsx        # Хук управления маркерами
 │   │   │   └── ...
 │   │   ├── Maps/          # Компоненты карт
 │   │   │   └── PostMap.tsx              # Карта в постах (Leaflet/Yandex)
 │   │   ├── Planner/       # Компоненты планировщика
-│   │   │   ├── AIGuidePanel.tsx
-│   │   │   ├── FireMarker.tsx
+│   │   │   ├── AIGuidePanel.tsx         # AI помощник
+│   │   │   ├── FireMarker.tsx           # Маркеры
+│   │   │   ├── CoordinateInput.tsx      # Ввод координат
+│   │   │   ├── PlannerActionButtons.tsx # Кнопки действий планировщика
+│   │   │   ├── RouteBuilder.tsx         # Конструктор маршрута
+│   │   │   ├── RouteEditor.tsx          # Редактор маршрута
+│   │   │   ├── RouteOrderPanel.tsx      # Панель порядка точек
+│   │   │   ├── RouteCategorySelector.tsx # Выбор категории маршрута
 │   │   │   └── ...
+│   │   ├── FavoritesPanel.tsx           # Панель избранного (метки, маршруты, события)
 │   │   ├── TravelCalendar/ # Компоненты календаря
 │   │   │   ├── TravelCalendar.tsx      # Основной компонент календаря
 │   │   │   ├── CircularCalendar.tsx    # Круговой вид календаря
@@ -199,73 +220,103 @@ frontend/
 │   │   │   └── ...
 │   │   ├── MirrorGradientProvider.tsx   # Провайдер градиентов
 │   │   ├── Sidebar.tsx                  # Боковая панель навигации
+│   │   ├── Header.tsx                   # Шапка приложения
 │   │   └── ...
 │   ├── config/            # Конфигурация
-│   │   ├── api.ts         # API ключи и настройки
+│   │   ├── api.ts         # API ключи и настройки (Yandex, ORS и др.)
 │   │   ├── features.ts    # Feature flags
 │   │   ├── gamificationFeatures.ts  # Флаги геймификации
 │   │   ├── xpSources.ts   # Источники XP
 │   │   └── russia.ts      # Настройки для России
 │   ├── constants/         # Константы
-│   │   ├── markerCategories.ts  # Категории маркеров
-│   │   └── categories.ts        # Категории контента
+│   │   └── markerCategories.ts  # Категории маркеров
 │   ├── contexts/          # React контексты
 │   │   ├── AuthContext.tsx              # Аутентификация
-│   │   ├── FavoritesContext.tsx         # Избранное
-│   │   ├── LayoutContext.tsx             # Макет
+│   │   ├── FavoritesContext.tsx         # Избранное (места, маршруты, события, чекбоксы)
+│   │   ├── LayoutContext.tsx            # Макет
 │   │   ├── GamificationContext.tsx      # Геймификация
-│   │   ├── GuestContext.tsx              # Гостевой режим
-│   │   ├── RoutePlannerContext.tsx       # Планировщик
-│   │   ├── ThemeContext.tsx              # Тема
-│   │   └── ...
+│   │   ├── GuestContext.tsx             # Гостевой режим
+│   │   ├── LoadingContext.tsx           # Состояние загрузки
+│   │   ├── RoutePlannerContext.tsx      # Планировщик (routePoints, addRoutePoint...)
+│   │   ├── SideContentContext.tsx       # Боковой контент
+│   │   └── ThemeContext.tsx             # Тема
+│   ├── stores/            # Zustand stores (глобальное состояние)
+│   │   ├── contentStore.ts              # Управление leftContent/rightContent (двухоконный режим)
+│   │   ├── eventsStore.ts               # Состояние событий (selectedEvent, openEvents)
+│   │   ├── mapStateStore.ts             # Состояние карты (center, zoom, provider)
+│   │   ├── regionsStore.ts              # Выбранные регионы
+│   │   └── regionCities.ts              # Города по регионам РФ
 │   ├── hooks/             # Пользовательские хуки
 │   │   ├── useActivityStats.ts          # Статистика активности
 │   │   ├── useModeration.ts             # Модерация
-│   │   ├── usePanelRegistration.ts      # Регистрация панелей
 │   │   ├── useAchievements.ts           # Достижения
 │   │   ├── useLevelProgress.ts          # Прогресс уровня
 │   │   ├── useDailyGoals.ts             # Ежедневные цели
-│   │   ├── usePreload.ts                # Предзагрузка
+│   │   ├── usePreload.ts               # Предзагрузка
 │   │   ├── useAnalyticsConsent.ts       # Управление согласием на аналитику
+│   │   ├── useEnhancedRouting.ts        # Расширенная маршрутизация
+│   │   ├── useFavoriteRoutes.ts         # Избранные маршруты
+│   │   ├── useUserLocation.ts           # Геолокация пользователя
+│   │   ├── useRussiaRestrictions.ts     # Ограничения по РФ
 │   │   └── ...
 │   ├── pages/             # Страницы приложения
 │   │   ├── HomePage.tsx                  # Главная страница
 │   │   ├── Home.tsx                      # Домашняя страница
-│   │   ├── Map.tsx                        # Страница карты
-│   │   ├── Planner.tsx                   # Планировщик маршрутов
+│   │   ├── Map.tsx                       # Страница карты (Leaflet + Map Facade)
+│   │   ├── Planner.tsx                   # Планировщик маршрутов (Yandex Maps)
 │   │   ├── Posts.tsx                      # Страница постов
-│   │   │   └── Posts/
-│   │   │       └── PostDetail.tsx        # Детали поста
-│   │   ├── Calendar.tsx                  # Календарь событий (с интеграцией карты и планировщика)
+│   │   ├── Posts/                         # Подстраницы постов
+│   │   │   └── PostDetail.tsx            # Детали поста
+│   │   ├── Calendar.tsx                  # Календарь событий
 │   │   ├── Activity.tsx                  # Активность пользователей
 │   │   ├── ProfilePage.tsx               # Профиль пользователя
+│   │   ├── ProfileRoutes.tsx             # Маршруты в профиле
 │   │   ├── CentrePage.tsx                # Центр влияния
+│   │   ├── Chat.tsx                      # Чат
+│   │   ├── Friends.tsx                   # Друзья
+│   │   ├── LoginPage.tsx                 # Авторизация
+│   │   ├── RegisterPage.tsx              # Регистрация
 │   │   ├── AdminDashboard.tsx            # Административная панель
 │   │   ├── ModerationPage.tsx            # Модерация
+│   │   ├── PageLayer.tsx                 # Рендерер левого/правого контента
 │   │   ├── PersistentMaps.tsx            # Постоянные карты
+│   │   ├── admin/                        # Админ-страницы
+│   │   ├── Mobile/                       # Мобильные страницы
 │   │   └── ...
 │   ├── services/          # Сервисы
+│   │   ├── projectManager.ts             # Инициализация/управление картой (singleton)
 │   │   ├── postsService.ts               # Сервис постов
 │   │   ├── activityService.ts            # Сервис активности
-│   │   ├── moderationService.ts         # Сервис модерации
+│   │   ├── moderationService.ts          # Сервис модерации
 │   │   ├── gamificationFacade.ts         # Фасад геймификации
 │   │   ├── markerService.ts              # Сервис меток
 │   │   ├── routeService.ts               # Сервис маршрутов
+│   │   ├── routingService.ts             # Построение маршрутов (ORS)
+│   │   ├── yandexMapsService.ts          # Загрузка Яндекс Карт SDK
+│   │   ├── geocodingService.ts           # Геокодирование (Яндекс Geocoder)
 │   │   ├── placeDiscoveryService.ts      # Обнаружение мест
-│   │   ├── moderationNotificationsService.ts # Сервис уведомлений о модерации
+│   │   ├── moderationNotificationsService.ts # Уведомления о модерации
 │   │   ├── offlineContentStorage.ts      # Хранилище офлайн контента (IndexedDB)
 │   │   ├── offlineContentQueue.ts        # Очередь отправки офлайн контента
-│   │   ├── offlinePostsStorage.ts        # Хранилище офлайн постов (legacy)
-│   │   ├── mapFacade/                    # Фасад карт
-│   │   │   ├── index.tsx                 # Главный фасад
-│   │   │   ├── leafletAdapter.ts         # Адаптер Leaflet
-│   │   │   └── ...
+│   │   ├── storageService.ts             # Единый фасад хранилища (localStorage + IndexedDB)
+│   │   ├── map_facade/                   # Фасад карт (canonical)
+│   │   │   ├── IMapRenderer.ts           # Интерфейс рендерера карт
+│   │   │   ├── MapContextFacade.ts       # Главный фасад (пул рендереров, переключение)
+│   │   │   ├── types.ts                  # Типы карт (GeoPoint, PersistedRoute...)
+│   │   │   ├── index.ts                  # Ре-экспорт
+│   │   │   └── adapters/                 # Адаптеры карт
+│   │   │       ├── YandexPlannerRenderer.ts  # Яндекс для планировщика
+│   │   │       ├── OSMMapRenderer.ts         # OSM адаптер
+│   │   │       └── OfflineOSMRenderer.ts     # Офлайн OSM адаптер
+│   │   ├── routeExporters/               # Экспорт маршрутов
+│   │   │   ├── serializers.ts            # GPX/KML/GeoJSON сериализаторы
+│   │   │   └── exportClient.ts           # Клиент экспорта
 │   │   └── ...
 │   ├── analytics/         # Система аналитики
 │   │   ├── services/                      # Сервисы аналитики
-│   │   │   ├── analyticsOrchestrator.ts   # Главный оркестратор
-│   │   │   ├── productAnalyticsService.ts # Продуктовая аналитика
-│   │   │   ├── behavioralAnalyticsService.ts # Поведенческая аналитика
+│   │   │   ├── analyticsOrchestrator.ts   # Главный оркестратор (circuit breaker)
+│   │   │   ├── productAnalyticsService.ts # Продуктовая аналитика (circuit breaker)
+│   │   │   ├── behavioralAnalyticsService.ts # Поведенческая аналитика (circuit breaker)
 │   │   │   ├── performanceMonitoringService.ts # Мониторинг производительности
 │   │   │   └── errorTrackingService.ts   # Трекинг ошибок
 │   │   ├── hooks/                        # Хуки аналитики
@@ -290,6 +341,10 @@ frontend/
 │   │   ├── post.ts                        # Типы для постов
 │   │   ├── gamification.ts               # Типы для геймификации
 │   │   ├── user.ts                        # Типы для пользователей
+│   │   ├── favorites.ts                   # Типы для избранного
+│   │   ├── event.ts                       # Типы для событий
+│   │   ├── chat.ts                        # Типы для чата
+│   │   ├── friends.ts                     # Типы для друзей
 │   │   └── ...
 │   ├── utils/             # Утилиты
 │   │   ├── auth.ts                        # Аутентификация
@@ -298,13 +353,20 @@ frontend/
 │   │   ├── dailyGoalGenerator.ts         # Генератор ежедневных целей
 │   │   ├── gamificationHelper.ts         # Хелперы для геймификации
 │   │   ├── retroactiveGamification.ts     # Ретроактивная геймификация
+│   │   ├── russiaBounds.ts                # Проверка координат в границах РФ
+│   │   ├── coordinateConverter.ts         # Конвертация координат
 │   │   └── ...
 │   ├── styles/            # Глобальные стили
 │   │   ├── GlobalStyles.css
 │   │   ├── PageLayout.css
-│   │   └── MapActionButtons.css        # Стили стеклянной колонки кнопок
+│   │   ├── FireMarkers.css              # Стили маркеров
+│   │   └── ...
 │   ├── layouts/           # Макеты страниц
-│   │   └── MainLayout.tsx
+│   │   ├── MainLayout.tsx               # Основной макет (навигация, sidebar, роутинг)
+│   │   └── MobileLayout.tsx             # Мобильный макет
+│   ├── i18n/              # Интернационализация (заготовка)
+│   ├── lib/               # Библиотечные утилиты
+│   ├── data/              # Статические данные
 │   ├── App.tsx            # Корневой компонент
 │   ├── main.tsx           # Точка входа
 │   └── routes.tsx         # Конфигурация маршрутов
@@ -312,6 +374,10 @@ frontend/
 │   ├── GAMIFICATION_DEVELOPER_GUIDE.md
 │   ├── GAMIFICATION_PLAN.md
 │   ├── GAMIFICATION_STATUS.md
+│   ├── GPS_TRACKS_HANDOVER.md
+│   ├── GEO_ROUTES_API.md
+│   ├── ARCHITECTURE.md
+│   ├── COORDINATE_SYSTEM.md
 │   └── ...
 ├── package.json
 ├── vite.config.ts
@@ -524,25 +590,31 @@ npm run build
 
 ### 3. **Система карт (Map Facade)**
 Единый интерфейс для работы с разными провайдерами карт:
-- **mapFacade** - единый фасад для Yandex Maps и Leaflet
-- **Адаптеры** - отдельные адаптеры для каждого провайдера
-- **Автоматический выбор** - оптимальный провайдер для каждого случая
-- **Кастомные маркеры** - каплевидные маркеры для постов
-- **Маркеры событий** - круглые маркеры с иконкой календаря для событий из календаря
-- **Мини-попапы событий** - glassmorphism попапы с информацией о событии
-- **Единый API** - одинаковый интерфейс для всех провайдеров
-- **Интеграция с календарем** - события из календаря автоматически отображаются на карте
+- **MapContextFacade** (`map_facade/MapContextFacade.ts`) — singleton, пул рендереров, переключение контекстов
+- **projectManager** (`services/projectManager.ts`) — инициализация карты, проверка `isConnected`, `getMapApi()` → привязанные методы рендерера
+- **Адаптеры** — `YandexPlannerRenderer` (Яндекс Карты), `OSMMapRenderer`, `OfflineOSMRenderer`
+- **Интерфейс `IMapRenderer`** — `init`, `renderMarkers`, `renderRoute`, `removeRoute`, `clear`, `destroy`, `onClick`, `setView`
+- **Кастомные маркеры** — каплевидные маркеры для постов
+- **Маркеры событий** — круглые маркеры с иконкой календаря для событий из календаря
+- **Мини-попапы событий** — glassmorphism попапы с информацией о событии
+- **Множественные маршруты** — рендерер хранит маршруты по id, поддерживает одновременное отображение
+- **Автоматический выбор** — оптимальный провайдер для каждого случая
+- **Интеграция с календарем** — события из календаря автоматически отображаются на карте
 
 **Map Facade — API (полные функции и типы)**
 
 - **`init(containerId: string, config?: MapConfig): Promise<void>`**: инициализирует рендерер в указанном контейнере. `MapConfig` может содержать `center`, `zoom`, `markers` и дополнительные опции провайдера.
 - **`renderMarkers(markers: UnifiedMarker[]): void`**: отображает список меток. `UnifiedMarker` — единая форма метки с полями `id`, `coordinates: {lat, lon}`, `title`, `description`, `icon`, `color`, `size` и прочими вспомогательными полями.
-- **`renderRoute(route: PersistedRoute): void`**: отображает маршрут. `PersistedRoute` содержит `id`, `waypoints: GeoPoint[]`, опциональную `geometry`, `distance`, `duration` и мета.
+- **`renderRoute(route: PersistedRoute): Promise<void>`**: отображает маршрут. `PersistedRoute` содержит `id`, `waypoints: GeoPoint[]`, опциональную `geometry`, `color`, `distance`, `duration` и мета. Поддерживает множественные маршруты одновременно — каждый хранится по `id`.
+- **`removeRoute(routeId: string): void`**: удаляет конкретный маршрут с карты по `id`.
 - **`setView(center: GeoPoint, zoom: number): void`**: устанавливает центр и зум карты.
 - **`clear?(): void` (опционально)**: очищает текущие метки/слои — не обязателен для всех адаптеров.
 - **`destroy(): void`**: полностью уничтожает инстанс рендера и освобождает ресурсы.
 - **`planRoute?(waypoints: GeoPoint[]): Promise<PersistedRoute>` (опционально)**: построить маршрут по заданным точкам и вернуть объект маршрута, пригодный для `renderRoute`.
 - **`onClick?(handler: (latLng: [number, number]) => void): void` (опционально)**: подписка на клики по карте.
+- **`setMapMargin?(margin: number): void`**: установить отступ карты для двухоконного режима.
+- **`resetMapMargin?(): void`**: сбросить отступ карты.
+- **`onRouteGeometry?(handler: (coords: [number, number][]) => void): void`**: подписка на геометрию построенного маршрута.
 
 Ключевые типы (сокращённо):
 
@@ -554,9 +626,13 @@ npm run build
 Расположение кода:
 
 - Каноничная реализация фасада и адаптеров: [src/services/map_facade](src/services/map_facade)
-- Обёртки совместимости (удаляются): `src/services/mapFacade` — устаревшая папка с дублирующими shim'ами (удалена в текущей ветке).
+- Менеджер инициализации карты: [src/services/projectManager.ts](src/services/projectManager.ts) — проверяет `container.isConnected`, предоставляет `getMapApi()` с привязанными методами
+- Построение маршрутов: [src/services/routingService.ts](src/services/routingService.ts) — ORS API с fallback
+- Геокодирование: [src/services/geocodingService.ts](src/services/geocodingService.ts) — Яндекс Geocoder
+- Загрузка SDK Яндекс Карт: [src/services/yandexMapsService.ts](src/services/yandexMapsService.ts)
+- Устаревшая папка `src/services/mapFacade/` (camelCase) — **удалена**. Весь код в `map_facade` (underscore).
 
-Рекомендация разработчикам: вносить изменения только в `src/services/map_facade` и добавлять новые методы в интерфейс `IMapRenderer` по мере необходимости; поддерживающие shims более не используются.
+Рекомендация разработчикам: вносить изменения только в `src/services/map_facade` и добавлять новые методы в интерфейс `IMapRenderer` по мере необходимости.
 
 ### 4. **Система активности**
 Отслеживание действий пользователей:
@@ -604,11 +680,11 @@ npm run build
 ## **Map Facade — принцип и структура**
 
 - **Единый источник правды**: canonical папка для фасада карт — `src/services/map_facade/`.
-- **Где лежат адаптеры**: реализации адаптеров находятся в `src/services/map_facade/adapters/` (например `OSMMapRenderer.ts`, `MarbleGLRenderer.ts`, `OfflineOSMRenderer.ts`, `YandexPlannerRenderer.ts`).
-- **Шимы и совместимость**: папка `src/services/mapFacade/` (camelCase) содержит совместимые ре-экспорты и устаревшие шимы для обратной совместимости. Новую логику и изменения вносите только в `map_facade` (underscore).
-- **Как добавить адаптер**: создать файл-адаптер в `src/services/map_facade/adapters/`, реализовать интерфейс `IMapRenderer` из `src/services/map_facade/IMapRenderer.ts`, затем экспортировать адаптер из каталога; при необходимости добавьте небольшую shim-обёртку в `src/services/mapFacade` для совместимости.
+- **Где лежат адаптеры**: реализации адаптеров находятся в `src/services/map_facade/adapters/` (`YandexPlannerRenderer.ts`, `OSMMapRenderer.ts`, `OfflineOSMRenderer.ts`).
+- **projectManager**: `src/services/projectManager.ts` — singleton-обёртка над `MapContextFacade`, обеспечивает `initializeMap(container, config)` с проверкой `isConnected` и `getMapApi()` с привязанными методами рендерера.
+- **Как добавить адаптер**: создать файл-адаптер в `src/services/map_facade/adapters/`, реализовать интерфейс `IMapRenderer` из `src/services/map_facade/IMapRenderer.ts`, затем экспортировать адаптер из каталога.
 - **Почему так**: один canonical каталог минимизирует дублирование, упрощает поиск и тестирование, и обеспечивает единый контракт (`IMapRenderer`) для всех провайдеров карт.
-- **Удаление дубликатов**: старые дубли (реализации и локальные adapters в `mapFacade/adapters`) были заменены на ре-экспорты или перемещены в `map_facade`; безопасные ре-экспорты оставлены для совместимости импорта.
+- **Устаревшая папка**: `src/services/mapFacade/` (camelCase) с шимами — **удалена**. Все импорты ведут в `map_facade` (underscore).
 
 - **Интеграция с активностью** - события офлайн-сессий в ленте активности
 
@@ -984,12 +1060,13 @@ VITE_YANDEX_MAPS_API_KEY=your_yandex_maps_key
 
 ### Map Facade
 - **Единый интерфейс** для работы с разными провайдерами карт
-- **Автоматический выбор** оптимального провайдера
-- **Кастомные маркеры** - каплевидные маркеры для постов
-- **Маркеры событий** - круглые маркеры с иконкой календаря для событий из календаря
-- **Единый API** - одинаковый интерфейс для всех провайдеров
-- **Интеграция с календарем** - события из календаря автоматически отображаются на карте
-- **Мини-попапы событий** - glassmorphism попапы с информацией о событии и кнопкой перехода
+- **MapContextFacade** — singleton с пулом рендереров и переключением контекстов
+- **projectManager** — инициализация карты, `getMapApi()` с привязанными методами
+- **Множественные маршруты** — рендерер хранит маршруты по id, поддерживает одновременное отображение
+- **Кастомные маркеры** — каплевидные маркеры для постов
+- **Маркеры событий** — круглые маркеры с иконкой календаря для событий из календаря
+- **Автоматическое построение маршрутов** — при 2+ точках (ORS / ymaps.route() / fallback)
+- **Мини-попапы событий** — glassmorphism попапы с информацией о событии и кнопкой перехода
 
 ### Дополнительно: ссылки, демонстрации и примеры
 
@@ -1018,7 +1095,7 @@ mapFacade.renderMarkers([
 - **Поддержка / FAQ (первичная заготовка)**
 
   - Куда добавлять новый адаптер? — в `src/services/map_facade/adapters/`, реализуя `IMapRenderer`.
-  - Почему раньше было две папки `map_facade` и `mapFacade`? — сейчас canonical — `src/services/map_facade/`; `src/services/mapFacade/` был устаревшим и удалён, чтобы избежать путаницы.
+  - Почему раньше было две папки `map_facade` и `mapFacade`? — сейчас canonical — `src/services/map_facade/`; `src/services/mapFacade/` **удалена**.
   - Как собрать локально? — в папке `frontend` выполните:
 
   ```bash
@@ -1036,95 +1113,6 @@ mapFacade.renderMarkers([
 ## 📄 Лицензия
 
 MIT License - см. файл [LICENSE](LICENSE)
-<<<<<<< HEAD
-```tsx
-import { useEffect, useState } from 'react';
-import { AdminLayout } from '../../layouts/AdminLayout';
-import apiClient from '../../api/apiClient';
-
-interface SubscriptionAdmin {
-  id: number;
-  plan: string;
-  status: string;
-  currentPeriodEnd: string;
-  user: { id: number; email: string; name: string };
-}
-
-export default function AdminSubscriptionsPage() {
-  const [subscriptions, setSubscriptions] = useState<SubscriptionAdmin[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetch = async () => {
-      try {
-        const res = await apiClient.get('/api/admin/subscriptions');
-        setSubscriptions(res.data);
-      } catch (e) {
-        alert('Ошибка загрузки подписок');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetch();
-  }, []);
-
-  return (
-    <AdminLayout>
-      <h1 className="text-2xl font-bold mb-6">Подписки пользователей</h1>
-      {loading ? (
-        <p>Загрузка...</p>
-      ) : (
-        <table className="min-w-full bg-white border">
-          <thead>
-            <tr>
-              <th className="py-2 px-4 border">Пользователь</th>
-              <th className="py-2 px-4 border">План</th>
-              <th className="py-2 px-4 border">Статус</th>
-              <th className="py-2 px-4 border">Окончание</th>
-            </tr>
-          </thead>
-          <tbody>
-            {subscriptions.map((sub) => (
-              <tr key={sub.id}>
-                <td className="py-2 px-4 border">{sub.user.email}</td>
-                <td className="py-2 px-4 border">{sub.plan}</td>
-                <td className="py-2 px-4 border">{sub.status}</td>
-                <td className="py-2 px-4 border">{new Date(sub.currentPeriodEnd).toLocaleDateString()}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </AdminLayout>
-  );
-}
-      { path: '/admin/subscriptions', element: <AdminSubscriptionsPage /> },
-
-
-Пример модели на бэкенде (Prisma) — при необходимости создайте миграцию на стороне серверa:
-
-```prisma
-model UserSubscription {
-  id                 Int      @id @default(autoincrement())
-  userId             Int
-  user               User     @relation(fields: [userId], references: [id])
-  plan               String   @default("free") // free, pro, premium
-  status             String   @default("inactive") // active, inactive, cancelled
-  stripeId           String?  @unique
-  yooKassaId         String?  @unique
-  currentPeriodEnd   DateTime?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-}
-```
-
-  @@index([userId])
-  @@index([stripeId])
-  @@index([yooKassaId])
-}> npx prisma migrate dev --name add_subscription
-> 
-=======
->>>>>>> e34fc4e (fix(map): prevent overlays from blocking map interactions (pointer-events, portal handling, loading/error overlays))
 ## 📞 Контакты
 
 - **Автор:** Максим Иванов (Simakis)

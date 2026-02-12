@@ -27,21 +27,16 @@ class ProductAnalyticsService {
       const response = await apiClient.get('/analytics/product', {
         params: { time_range: timeRange },
         headers: { Authorization: `Bearer ${token}` }
-      }).catch((error) => {
-        console.error('API Error Details:', {
-          url: '/analytics/product',
-          status: error.response?.status,
-          data: error.response?.data,
-          headers: error.config?.headers
-        });
-        throw error;
       });
 
       const data = response.data;
       this.cache.set(cacheKey, { data, timestamp: Date.now() });
       return data;
     } catch (error: any) {
-      console.error('Ошибка загрузки продуктовой аналитики:', error);
+      // Тихо: аналитика не критична, 401/403 ожидаемы
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('Ошибка загрузки продуктовой аналитики:', error?.message);
+      }
       // Возвращаем моковые данные при ошибке
       return this.getMockData();
     }
@@ -81,13 +76,9 @@ class ProductAnalyticsService {
   }): Promise<void> {
     try {
       const token = storageService.getItem('token');
-      if (!token) {
-        // В тестовой среде токена обычно нет — избегаем лишнего шума в логах
-        if (process.env.NODE_ENV !== 'test') {
-          console.warn('Отсутствует токен для трекинга');
-        }
-        return;
-      }
+      if (!token) return; // Без токена — не спамим 403
+      // Circuit breaker: если endpoint уже возвращал 403, не спамим
+      if ((this as any)._trackDisabled) return;
       await apiClient.post('/analytics/track', {
         event_type: event.event_type,
         user_id: event.user_id,
@@ -96,9 +87,14 @@ class ProductAnalyticsService {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-    } catch (error) {
+    } catch (error: any) {
+      const status = error?.response?.status;
+      if (status === 401 || status === 403) {
+        (this as any)._trackDisabled = true;
+        return;
+      }
       if (process.env.NODE_ENV !== 'test') {
-        console.error('Ошибка трекинга конверсии:', error);
+        console.debug('Ошибка трекинга конверсии:', error?.message || error);
       }
     }
   }
