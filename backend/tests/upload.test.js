@@ -1,9 +1,14 @@
 import request from 'supertest';
 import fs from 'fs';
 import path from 'path';
-import app from '../server.js';
+
+let app;
 
 describe('Upload endpoint', () => {
+  beforeAll(async () => {
+    const mod = await import('../server.js');
+    app = mod.default || mod;
+  });
   test('accepts image upload (guest)', async () => {
     const buffer = Buffer.from([0x89,0x50,0x4E,0x47]); // PNG header (partial)
 

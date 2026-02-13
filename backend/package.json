@@ -9,11 +9,18 @@
     "npm": ">=9.0.0"
   },
   "scripts": {
+    "dev": "nodemon --watch src --exec \"npm run build && node server.js\"",
     "test": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
+    "test:integration": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --testPathPattern=tests --runInBand",
+    "test:watch": "cross-env NODE_ENV=test jest --watch",
     "start": "node server.js",
     "build": "npx tsc",
     "postbuild": "node -e \"const fs=require('fs');const path=require('path');const oldFile=path.join('dist','database','config','database.config.cjs');const newFile=path.join('dist','database','config','database.config.js');if(fs.existsSync(oldFile))fs.unlinkSync(oldFile);if(fs.existsSync(newFile))fs.renameSync(newFile,oldFile);\"",
-    "migration:run": "node ./node_modules/typeorm/cli.js migration:run -d ./dist/database/config/database.config.cjs"
+    "lint": "npx eslint 'src/**' --ext .js,.ts",
+    "lint:fix": "npx eslint 'src/**' --ext .js,.ts --fix",
+    "clean": "rm -rf dist",
+    "migration:run": "node ./node_modules/typeorm/cli.js migration:run -d ./dist/database/config/database.config.cjs",
+    "seed": "node -e \"console.warn('No seed script found in backend/scripts — implement scripts/seed.js to enable seeding')\""
   },
   "keywords": [],
   "author": "",

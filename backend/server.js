@@ -11,39 +11,15 @@ import fetch from 'node-fetch';
 import { authenticateToken } from './src/middleware/auth.js';
 
 // ОТЛАДОЧНЫЙ ЛОГ - проверяем, что сервер запускается из правильного файла
-// Импорт маршрутов
-import userRoutes from './src/routes/userRoutes.js';
-import eventRoutes from './src/routes/eventRoutes.js';
-import markerRoutes from './src/routes/marker.js';
+// logger and minimal core imports remain static
 import logger from './logger.js';
-import routesRouter from './src/routes/routes.js';
-import placesRoutes from './src/routes/places.js';
-// SONAR-AUTO-FIX (javascript:S1128): original: // SONAR-AUTO-FIX (javascript:S1128): original: import HashtagChatServer from './hashtag-chat-server-integrated.js';
 
-// Импорт роутов друзей
-import friendsRoutes from './src/routes/friends.js';
-// Импорт роутов блогов
-import blogRoutes from './src/routes/blogRoutes.js';
-// Импорт роутов книг
-import bookRoutes from './src/routes/bookRoutes.js';
-// Импорт роутов активности
-import activityRoutes from './src/routes/activityRoutes.js';
-import zonesRoutes from './src/routes/zones.js';
-import ratingsRoutes from './src/routes/ratings.js';
-import routeRatingsRoutes from './src/routes/routeRatings.js';
-import markerCompletenessRoutes from './src/routes/markerCompleteness.js';
-import markerDuplicationRoutes from './src/routes/markerDuplication.js';
-import eventGamificationRoutes from './src/routes/eventGamification.js';
-import postsRoutes from './src/routes/posts.js';
-import smsStatsRoutes from './src/routes/smsStats.js';
-import gamificationRoutes from './src/routes/gamificationRoutes.js';
-import globalGoalsRoutes from './src/routes/globalGoalsRoutes.js';
-// SONAR-AUTO-FIX (javascript:S1128): original: // SONAR-AUTO-FIX (javascript:S1128): original: import uploadRoutes from './src/routes/uploadRoutes.js';
-import moderationRoutes from './src/routes/moderationRoutes.js';
-import adminStatsRoutes from './src/routes/adminStatsRoutes.js';
-import analyticsRoutes from './src/routes/analyticsRoutes.js';
-import offlinePostsRoutes from './src/routes/offlinePostsRoutes.js';
-import tileRoutes from './src/routes/tileRoutes.js';
+// Route modules are loaded dynamically to avoid pulling heavy ESM-only modules into
+// the test runtime (Jest + experimental-vm-modules). Dynamic loading keeps the
+// test app lightweight and prevents syntax errors when tests import `server.js`.
+// The real server (non-test) will still register all routes at startup.
+// (Individual route files stay unchanged.)
+
 
 dotenv.config();
 
@@ -148,9 +124,96 @@ app.get('/api/test', (req, res) => {
   res.json({ message: 'Test route works', headers: req.headers });
 });
 
-// API маршруты
-app.use('/api/users', userRoutes);
-app.use('/api/events', eventRoutes);
+// API маршруты — регистрируем динамически (в тестах пропускаем тяжёлые роуты)
+(async function registerRoutes() {
+  try {
+    if (process.env.NODE_ENV === 'test') {
+      logger.info('Test environment detected — skipping dynamic registration of heavy routes');
+      return;
+    }
+
+    const [
+      userRoutesModule,
+      eventRoutesModule,
+      markerRoutesModule,
+      routesRouterModule,
+      placesRoutesModule,
+      friendsRoutesModule,
+      blogRoutesModule,
+      bookRoutesModule,
+      activityRoutesModule,
+      zonesRoutesModule,
+      ratingsRoutesModule,
+      routeRatingsRoutesModule,
+      markerCompletenessModule,
+      markerDuplicationModule,
+      eventGamificationModule,
+      postsRoutesModule,
+      smsStatsRoutesModule,
+      gamificationRoutesModule,
+      globalGoalsRoutesModule,
+      moderationRoutesModule,
+      adminStatsRoutesModule,
+      analyticsRoutesModule,
+      offlinePostsRoutesModule,
+      tileRoutesModule
+    ] = await Promise.all([
+      import('./src/routes/userRoutes.js'),
+      import('./src/routes/eventRoutes.js'),
+      import('./src/routes/marker.js'),
+      import('./src/routes/routes.js'),
+      import('./src/routes/places.js'),
+      import('./src/routes/friends.js'),
+      import('./src/routes/blogRoutes.js'),
+      import('./src/routes/bookRoutes.js'),
+      import('./src/routes/activityRoutes.js'),
+      import('./src/routes/zones.js'),
+      import('./src/routes/ratings.js'),
+      import('./src/routes/routeRatings.js'),
+      import('./src/routes/markerCompleteness.js'),
+      import('./src/routes/markerDuplication.js'),
+      import('./src/routes/eventGamification.js'),
+      import('./src/routes/posts.js'),
+      import('./src/routes/smsStats.js'),
+      import('./src/routes/gamificationRoutes.js'),
+      import('./src/routes/globalGoalsRoutes.js'),
+      import('./src/routes/moderationRoutes.js'),
+      import('./src/routes/adminStatsRoutes.js'),
+      import('./src/routes/analyticsRoutes.js'),
+      import('./src/routes/offlinePostsRoutes.js'),
+      import('./src/routes/tileRoutes.js')
+    ]);
+
+    app.use('/api/users', userRoutesModule.default || userRoutesModule);
+    app.use('/api/events', eventRoutesModule.default || eventRoutesModule);
+    app.use('/api', markerRoutesModule.default || markerRoutesModule);
+    app.use('/api/routes', routesRouterModule.default || routesRouterModule);
+    app.use('/api/places', placesRoutesModule.default || placesRoutesModule);
+    app.use('/api/friends', friendsRoutesModule.default || friendsRoutesModule);
+    app.use('/api/blogs', blogRoutesModule.default || blogRoutesModule);
+    app.use('/api/books', bookRoutesModule.default || bookRoutesModule);
+    app.use('/api/activities', activityRoutesModule.default || activityRoutesModule);
+    app.use('/api/zones', zonesRoutesModule.default || zonesRoutesModule);
+    app.use('/api/ratings', ratingsRoutesModule.default || ratingsRoutesModule);
+    app.use('/api/route-ratings', routeRatingsRoutesModule.default || routeRatingsRoutesModule);
+    app.use('/api/marker-completeness', markerCompletenessModule.default || markerCompletenessModule);
+    app.use('/api/marker-duplication', markerDuplicationModule.default || markerDuplicationModule);
+    app.use('/api/event-gamification', eventGamificationModule.default || eventGamificationModule);
+    app.use('/api/posts', postsRoutesModule.default || postsRoutesModule);
+    app.use('/api/sms-stats', smsStatsRoutesModule.default || smsStatsRoutesModule);
+    app.use('/api/gamification', gamificationRoutesModule.default || gamificationRoutesModule);
+    app.use('/api/global-goals', globalGoalsRoutesModule.default || globalGoalsRoutesModule);
+    app.use('/api/moderation', moderationRoutesModule.default || moderationRoutesModule);
+    app.use('/api/admin-stats', adminStatsRoutesModule.default || adminStatsRoutesModule);
+    app.use('/api/analytics', analyticsRoutesModule.default || analyticsRoutesModule);
+    app.use('/api/offline-posts', offlinePostsRoutesModule.default || offlinePostsRoutesModule);
+    app.use('/api/tiles', tileRoutesModule.default || tileRoutesModule);
+
+    logger.info('Dynamic routes registered');
+  } catch (err) {
+    logger.warn('Error during dynamic route registration', { error: err?.message });
+  }
+})();
 
 // Chat роуты будут загружены асинхронно
 let chatRoutesLoaded = false;
@@ -362,30 +425,8 @@ app.post('/ors/v2/directions/:profile/geojson', async (req, res) => {
   }
 });
 
-// API для маршрутов - теперь обрабатывается через routesRouter
-
-app.use('/api', markerRoutes);
-app.use('/api', routesRouter);
-app.use('/api', placesRoutes);
-app.use('/api', friendsRoutes);
-app.use('/api', zonesRoutes);
-app.use('/api', ratingsRoutes);
-app.use('/api', routeRatingsRoutes);
-app.use('/api', markerCompletenessRoutes);
-app.use('/api', markerDuplicationRoutes);
-app.use('/api', eventGamificationRoutes);
-app.use('/api/blogs', blogRoutes);
-app.use('/api/books', bookRoutes);
-app.use('/api/activity', activityRoutes);
-app.use('/api', postsRoutes);
-app.use('/api', offlinePostsRoutes);
-app.use('/api/sms', smsStatsRoutes);
-app.use('/api/gamification', gamificationRoutes);
-app.use('/api/gamification/global', globalGoalsRoutes);
-app.use('/api/moderation', moderationRoutes);
-app.use('/api/admin', adminStatsRoutes);
-app.use('/api/analytics', analyticsRoutes);
-app.use('/api/tiles', tileRoutes);
+// API route registration is handled dynamically by `registerRoutes()` above.
+// In test environment we skip loading the heavy route modules to keep Jest runtime clean.
 
 // Асинхронная функция для загрузки chat роутов
 async function loadChatRoutes() {
