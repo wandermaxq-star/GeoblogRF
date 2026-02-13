@@ -1,5 +1,6 @@
 import pool from '../../db.js';
 // SONAR-AUTO-FIX (javascript:S1128): original: // SONAR-AUTO-FIX (javascript:S1128): original: import { requireRole } from '../middleware/auth.js';
+import logger from '../../logger.js';
 
 /**
  * Единый контроллер модерации для всех типов контента
@@ -432,13 +433,13 @@ export const approveContent = async (req, res) => {
 
     await client.query('COMMIT');
 
-    console.log(`✅ Контент ${contentType} ${id} одобрен админом ${adminId}`);
+    logger.info(`✅ Контент ${contentType} ${id} одобрен админом ${adminId}`);
     if (xpResult) {
-      console.log(`💰 XP начислено автору ${authorId}: ${xpResult.xpAmount} XP (уровень: ${xpResult.newLevel}, повышение: ${xpResult.levelUp ? 'да' : 'нет'})`);
+      logger.info(`💰 XP начислено автору ${authorId}: ${xpResult.xpAmount} XP (уровень: ${xpResult.newLevel}, повышение: ${xpResult.levelUp ? 'да' : 'нет'})`);
     } else if (authorId) {
-      console.log(`⚠️ XP не начислено автору ${authorId}: уже было начислено ранее`);
+      logger.info(`⚠️ XP не начислено автору ${authorId}: уже было начислено ранее`);
     } else {
-      console.log(`⚠️ XP не начислено: нет автора (контент создан гостем)`);
+      logger.info(`⚠️ XP не начислено: нет автора (контент создан гостем)`);
     }
 
     res.json({ 
@@ -532,7 +533,7 @@ export const rejectContent = async (req, res) => {
       [id]
     );
 
-    console.log(`🗑️ Контент ${contentType} ${id} удален из БД после отклонения. Причина: ${reason}`);
+    logger.info(`🗑️ Контент ${contentType} ${id} удален из БД после отклонения. Причина: ${reason}`);
 
     res.json({ 
       message: 'Контент отклонен и удален из базы данных.',

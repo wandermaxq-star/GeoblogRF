@@ -1,0 +1,17 @@
+{
+  "root": true,
+  "env": {
+    "es2021": true,
+    "node": true
+  },
+  "overrides": [
+    {
+      "files": ["backend/src/**"],
+      "env": { "node": true, "es2021": true },
+      "parserOptions": { "sourceType": "module", "ecmaVersion": 2021 },
+      "rules": {
+        "no-console": ["error", { "allow": ["warn", "error"] }]
+      }
+    }
+  ]
+}

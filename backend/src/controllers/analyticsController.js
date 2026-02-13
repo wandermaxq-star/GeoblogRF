@@ -4,6 +4,7 @@
  */
 
 import pool from '../../db.js';
+import logger from '../../logger.js';
 
 /**
  * Получить продуктовую аналитику
@@ -279,11 +280,11 @@ export const getComprehensiveMetrics = async (req, res) => {
 // SONAR-AUTO-FIX (javascript:S1854): original: // SONAR-AUTO-FIX (javascript:S1481): original: // SONAR-AUTO-FIX (javascript:S1854): original: // SONAR-AUTO-FIX (javascript:S1481): original:     const startDate = getStartDate(time_range);
 
     // Логируем попытку получения данных
-    console.log('📊 Начинаем получение данных аналитики для администратора:', req.user.id);
-    console.log('📊 Диапазон времени:', time_range);
+    logger.info('📊 Начинаем получение данных аналитики для администратора:', req.user.id);
+    logger.info('📊 Диапазон времени:', time_range);
     
     // Продолжаем с user_sessions, так как таблица существует
-    console.log('✅ Таблица user_sessions существует, получаем DAU');
+    logger.info('✅ Таблица user_sessions существует, получаем DAU');
     // Продуктовая аналитика
     let dauResult;
     try {
@@ -292,7 +293,7 @@ export const getComprehensiveMetrics = async (req, res) => {
         FROM user_sessions
         WHERE created_at >= CURRENT_DATE
       `);
-      console.log('📊 DAU данные успешно получены:', dauResult.rows[0]?.count);
+      logger.info('📊 DAU данные успешно получены:', dauResult.rows[0]?.count);
     } catch (error) {
       console.error('❌ Ошибка получения DAU данных:', error);
       dauResult = { rows: [{ count: 0 }] };
@@ -322,7 +323,7 @@ export const getComprehensiveMetrics = async (req, res) => {
     let behavioral;
     try {
       behavioral = await getBehavioralAnalyticsData(time_range);
-      console.log('📊 Поведенческая аналитика успешно получена');
+      logger.info('📊 Поведенческая аналитика успешно получена');
     } catch (error) {
       console.error('❌ Ошибка получения поведенческой аналитики:', error);
       behavioral = {
@@ -337,7 +338,7 @@ export const getComprehensiveMetrics = async (req, res) => {
     let technical;
     try {
       technical = await getTechnicalHealthData();
-      console.log('📊 Техническое здоровье успешно получено');
+      logger.info('📊 Техническое здоровье успешно получено');
     } catch (error) {
       console.error('❌ Ошибка получения технического здоровья:', error);
       technical = {
@@ -390,8 +391,8 @@ export const getComprehensiveMetrics = async (req, res) => {
       timestamp: Date.now()
     };
 
-    console.log('✅ Отправляем ответ с аналитикой');
-    console.log('📊 Статистика: DAU=', product.business.dau, 'MAU=', product.business.mau);
+    logger.info('✅ Отправляем ответ с аналитикой');
+    logger.info('📊 Статистика: DAU=', product.business.dau, 'MAU=', product.business.mau);
     
     res.json(response);
   } catch (error) {
@@ -412,7 +413,7 @@ export const trackEvent = async (req, res) => {
     // Если мы дошли сюда, значит аналитика разрешена
 
     // Проверяем существование таблицы analytics_events
-    console.log('🔍 Проверка существования таблицы analytics_events');
+    logger.info('🔍 Проверка существования таблицы analytics_events');
     const tableExists = await pool.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
@@ -422,11 +423,11 @@ export const trackEvent = async (req, res) => {
     `);
     
     if (!tableExists.rows[0].exists) {
-      console.log('❌ Таблица analytics_events не существует');
+      logger.info('❌ Таблица analytics_events не существует');
       return res.json({ success: true, saved: false, message: 'Таблица analytics_events не найдена' });
     }
     
-    console.log('✅ Таблица analytics_events существует, вставляем данные');
+    logger.info('✅ Таблица analytics_events существует, вставляем данные');
     // Сохраняем событие в БД
     await pool.query(`
       INSERT INTO analytics_events (event_type, user_id, properties, category, created_at)

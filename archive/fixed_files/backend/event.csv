@@ -1,0 +1,20 @@
+"column_name","data_type","is_nullable","column_default"
+"id","uuid","NO","gen_random_uuid()"
+"creator_id","uuid","YES",NULL
+"title","character varying","NO",NULL
+"description","text","YES",NULL
+"event_type","USER-DEFINED","NO",NULL
+"start_datetime","timestamp without time zone","NO",NULL
+"end_datetime","timestamp without time zone","NO",NULL
+"timezone","character varying","YES","'UTC'::character varying"
+"location_id","uuid","YES",NULL
+"max_participants","integer","YES",NULL
+"price","numeric","YES","0"
+"is_recurring","boolean","YES","false"
+"recurrence_rule","text","YES",NULL
+"cover_image_url","text","YES",NULL
+"is_public","boolean","YES","true"
+"requires_approval","boolean","YES","false"
+"status","USER-DEFINED","YES","'active'::event_status"
+"created_at","timestamp without time zone","YES","now()"
+"updated_at","timestamp without time zone","YES","now()"

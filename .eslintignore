@@ -1,0 +1,6 @@
+node_modules/
+dist/
+archive/
+archive/**
+coverage/
+**/package-lock.json

@@ -13,6 +13,7 @@ import {
   trackEvent,
   trackError
 } from '../controllers/analyticsController.js';
+import logger from '../../logger.js';
 
 const router = express.Router();
 
@@ -21,9 +22,9 @@ router.use(authenticateToken, requireRole(['admin']));
 
 // Логируем все запросы к аналитике
 router.use((req, res, next) => {
-  console.log('🚀 Запрос к аналитике:', req.method, req.path);
-  console.log('📩 Query params:', req.query);
-  console.log('🧾 Request body:', req.body);
+  logger.info('🚀 Запрос к аналитике:', req.method, req.path);
+  logger.info('📩 Query params:', req.query);
+  logger.info('🧾 Request body:', req.body);
   next();
 });
 

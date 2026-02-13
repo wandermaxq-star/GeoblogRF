@@ -12,7 +12,7 @@ import { useUserLocation } from '../hooks/useUserLocation';
 import { useMapStateStore, mapStateHelpers } from '../stores/mapStateStore';
 
 import {
-  FaStar, FaMap, FaCog, FaSearch, FaRoute, FaMapMarkerAlt
+  FaStar, FaMap, FaCog, FaSearch, FaRoute, FaMapMarkerAlt, FaDownload
 } from 'react-icons/fa';
 import FavoritesPanel from '../components/FavoritesPanel';
 import MapActionButtons from '../components/Map/MapActionButtons';
@@ -117,6 +117,107 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
   const [legendOpen, setLegendOpen] = useState(false);
   const [isAddingMarkerMode, setIsAddingMarkerMode] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+
+  // === Офлайн-тайлы: оверлей поверх основной карты ===
+  const [offlineTilesActive, setOfflineTilesActive] = useState(false);
+  const [offlineTilesets, setOfflineTilesets] = useState<Array<{
+    name: string; format: string; sizeMB: number;
+    bounds: number[] | null; center: number[] | null;
+    minzoom: number | null; maxzoom: number | null;
+    description: string | null;
+  }>>([]);
+  const [activeOfflineTileset, setActiveOfflineTileset] = useState<string>('test-raster');
+  const [offlineTilesMeta, setOfflineTilesMeta] = useState<any>(null);
+  const offlineTileLayerRef = useRef<any>(null);
+  const offlineBoundsLayerRef = useRef<any>(null);
+
+  // Загружаем список тайлсетов при активации офлайн-режима
+  useEffect(() => {
+    if (!offlineTilesActive) return;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/tiles');
+        if (!res.ok) return;
+        const data = await res.json();
+        const list = data.tilesets || [];
+        setOfflineTilesets(list);
+        // Автовыбор PNG-тайлсета
+        const png = list.find((t: any) => t.format === 'png');
+        if (png) setActiveOfflineTileset(png.name);
+      } catch (err) {
+        console.warn('[MapPage] Не удалось загрузить список офлайн-тайлсетов:', err);
+      }
+    };
+    load();
+  }, [offlineTilesActive]);
+
+  // Добавляем/удаляем офлайн тайловый слой на Leaflet-карту
+  useEffect(() => {
+    const map = (() => { try { return mapFacade().getMap(); } catch { return null; } })();
+    if (!map) return;
+
+    // Удаляем предыдущий слой
+    if (offlineTileLayerRef.current) {
+      try { map.removeLayer(offlineTileLayerRef.current); } catch {}
+      offlineTileLayerRef.current = null;
+    }
+    if (offlineBoundsLayerRef.current) {
+      try { map.removeLayer(offlineBoundsLayerRef.current); } catch {}
+      offlineBoundsLayerRef.current = null;
+    }
+
+    if (!offlineTilesActive || !activeOfflineTileset) return;
+
+    // Загружаем метаданные
+    fetch(`/api/tiles/${activeOfflineTileset}/metadata`)
+      .then(r => r.ok ? r.json() : null)
+      .then(meta => {
+        if (!meta) return;
+        setOfflineTilesMeta(meta);
+
+        // Динамический импорт Leaflet (он уже загружен — берём из кэша)
+        import('leaflet').then(L => {
+          // Добавляем тайловый слой
+          const tileUrl = `/api/tiles/${activeOfflineTileset}/{z}/{x}/{y}.png`;
+          const tileLayer = L.tileLayer(tileUrl, {
+            minZoom: meta.minzoom ?? 1,
+            maxZoom: meta.maxzoom ?? 18,
+            opacity: 0.9,
+            attribution: `Offline: ${activeOfflineTileset}`,
+            zIndex: 500,
+          });
+          tileLayer.addTo(map);
+          offlineTileLayerRef.current = tileLayer;
+
+          // Показываем границы тайлсета прямоугольником
+          if (meta.bounds && meta.bounds.length === 4) {
+            const [west, south, east, north] = meta.bounds;
+            const boundsRect = L.rectangle(
+              [[south, west], [north, east]],
+              { color: '#3b82f6', weight: 2, fill: true, fillOpacity: 0.05, dashArray: '8 4' }
+            );
+            boundsRect.addTo(map);
+            offlineBoundsLayerRef.current = boundsRect;
+
+            // Перемещаем карту в область тайлов
+            map.fitBounds([[south, west], [north, east]], { padding: [20, 20], maxZoom: meta.maxzoom ?? 12 });
+          }
+        });
+      })
+      .catch(err => console.warn('[MapPage] Ошибка загрузки метаданных тайлсета:', err));
+
+    return () => {
+      // Cleanup при размонтировании или изменении зависимостей
+      if (offlineTileLayerRef.current) {
+        try { map.removeLayer(offlineTileLayerRef.current); } catch {}
+        offlineTileLayerRef.current = null;
+      }
+      if (offlineBoundsLayerRef.current) {
+        try { map.removeLayer(offlineBoundsLayerRef.current); } catch {}
+        offlineBoundsLayerRef.current = null;
+      }
+    };
+  }, [offlineTilesActive, activeOfflineTileset]);
 
   const handleRecordTrackClick = useCallback(async () => {
     if (!isRecording) {
@@ -1137,7 +1238,86 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
                   {isAddingMarkerMode ? 'Отмена' : 'Метка'}
                 </span>
               </button>
+
+              {/* Переключатель офлайн-тайлов */}
+              <button
+                onClick={() => setOfflineTilesActive(!offlineTilesActive)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200"
+                style={{
+                  background: offlineTilesActive ? 'rgba(34, 197, 94, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+                  border: `1px solid ${offlineTilesActive ? 'rgba(34, 197, 94, 0.5)' : 'rgba(255, 255, 255, 0.15)'}`,
+                  color: offlineTilesActive ? '#22c55e' : 'rgba(255, 255, 255, 0.9)'
+                }}
+                title={offlineTilesActive ? 'Выключить офлайн-тйлы' : 'Показать офлайн-тайлы'}
+              >
+                <FaDownload className="w-4 h-4" />
+                <span className="text-sm font-medium whitespace-nowrap">
+                  {offlineTilesActive ? 'Офлайн ✓' : 'Офлайн'}
+                </span>
+              </button>
             </div>
+
+            {/* Панель информации об офлайн-тайлах */}
+            {offlineTilesActive && (
+              <div
+                className="absolute flex flex-col gap-2"
+                style={{
+                  top: isTwoPanelMode ? '130px' : '130px',
+                  left: isTwoPanelMode ? '25%' : '50%',
+                  transform: 'translateX(-50%)',
+                  background: 'rgba(30, 30, 35, 0.85)',
+                  backdropFilter: 'blur(10px)',
+                  WebkitBackdropFilter: 'blur(10px)',
+                  borderRadius: '12px',
+                  padding: '8px 14px',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+                  border: '1px solid rgba(34, 197, 94, 0.2)',
+                  zIndex: 10,
+                  pointerEvents: 'auto',
+                  maxWidth: '90vw',
+                }}
+              >
+                {/* Выбор тайлсета */}
+                {offlineTilesets.length > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span style={{ color: '#94a3b8', fontSize: '12px' }}>Тайлсет:</span>
+                    {offlineTilesets.filter(ts => ts.format === 'png').map(ts => (
+                      <button
+                        key={ts.name}
+                        onClick={() => setActiveOfflineTileset(ts.name)}
+                        style={{
+                          padding: '3px 10px',
+                          borderRadius: '6px',
+                          border: activeOfflineTileset === ts.name ? '1px solid rgba(34, 197, 94, 0.5)' : '1px solid rgba(255,255,255,0.15)',
+                          background: activeOfflineTileset === ts.name ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255,255,255,0.05)',
+                          color: activeOfflineTileset === ts.name ? '#4ade80' : '#94a3b8',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: 500,
+                        }}
+                      >
+                        {ts.name} ({ts.sizeMB} МБ)
+                      </button>
+                    ))}
+                    {offlineTilesets.filter(ts => ts.format !== 'png').length > 0 && (
+                      <span style={{ color: '#f59e0b', fontSize: '11px' }}>
+                        ⚠️ PBF-тайлсеты ({offlineTilesets.filter(ts => ts.format !== 'png').map(t => t.name).join(', ')}) не совместимы с Leaflet
+                      </span>
+                    )}
+                  </div>
+                )}
+                {/* Метаданные тайлсета */}
+                {offlineTilesMeta && (
+                  <div className="flex items-center gap-3 flex-wrap" style={{ fontSize: '11px', color: '#94a3b8' }}>
+                    <span>Формат: <b style={{ color: '#e2e8f0' }}>{offlineTilesMeta.format}</b></span>
+                    <span>Zoom: <b style={{ color: '#e2e8f0' }}>{offlineTilesMeta.minzoom}–{offlineTilesMeta.maxzoom}</b></span>
+                    {offlineTilesMeta.description && (
+                      <span style={{ color: '#cbd5e1' }}>{offlineTilesMeta.description}</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Виджет быстрого выбора категорий — всегда виден на карте */}
             <CategoryQuickFilter

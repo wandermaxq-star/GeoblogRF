@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
+import logger from '../../logger.js';
 
 dotenv.config(); // Загружаем переменные окружения из .env
 
@@ -32,7 +33,7 @@ async function createSMSCodesTable() {
       ON sms_codes(phone, type, expires_at);
     `);
 
-    console.log('✅ Таблица sms_codes создана успешно');
+    logger.info('✅ Таблица sms_codes создана успешно');
   } catch (error) {
     console.error('❌ Ошибка создания таблицы sms_codes:', error);
   }
@@ -44,7 +45,7 @@ async function cleanupExpiredCodes() {
       DELETE FROM sms_codes 
       WHERE expires_at < NOW() OR used = TRUE
     `);
-    console.log(`🧹 Удалено ${result.rowCount} устаревших SMS-кодов`);
+    logger.info(`🧹 Удалено ${result.rowCount} устаревших SMS-кодов`);
   } catch (error) {
     console.error('❌ Ошибка очистки устаревших кодов:', error);
   }

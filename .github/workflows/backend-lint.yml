@@ -1,0 +1,30 @@
+name: Backend lint (backend/src)
+
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+  push:
+    branches:
+      - main
+      - 'cleanup/**'
+      - 'newmain'
+
+jobs:
+  eslint-backend:
+    name: ESLint — backend/src
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint on backend/src
+        run: npx eslint backend/src --max-warnings=0

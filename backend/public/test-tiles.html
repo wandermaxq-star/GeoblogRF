@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Тест тайлов — ГеоБлог.рф</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+    #header { padding: 12px 20px; background: #1e293b; border-bottom: 1px solid #334155; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+    h1 { font-size: 16px; font-weight: 600; }
+    #info { font-size: 12px; color: #94a3b8; }
+    #status { font-size: 13px; margin-left: auto; }
+    .ok { color: #22c55e; }
+    .err { color: #ef4444; }
+    #map { height: calc(100vh - 90px); width: 100%; }
+    #controls { padding: 8px 20px; background: #1e293b; display: flex; gap: 12px; align-items: center; font-size: 13px; }
+    button { padding: 4px 12px; border-radius: 6px; border: 1px solid #475569; background: #334155; color: #e2e8f0; cursor: pointer; font-size: 12px; }
+    button:hover { background: #475569; }
+    button.active { border-color: #3b82f6; background: rgba(59,130,246,0.2); color: #60a5fa; }
+    #tile-test-img { max-width: 256px; max-height: 256px; border: 1px solid #475569; margin-left: 16px; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>🗺️ Tile Server Test</h1>
+    <span id="info">Загрузка...</span>
+    <span id="status"></span>
+  </div>
+  <div id="controls">
+    <span>Тайлсет:</span>
+    <div id="tileset-buttons"></div>
+    <span style="margin-left:16px; color: #94a3b8;">Тест тайла:</span>
+    <img id="tile-test-img" alt="test tile" style="display:none">
+  </div>
+  <div id="map"></div>
+
+  <script>
+    const API = 'http://localhost:3002';
+    let map, offlineLayer, currentTileset;
+
+    async function init() {
+      const infoEl = document.getElementById('info');
+      const statusEl = document.getElementById('status');
+
+      // 1. Загружаем список тайлсетов
+      try {
+        const res = await fetch(`${API}/api/tiles`);
+        const data = await res.json();
+        const tilesets = data.tilesets || [];
+
+        if (tilesets.length === 0) {
+          statusEl.innerHTML = '<span class="err">❌ Тайлсеты не найдены</span>';
+          return;
+        }
+
+        statusEl.innerHTML = `<span class="ok">✅ Найдено ${tilesets.length} тайлсет(ов)</span>`;
+        infoEl.textContent = tilesets.map(t => `${t.name} (${t.sizeMB}MB, ${t.format})`).join(' | ');
+
+        // Создаём кнопки
+        const btnsDiv = document.getElementById('tileset-buttons');
+        tilesets.forEach(ts => {
+          const btn = document.createElement('button');
+          btn.textContent = ts.name;
+          btn.onclick = () => switchTileset(ts.name, tilesets);
+          btnsDiv.appendChild(btn);
+        });
+
+        // 2. Инициализируем карту
+        const first = tilesets[0];
+        const center = first.center ? [first.center[1], first.center[0]] : [56.13, 40.41];
+        const zoom = first.center?.[2] || first.minzoom || 8;
+
+        map = L.map('map').setView(center, zoom);
+
+        // Онлайн OSM слой (фон)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OSM',
+          maxZoom: 19,
+          opacity: 0.3
+        }).addTo(map);
+
+        switchTileset(first.name, tilesets);
+
+      } catch (err) {
+        statusEl.innerHTML = `<span class="err">❌ ${err.message}</span>`;
+        infoEl.textContent = 'Убедитесь, что бэкенд запущен на порту 3002';
+      }
+    }
+
+    function switchTileset(name, tilesets) {
+      currentTileset = name;
+
+      // Обновляем кнопки
+      document.querySelectorAll('#tileset-buttons button').forEach(b => {
+        b.className = b.textContent === name ? 'active' : '';
+      });
+
+      // Удаляем старый слой
+      if (offlineLayer) map.removeLayer(offlineLayer);
+
+      // Добавляем новый
+      const meta = tilesets.find(t => t.name === name);
+      const ext = meta?.format === 'png' ? '.png' : meta?.format === 'jpg' ? '.jpg' : '.pbf';
+
+      offlineLayer = L.tileLayer(`${API}/api/tiles/${name}/{z}/{x}/{y}${ext}`, {
+        maxZoom: meta?.maxzoom || 18,
+        errorTileUrl: ''
+      }).addTo(map);
+
+      // Подгоняем вид под bounds
+      if (meta?.bounds) {
+        const [w, s, e, n] = meta.bounds;
+        map.fitBounds([[s, w], [n, e]], { padding: [20, 20] });
+      }
+
+      // Тестовый тайл
+      testTile(name, meta);
+    }
+
+    async function testTile(name, meta) {
+      const img = document.getElementById('tile-test-img');
+      const z = meta?.minzoom || 8;
+      // Берём координату центра и вычисляем тайл
+      const lat = meta?.center?.[1] || 56.13;
+      const lon = meta?.center?.[0] || 40.41;
+      const x = lon2tile(lon, z);
+      const y = lat2tile(lat, z);
+
+      const url = `${API}/api/tiles/${name}/${z}/${x}/${y}`;
+      try {
+        const res = await fetch(url);
+        if (res.ok && res.status !== 204) {
+          const blob = await res.blob();
+          img.src = URL.createObjectURL(blob);
+          img.style.display = 'block';
+          img.title = `${name}/${z}/${x}/${y} (${blob.size} bytes, ${blob.type})`;
+        } else {
+          img.style.display = 'none';
+        }
+      } catch {
+        img.style.display = 'none';
+      }
+    }
+
+    function lon2tile(lon, z) { return Math.floor((lon + 180) / 360 * Math.pow(2, z)); }
+    function lat2tile(lat, z) { return Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, z)); }
+
+    init();
+  </script>
+</body>
+</html>

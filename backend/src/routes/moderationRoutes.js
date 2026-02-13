@@ -24,6 +24,7 @@ import {
   getModerationTasksCount
 } from '../controllers/moderationTasksController.js';
 import { getRejectionReasons } from '../config/rejectionReasons.js';
+import logger from '../../logger.js';
 
 const router = express.Router();
 
@@ -281,7 +282,7 @@ router.post('/approve-local', async (req, res) => {
                 ]
               );
 
-              console.log(`💰 XP начислено автору ${author_id} за метку ${createdId}: ${totalXP} XP (уровень: ${newLevelData.level})`);
+              logger.info(`💰 XP начислено автору ${author_id} за метку ${createdId}: ${totalXP} XP (уровень: ${newLevelData.level})`);
             }
           } catch (xpError) {
             console.error('Ошибка начисления очков за метку:', xpError);
@@ -317,7 +318,7 @@ router.post('/approve-local', async (req, res) => {
         const hasPayload = availableColumns.some(col => col === 'payload');
         const hasPhotoUrls = availableColumns.some(col => col === 'photo_urls');
         
-        console.log('📊 Проверка колонок posts:', {
+        logger.info('📊 Проверка колонок posts:', {
           hasTemplate,
           hasContentType,
           hasConstructorData,
@@ -330,9 +331,9 @@ router.post('/approve-local', async (req, res) => {
         
         // ПРИНУДИТЕЛЬНО: если template не найден в БД, НЕ добавляем его
         if (hasTemplate) {
-          console.log('✅ Колонка template найдена в БД, добавляем в запрос');
+          logger.info('✅ Колонка template найдена в БД, добавляем в запрос');
         } else {
-          console.log('⚠️ Колонка template НЕ найдена в БД, НЕ добавляем в запрос');
+          logger.info('⚠️ Колонка template НЕ найдена в БД, НЕ добавляем в запрос');
         }
         
         // Формируем список колонок и значений динамически
@@ -351,16 +352,16 @@ router.post('/approve-local', async (req, res) => {
             }
           }
           values.push(photoUrlsString || null);
-          console.log('📸 photo_urls для сохранения:', photoUrlsString ? `${photoUrlsString.substring(0, 100)}...` : 'null');
+          logger.info('📸 photo_urls для сохранения:', photoUrlsString ? `${photoUrlsString.substring(0, 100)}...` : 'null');
         }
         
         // ВАЖНО: добавляем template ТОЛЬКО если hasTemplate === true
         if (hasTemplate === true) {
           columns.push('template');
           values.push(template || 'mobile');
-          console.log('✅ template добавлен в запрос');
+          logger.info('✅ template добавлен в запрос');
         } else {
-          console.log('⚠️ template НЕ добавлен в запрос (колонки нет в БД)');
+          logger.info('⚠️ template НЕ добавлен в запрос (колонки нет в БД)');
         }
         
         if (hasContentType) {
@@ -390,11 +391,11 @@ router.post('/approve-local', async (req, res) => {
           if (templateIndex !== -1) {
             columns.splice(templateIndex, 1);
             values.splice(templateIndex, 1);
-            console.log('✅ template удален из списка колонок');
+            logger.info('✅ template удален из списка колонок');
           }
         }
         
-        console.log('📝 INSERT запрос для posts:', {
+        logger.info('📝 INSERT запрос для posts:', {
           columns: columns.join(', '),
           placeholders,
           valuesCount: values.length,
@@ -531,7 +532,7 @@ router.post('/approve-local', async (req, res) => {
                 ]
               );
 
-              console.log(`💰 XP начислено автору ${author_id} за пост ${createdId}: ${totalXP} XP (уровень: ${newLevelData.level})`);
+              logger.info(`💰 XP начислено автору ${author_id} за пост ${createdId}: ${totalXP} XP (уровень: ${newLevelData.level})`);
             }
           } catch (xpError) {
             console.error('Ошибка начисления очков за пост:', xpError);
@@ -678,7 +679,7 @@ router.post('/approve-local', async (req, res) => {
                 ]
               );
 
-              console.log(`💰 XP начислено автору ${author_id} за событие ${createdId}: ${totalXP} XP (уровень: ${newLevelData.level})`);
+              logger.info(`💰 XP начислено автору ${author_id} за событие ${createdId}: ${totalXP} XP (уровень: ${newLevelData.level})`);
             }
           } catch (xpError) {
             console.error('Ошибка начисления очков за событие:', xpError);
@@ -703,7 +704,7 @@ router.post('/approve-local', async (req, res) => {
       });
     }
 
-    console.log(`✅ Контент ${content_type} создан в БД:`, {
+    logger.info(`✅ Контент ${content_type} создан в БД:`, {
       id: createdId,
       title: createdContent.rows[0].title || createdContent.rows[0].name,
       status: createdContent.rows[0].status,

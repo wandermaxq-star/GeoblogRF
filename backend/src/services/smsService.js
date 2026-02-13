@@ -1,5 +1,6 @@
 import axios from 'axios';
 // SONAR-AUTO-FIX (javascript:S1128): original: // SONAR-AUTO-FIX (javascript:S1128): original: import crypto from 'crypto';
+import logger from '../../logger.js';
 
 class SMSService {
   constructor() {
@@ -20,7 +21,7 @@ class SMSService {
    */
   async sendVerificationCode(phone, code) {
     if (this.isTestMode) {
-      console.log(`[TEST MODE] SMS код для ${phone}: ${code}`);
+      logger.info(`[TEST MODE] SMS код для ${phone}: ${code}`);
       return { success: true, code: code };
     }
 
@@ -48,7 +49,7 @@ class SMSService {
    */
   async sendPasswordResetCode(phone, code) {
     if (this.isTestMode) {
-      console.log(`[TEST MODE] SMS код восстановления для ${phone}: ${code}`);
+      logger.info(`[TEST MODE] SMS код восстановления для ${phone}: ${code}`);
       return { success: true, code: code };
     }
 

@@ -1,5 +1,6 @@
 import pool from '../../db.js';
 import ModerationService from '../services/moderationService.js';
+import logger from '../../logger.js';
 
 /**
  * Контроллер для полуавтоматической модерации с ИИ-помощником
@@ -83,16 +84,16 @@ export const getContentForReview = async (req, res) => {
       LIMIT 50
     `, [contentType]);
 
-    console.log(`🔍 ИИ-помощник: найдено ${result.rows.length} записей для ${contentType} со статусом '${status}'`);
+    logger.info(`🔍 ИИ-помощник: найдено ${result.rows.length} записей для ${contentType} со статусом '${status}'`);
 
     // Логируем детали для диагностики
     if (result.rows.length > 0) {
       result.rows.forEach((row, idx) => {
         const content = row.content_data || {};
-        console.log(`  ${idx + 1}. Post ID: ${row.content_id}, Title: ${content.title || 'нет'}, AI: ${row.ai_suggestion}, Confidence: ${Math.round(row.ai_confidence * 100)}%`);
+        logger.info(`  ${idx + 1}. Post ID: ${row.content_id}, Title: ${content.title || 'нет'}, AI: ${row.ai_suggestion}, Confidence: ${Math.round(row.ai_confidence * 100)}%`);
       });
     } else {
-      console.log(`  ⚠️ Нет постов для модерации. Проверьте, что есть посты со status='pending' и записи в ai_moderation_decisions с admin_verdict='pending'`);
+      logger.info(`  ⚠️ Нет постов для модерации. Проверьте, что есть посты со status='pending' и записи в ai_moderation_decisions с admin_verdict='pending'`);
     }
 
     res.json(result.rows);
@@ -269,12 +270,12 @@ export const setAdminVerdict = async (req, res) => {
 
     // Если вердикт "correct", применяем решение ИИ
     if (verdict === 'correct') {
-      console.log(`✅ Админ согласен с ИИ. Применяем решение: ${decision.ai_suggestion} для ${decision.content_type}:${decision.content_id}`);
+      logger.info(`✅ Админ согласен с ИИ. Применяем решение: ${decision.ai_suggestion} для ${decision.content_type}:${decision.content_id}`);
       
       // Если ИИ предложил одобрить, используем полноценную функцию approveContent для начисления XP
       if (decision.ai_suggestion === 'approve') {
         try {
-          console.log(`🎯 ИИ предложил одобрить - вызываем approveContent для начисления XP...`);
+          logger.info(`🎯 ИИ предложил одобрить - вызываем approveContent для начисления XP...`);
           
           // Импортируем функцию одобрения из moderationController
           const { approveContent: approveContentFunc } = await import('./moderationController.js');
@@ -293,18 +294,18 @@ export const setAdminVerdict = async (req, res) => {
             status: (code) => ({
               json: (data) => {
 // SONAR-AUTO-FIX (javascript:S1854): original: // SONAR-AUTO-FIX (javascript:S1854): original:                 approvalResult = data;
-                console.log(`✅ Контент одобрен через ИИ-модерацию:`, data);
+                logger.info(`✅ Контент одобрен через ИИ-модерацию:`, data);
                 if (data.gamification) {
-                  console.log(`💰 XP начислено:`, data.gamification);
+                  logger.info(`💰 XP начислено:`, data.gamification);
                 }
                 return fakeRes;
               }
             }),
             json: (data) => {
 // SONAR-AUTO-FIX (javascript:S1854): original: // SONAR-AUTO-FIX (javascript:S1854): original:               approvalResult = data;
-              console.log(`✅ Контент одобрен через ИИ-модерацию:`, data);
+              logger.info(`✅ Контент одобрен через ИИ-модерацию:`, data);
               if (data.gamification) {
-                console.log(`💰 XP начислено:`, data.gamification);
+                logger.info(`💰 XP начислено:`, data.gamification);
               }
               return fakeRes;
             }
@@ -317,23 +318,23 @@ export const setAdminVerdict = async (req, res) => {
           // 4. Проверит достижения
           await approveContentFunc(fakeReq, fakeRes);
           
-          console.log(`✅ Одобрение завершено успешно`);
+          logger.info(`✅ Одобрение завершено успешно`);
         } catch (approveError) {
           console.error('❌ Ошибка при автоматическом одобрении контента через ИИ:', approveError);
           console.error('   Stack:', approveError.stack);
           // Пытаемся хотя бы обновить статус вручную
           try {
             await applyAIDecision(decision.content_type, decision.content_id, 'approve');
-            console.log(`⚠️ Статус обновлён вручную, но XP не начислено из-за ошибки`);
+            logger.info(`⚠️ Статус обновлён вручную, но XP не начислено из-за ошибки`);
           } catch (fallbackError) {
             console.error('❌ Критическая ошибка: не удалось даже обновить статус:', fallbackError);
           }
         }
       } else {
         // Если ИИ предложил reject или hide, просто применяем решение
-        console.log(`🎯 ИИ предложил ${decision.ai_suggestion} - применяем решение...`);
+        logger.info(`🎯 ИИ предложил ${decision.ai_suggestion} - применяем решение...`);
         await applyAIDecision(decision.content_type, decision.content_id, decision.ai_suggestion);
-        console.log(`✅ Решение применено: статус обновлён на ${decision.ai_suggestion === 'reject' ? 'rejected' : 'hidden'}`);
+        logger.info(`✅ Решение применено: статус обновлён на ${decision.ai_suggestion === 'reject' ? 'rejected' : 'hidden'}`);
       }
     }
 
@@ -411,11 +412,11 @@ async function applyAIDecision(contentType, contentId, suggestion) {
     status = 'hidden';
     isPublic = false;
   } else {
-    console.log(`ℹ️ Решение '${suggestion}' не требует изменения статуса`);
+    logger.info(`ℹ️ Решение '${suggestion}' не требует изменения статуса`);
     return; // 'review' - оставляем как есть
   }
 
-  console.log(`🔄 Обновляем ${tableName} ${contentId}: status=${status}, is_public=${isPublic}`);
+  logger.info(`🔄 Обновляем ${tableName} ${contentId}: status=${status}, is_public=${isPublic}`);
   
   const result = await pool.query(`
     UPDATE ${tableName} 
@@ -428,7 +429,7 @@ async function applyAIDecision(contentType, contentId, suggestion) {
   `, [status, isPublic, String(contentId)]);
   
   if (result.rows.length > 0) {
-    console.log(`✅ Статус обновлён: ${tableName} ${contentId} → ${status}`);
+    logger.info(`✅ Статус обновлён: ${tableName} ${contentId} → ${status}`);
   } else {
     console.warn(`⚠️ Контент не найден для обновления: ${tableName} ${contentId}`);
   }

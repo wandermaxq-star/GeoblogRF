@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+    <meta charset="utf-8">
+</head>
+<body>
+    <h1>Тест API маркеров</h1>
+    <button onclick="createMarker()">Создать маркер с русским текстом</button>
+    <div id="result"></div>
+
+    <script>
+        async function createMarker() {
+            const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjODM5YTRiYi1jMjY4LTQ1OGYtYjNjZC1iMzAxZTM2NTZiYzUiLCJyb2xlIjoicmVnaXN0ZXJlZCIsImlhdCI6MTc1MjIwODY3OCwiZXhwIjoxNzUyODEzNDc4fQ.xtGMGZN5JHsQH0SXOWB0m7p-Gcb9dtaTiaUnxIN7nDg'; // Вставьте сюда токен из PowerShell
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/markers', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    body: JSON.stringify({
+                        title: "Новый тестовый маркер с русским текстом",
+                        description: "Этот маркер создан авторизованным пользователем через браузер",
+                        latitude: 55.7558,
+                        longitude: 37.6173,
+                        address: "Москва, Красная площадь",
+                        category: "attraction",
+                        subcategory: "История",
+                        photo_urls: [],
+                        hashtags: ["#тест", "#русский", "#кодировка"],
+                        visibility: "public"
+                    })
+                });
+                
+                const result = await response.json();
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+                
+                console.log('Ответ сервера:', result);
+            } catch (error) {
+                console.error('Ошибка:', error);
+                document.getElementById('result').innerHTML = '<p style="color: red;">Ошибка: ' + error.message + '</p>';
+            }
+        }
+    </script>
+</body>
+</html>

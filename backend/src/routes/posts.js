@@ -2,6 +2,7 @@
 import express from 'express';
 import { optionalAuthenticateToken } from '../middleware/optionalAuth.js';
 import pool from '../../db.js';
+import logger from '../../logger.js';
 
 const router = express.Router();
 
@@ -85,7 +86,7 @@ router.get('/posts', async (req, res) => {
         }
         // Админ может запросить конкретный статус - безопасная фильтрация после проверки
         statusFilter = `AND p.status = '${requestedStatus}'`;
-        console.log(`🔍 Фильтр статуса для админа: ${requestedStatus}`);
+        logger.info(`🔍 Фильтр статуса для админа: ${requestedStatus}`);
       } else if (!isAdmin) {
         // Обычные пользователи видят ТОЛЬКО active (без NULL!)
         statusFilter = "AND p.status = 'active'";
@@ -94,7 +95,7 @@ router.get('/posts', async (req, res) => {
     }
     const statusExpr = hasStatus ? ', p.status' : '';
 
-    console.log(`📊 GET /posts: роль=${userRole}, админ=${isAdmin}, фильтр=${statusFilter || 'нет'}`);
+    logger.info(`📊 GET /posts: роль=${userRole}, админ=${isAdmin}, фильтр=${statusFilter || 'нет'}`);
 
     // Формируем дополнительные поля
     const additionalFields = [];
@@ -171,7 +172,7 @@ router.get('/posts', async (req, res) => {
 
       // Логируем для отладки (только для первых нескольких постов)
       if (index < 3 && row.photo_urls) {
-        console.log(`📸 photo_urls из БД для поста ${row.id}:`, {
+        logger.info(`📸 photo_urls из БД для поста ${row.id}:`, {
           type: typeof row.photo_urls,
           value: row.photo_urls.substring(0, 100),
           length: row.photo_urls.length
@@ -215,9 +216,9 @@ router.get('/posts', async (req, res) => {
     const countResult = await pool.query(countQuery, countParams);
     const total = Number.parseInt(countResult.rows[0].total);
 
-    console.log(`📊 GET /posts: возвращено ${processedRows.length} постов из ${total} всего`);
+    logger.info(`📊 GET /posts: возвращено ${processedRows.length} постов из ${total} всего`);
     if (processedRows.length > 0) {
-      console.log('📝 Пример поста:', {
+      logger.info('📝 Пример поста:', {
         id: processedRows[0].id,
         title: processedRows[0].title?.substring(0, 50),
         author_name: processedRows[0].author_name,
@@ -302,7 +303,7 @@ router.get('/posts/:id', async (req, res) => {
       }
     }
 
-    console.log(`📸 GET /posts/:id - photo_urls для поста ${post.id}:`, {
+    logger.info(`📸 GET /posts/:id - photo_urls для поста ${post.id}:`, {
       type: typeof post.photo_urls,
       value: post.photo_urls ? post.photo_urls.substring(0, 100) : 'null',
       hasValue: !!post.photo_urls
@@ -322,9 +323,9 @@ router.post('/posts', optionalAuthenticateToken, async (req, res) => {
   const author_id = req.user?.id || null;
   const isGuest = !author_id;
 
-  console.log('🔍 НАЧАЛО ПРОВЕРКИ РОЛИ И СТАТУСА');
-  // SONAR-AUTO-FIX (javascript:S1854): original:   console.log(`   Пользователь из токена: ${isGuest ? 'ГОСТЬ (нет токена или невалидный)' : author_id}`);
-  console.log(`   Токен в заголовке: ${req.headers['authorization'] ? 'есть' : 'нет'}`);
+  logger.info('🔍 НАЧАЛО ПРОВЕРКИ РОЛИ И СТАТУСА');
+  // SONAR-AUTO-FIX (javascript:S1854): original:   logger.info(`   Пользователь из токена: ${isGuest ? 'ГОСТЬ (нет токена или невалидный)' : author_id}`);
+  logger.info(`   Токен в заголовке: ${req.headers['authorization'] ? 'есть' : 'нет'}`);
 
   let userRole = isGuest ? 'guest' : 'registered';
   let isAdmin = false;
@@ -342,7 +343,7 @@ router.post('/posts', optionalAuthenticateToken, async (req, res) => {
         isAdmin = userRole === 'admin';
         // ТОЛЬКО АДМИН может создавать сразу активные посты!
         finalStatus = isAdmin ? 'active' : 'pending';
-        console.log(`   ✅ Роль из БД: ${userRole}, АДМИН: ${isAdmin}`);
+        logger.info(`   ✅ Роль из БД: ${userRole}, АДМИН: ${isAdmin}`);
       } else {
         // Пользователь не найден в БД - обрабатываем как гостя
         console.warn(`   ⚠️ Пользователь ${author_id} не найден в БД, обрабатываем как гостя`);
@@ -360,15 +361,15 @@ router.post('/posts', optionalAuthenticateToken, async (req, res) => {
   } else {
     // Гости ВСЕГДА создают посты со статусом pending
     finalStatus = 'pending';
-    console.log('   Гость создаёт пост - статус: pending');
+    logger.info('   Гость создаёт пост - статус: pending');
   }
 
-  console.log(`👤 ФИНАЛЬНАЯ РОЛЬ: ${userRole}, АДМИН: ${isAdmin}, СТАТУС: ${finalStatus}`);
+  logger.info(`👤 ФИНАЛЬНАЯ РОЛЬ: ${userRole}, АДМИН: ${isAdmin}, СТАТУС: ${finalStatus}`);
 
   try {
     const { title, body, marker_id, route_id, event_id, photo_urls } = req.body;
 
-    console.log('📝 POST /api/posts - Входящие данные:', {
+    logger.info('📝 POST /api/posts - Входящие данные:', {
       title,
       body: body ? `${body.substring(0, 100)}...` : 'пусто',
       marker_id,
@@ -391,12 +392,12 @@ router.post('/posts', optionalAuthenticateToken, async (req, res) => {
       `);
       hasPhotoUrls = checkColumns.rows.some(r => r.column_name === 'photo_urls');
       hasStatus = checkColumns.rows.some(r => r.column_name === 'status');
-      console.log(`📊 КОЛОНКИ: photo_urls = ${hasPhotoUrls}, status = ${hasStatus}`);
+      logger.info(`📊 КОЛОНКИ: photo_urls = ${hasPhotoUrls}, status = ${hasStatus}`);
     } catch (colError) {
       console.error('❌ ОШИБКА ПРОВЕРКИ КОЛОНОК:', colError);
     }
 
-    console.log(`✅ ФИНАЛЬНОЕ РЕШЕНИЕ: статус = "${finalStatus}", роль = "${userRole}"`);
+    logger.info(`✅ ФИНАЛЬНОЕ РЕШЕНИЕ: статус = "${finalStatus}", роль = "${userRole}"`);
 
     // Преобразуем photo_urls в строку, если это массив
     let photoUrlsString = null;
@@ -408,7 +409,7 @@ router.post('/posts', optionalAuthenticateToken, async (req, res) => {
       }
     }
 
-    console.log('📸 Обработка photo_urls:', {
+    logger.info('📸 Обработка photo_urls:', {
       original: photo_urls ? (typeof photo_urls === 'string' ? photo_urls.substring(0, 100) : 'массив') : 'null',
       processed: photoUrlsString ? photoUrlsString.substring(0, 100) : 'null',
       type: typeof photo_urls
@@ -454,13 +455,13 @@ router.post('/posts', optionalAuthenticateToken, async (req, res) => {
       values = [title || null, body || null, author_id, marker_id || null, route_id || null, event_id || null];
     }
 
-    console.log('📤 Выполняем запрос:', query.substring(0, 200) + '...');
-    console.log('📤 Параметры:', values.length, 'значений, статус:', finalStatus);
+    logger.info('📤 Выполняем запрос:', query.substring(0, 200) + '...');
+    logger.info('📤 Параметры:', values.length, 'значений, статус:', finalStatus);
 
     const result = await pool.query(query, values);
     const createdPost = result.rows[0];
 
-    console.log('✅ Пост создан в БД:', {
+    logger.info('✅ Пост создан в БД:', {
       id: createdPost.id,
       title: createdPost.title,
       status: createdPost.status || 'нет статуса (колонка отсутствует)',
@@ -474,12 +475,12 @@ router.post('/posts', optionalAuthenticateToken, async (req, res) => {
     // Это основной способ модерации - ИИ анализирует первым, админ проверяет его работу
     if (finalStatus === 'pending') {
       try {
-        console.log(`🤖 ИИ-помощник: запуск анализа для поста ${createdPost.id}...`);
+        logger.info(`🤖 ИИ-помощник: запуск анализа для поста ${createdPost.id}...`);
         const { autoAnalyzeContent } = await import('../middleware/autoModeration.js');
         // Запускаем анализ асинхронно (не блокируем ответ пользователю)
         autoAnalyzeContent('posts', createdPost.id, createdPost)
           .then(() => {
-            console.log(`✅ ИИ-помощник: анализ поста ${createdPost.id} завершён, рекомендация сохранена`);
+            logger.info(`✅ ИИ-помощник: анализ поста ${createdPost.id} завершён, рекомендация сохранена`);
           })
           .catch(err => {
             console.error(`❌ ИИ-помощник: ошибка анализа поста ${createdPost.id}:`, err);
@@ -488,7 +489,7 @@ router.post('/posts', optionalAuthenticateToken, async (req, res) => {
         console.error('❌ ИИ-помощник: не удалось запустить анализ поста:', err.message);
       }
     } else {
-      console.log('ℹ️ Пост создан админом со статусом active, ИИ-анализ не требуется');
+      logger.info('ℹ️ Пост создан админом со статусом active, ИИ-анализ не требуется');
     }
 
     // Добавляем photo_urls в ответ, если его нет в базе

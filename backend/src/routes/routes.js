@@ -3,6 +3,7 @@ import { authenticateToken } from '../middleware/auth.js';
 import pool from '../../db.js';
 import { checkLineAgainstZones } from '../utils/zoneGuard.js';
 import { isWithinRussiaBounds } from '../middleware/russiaValidation.js';
+import logger from '../../logger.js';
 
 // Проверка маршрута на соответствие границам РФ
 const validateRouteBounds = (routeData) => {
@@ -183,7 +184,7 @@ router.post('/routes', authenticateToken, async (req, res) => {
   
   // Устанавливаем статус: админ может сразу 'active', остальные - 'pending' (требуют модерации)
   const finalStatus = isAdmin ? 'active' : 'pending';
-  console.log(`📊 Статус маршрута: ${finalStatus} (пользователь: ${userRole}, админ: ${isAdmin})`);
+  logger.info(`📊 Статус маршрута: ${finalStatus} (пользователь: ${userRole}, админ: ${isAdmin})`);
 
   try {
     // Проверка российских границ для маршрута

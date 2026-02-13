@@ -5,6 +5,7 @@
 
 import pool from '../../db.js';
 import { ModerationService } from '../services/moderationService.js';
+import logger from '../../logger.js';
 
 const moderationService = new ModerationService();
 
@@ -94,11 +95,11 @@ export async function autoAnalyzeContent(contentType, contentId, contentData) {
     ]);
 
     const decisionId = insertResult.rows[0]?.id || 'обновлена';
-    console.log(`✅ ИИ проанализировал ${contentType} ${contentId}: ${aiSuggestion} (${Math.round(moderationResult.confidence * 100)}%)`);
-    console.log(`📝 Создана запись в ai_moderation_decisions: ${decisionId}, admin_verdict='pending'`);
-    console.log(`   - Предложение: ${aiSuggestion}`);
-    console.log(`   - Категория: ${moderationResult.category}`);
-    console.log(`   - Проблемы: ${moderationResult.issues.length > 0 ? moderationResult.issues.join(', ') : 'нет'}`);
+    logger.info(`✅ ИИ проанализировал ${contentType} ${contentId}: ${aiSuggestion} (${Math.round(moderationResult.confidence * 100)}%)`);
+    logger.info(`📝 Создана запись в ai_moderation_decisions: ${decisionId}, admin_verdict='pending'`);
+    logger.info(`   - Предложение: ${aiSuggestion}`);
+    logger.info(`   - Категория: ${moderationResult.category}`);
+    logger.info(`   - Проблемы: ${moderationResult.issues.length > 0 ? moderationResult.issues.join(', ') : 'нет'}`);
     
     // Проверяем, что запись действительно создалась
     const checkResult = await pool.query(
@@ -106,7 +107,7 @@ export async function autoAnalyzeContent(contentType, contentId, contentData) {
       [contentType, String(contentId)]
     );
     if (checkResult.rows.length > 0) {
-      console.log(`✅ Проверка: запись существует, admin_verdict='${checkResult.rows[0].admin_verdict}'`);
+      logger.info(`✅ Проверка: запись существует, admin_verdict='${checkResult.rows[0].admin_verdict}'`);
     } else {
       console.error(`❌ ОШИБКА: запись не найдена в БД после создания!`);
     }
@@ -126,7 +127,7 @@ export async function autoAnalyzeContent(contentType, contentId, contentData) {
         ) VALUES ($1, $2, 'review', 0.5, 'Ошибка анализа, требуется ручная проверка', 'error', ARRAY[]::text[], 'pending')
         ON CONFLICT (content_type, content_id) DO NOTHING
       `, [contentType, String(contentId)]);
-      console.log(`⚠️ Создана запись с ошибкой для ручной проверки`);
+      logger.info(`⚠️ Создана запись с ошибкой для ручной проверки`);
     } catch (fallbackError) {
       console.error(`❌ Критическая ошибка: не удалось создать запись даже с ошибкой:`, fallbackError.message);
     }

@@ -1,4 +1,5 @@
 import pool from '../database/config.js';
+import logger from '../../logger.js';
 
 // Получить все блоги
 const getAllBlogs = async (req, res) => {
@@ -75,7 +76,7 @@ const createBlog = async (req, res) => {
     if (requestedStatus === 'published') {
       finalStatus = isAdmin ? 'active' : 'pending';
     }
-    console.log(`📊 Статус блога: ${finalStatus} (пользователь: ${userRole}, админ: ${isAdmin}, запрошен: ${requestedStatus})`);
+    logger.info(`📊 Статус блога: ${finalStatus} (пользователь: ${userRole}, админ: ${isAdmin}, запрошен: ${requestedStatus})`);
     
     const query = `
       INSERT INTO blog_posts (

@@ -43,6 +43,7 @@ import moderationRoutes from './src/routes/moderationRoutes.js';
 import adminStatsRoutes from './src/routes/adminStatsRoutes.js';
 import analyticsRoutes from './src/routes/analyticsRoutes.js';
 import offlinePostsRoutes from './src/routes/offlinePostsRoutes.js';
+import tileRoutes from './src/routes/tileRoutes.js';
 
 dotenv.config();
 
@@ -379,6 +380,7 @@ app.use('/api/gamification/global', globalGoalsRoutes);
 app.use('/api/moderation', moderationRoutes);
 app.use('/api/admin', adminStatsRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/tiles', tileRoutes);
 
 // Асинхронная функция для загрузки chat роутов
 async function loadChatRoutes() {

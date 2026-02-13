@@ -1,6 +1,7 @@
 import pool from '../../db.js';
 import { isWithinRussiaBounds } from '../middleware/russiaValidation.js';
 import fetch from 'node-fetch';
+import logger from '../../logger.js';
 
 // Функция геокодирования адреса через Yandex Geocoder
 async function geocodeAddress(address) {
@@ -132,7 +133,7 @@ export const createEvent = async (req, res) => {
       if (geocoded) {
         finalLatitude = geocoded.latitude;
         finalLongitude = geocoded.longitude;
-        console.log(`✅ Геокодирование успешно для "${location}": [${finalLatitude}, ${finalLongitude}]`);
+        logger.info(`✅ Геокодирование успешно для "${location}": [${finalLatitude}, ${finalLongitude}]`);
       } else {
         console.warn(`⚠️ Не удалось геокодировать адрес "${location}"`);
         // Оставляем null - событие будет создано без координат
@@ -179,7 +180,7 @@ export const createEvent = async (req, res) => {
         console.warn('Не удалось запустить автоматический анализ события:', err.message);
       }
     } else {
-      console.log('✅ Событие создано админом, модерация не требуется');
+      logger.info('✅ Событие создано админом, модерация не требуется');
     }
 
     res.status(201).json(createdEvent);

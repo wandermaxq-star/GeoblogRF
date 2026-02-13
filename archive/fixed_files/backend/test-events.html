@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Events API Test</title>
+    <meta charset="utf-8">
+</head>
+<body>
+    <h1>Тест API событий</h1>
+    <button onclick="createEvent()">Создать событие</button>
+    <button onclick="getEvents()">Получить события</button>
+    <div id="result"></div>
+
+    <script>
+        async function createEvent() {
+            const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjODM5YTRiYi1jMjY4LTQ1OGYtYjNjZC1iMzAxZTM2NTZiYzUiLCJyb2xlIjoicmVnaXN0ZXJlZCIsImlhdCI6MTc1MjIxMDAzNiwiZXhwIjoxNzUyODE0ODM2fQ.CFX9gO1FBLll_DRmnh5CnuT_ohOpdbSKzTjt635WPEc';
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/events', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    body: JSON.stringify({
+                        title: "Встреча путешественников",
+                        description: "Еженедельная встреча любителей путешествий в центре города",
+                        start_datetime: "2024-01-20T18:00:00Z",
+                        end_datetime: "2024-01-20T20:00:00Z",
+                        location: "Москва, ул. Тверская, 1",
+                        category: "meetup",
+                        max_participants: 20,
+                        is_public: true,
+                        photo_urls: [],
+                        hashtags: ["#путешествия", "#встреча", "#москва"]
+                    })
+                });
+                
+                const result = await response.json();
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+            } catch (error) {
+                console.error('Ошибка:', error);
+                document.getElementById('result').innerHTML = '<p style="color: red;">Ошибка: ' + error.message + '</p>';
+            }
+        }
+
+        async function getEvents() {
+            try {
+                const response = await fetch('http://localhost:3000/api/events');
+                const result = await response.json();
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+            } catch (error) {
+                console.error('Ошибка:', error);
+                document.getElementById('result').innerHTML = '<p style="color: red;">Ошибка: ' + error.message + '</p>';
+            }
+        }
+    </script>
+</body>
+</html>

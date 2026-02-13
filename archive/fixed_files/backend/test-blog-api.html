@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест данных для блогов</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; max-height: 200px; }
+        .count { font-size: 1.2em; font-weight: bold; color: #007bff; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Проверка данных для тестирования блогов</h1>
+    
+    <div class="section">
+        <h3>📍 Маркеры</h3>
+        <button onclick="checkMarkers()">Проверить маркеры</button>
+        <div id="markers-result"></div>
+    </div>
+    
+    <div class="section">
+        <h3>📅 События</h3>
+        <button onclick="checkEvents()">Проверить события</button>
+        <div id="events-result"></div>
+    </div>
+    
+    <div class="section">
+        <h3>📝 Блоги</h3>
+        <button onclick="checkBlogs()">Проверить блоги</button>
+        <div id="blogs-result"></div>
+    </div>
+    
+    <div class="section">
+        <h3>📚 Книги</h3>
+        <button onclick="checkBooks()">Проверить книги</button>
+        <div id="books-result"></div>
+    </div>
+    
+    <div class="section">
+        <h3>🎯 Рекомендации</h3>
+        <button onclick="getRecommendations()">Получить рекомендации</button>
+        <div id="recommendations-result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3002/api';
+        
+        async function checkMarkers() {
+            const resultDiv = document.getElementById('markers-result');
+            resultDiv.innerHTML = '⏳ Проверка маркеров...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/markers`);
+                const markers = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = `
+                        <div class="count">Найдено маркеров: ${markers.length}</div>
+                        ${markers.length > 0 ? `
+                            <h4>Примеры:</h4>
+                            <pre>${JSON.stringify(markers.slice(0, 3).map(m => ({
+                                id: m.id,
+                                title: m.title,
+                                category: m.category
+                            })), null, 2)}</pre>
+                        ` : '<p>❌ Маркеров нет - создайте несколько маркеров на карте</p>'}
+                    `;
+                } else {
+                    resultDiv.className = 'error';
+                    resultDiv.innerHTML = `<p>❌ Ошибка: ${response.status}</p>`;
+                }
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `<p>💥 Ошибка подключения: ${error.message}</p>`;
+            }
+        }
+        
+        async function checkEvents() {
+            const resultDiv = document.getElementById('events-result');
+            resultDiv.innerHTML = '⏳ Проверка событий...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/events`);
+                const events = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = `
+                        <div class="count">Найдено событий: ${events.length}</div>
+                        ${events.length > 0 ? `
+                            <h4>Примеры:</h4>
+                            <pre>${JSON.stringify(events.slice(0, 3).map(e => ({
+                                id: e.id,
+                                title: e.title,
+                                date: e.date
+                            })), null, 2)}</pre>
+                        ` : '<p>❌ Событий нет - создайте несколько событий в календаре</p>'}
+                    `;
+                } else {
+                    resultDiv.className = 'error';
+                    resultDiv.innerHTML = `<p>❌ Ошибка: ${response.status}</p>`;
+                }
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `<p>💥 Ошибка подключения: ${error.message}</p>`;
+            }
+        }
+        
+        async function checkBlogs() {
+            const resultDiv = document.getElementById('blogs-result');
+            resultDiv.innerHTML = '⏳ Проверка блогов...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/blogs`);
+                const blogs = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = `
+                        <div class="count">Найдено блогов: ${blogs.length}</div>
+                        ${blogs.length > 0 ? `
+                            <h4>Примеры:</h4>
+                            <pre>${JSON.stringify(blogs.slice(0, 3).map(b => ({
+                                id: b.id,
+                                title: b.title,
+                                hasConstructorData: !!b.constructor_data
+                            })), null, 2)}</pre>
+                        ` : '<p>❌ Блогов нет - создайте тестовый блог</p>'}
+                    `;
+                } else {
+                    resultDiv.className = 'error';
+                    resultDiv.innerHTML = `<p>❌ Ошибка: ${response.status}</p>`;
+                }
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `<p>💥 Ошибка подключения: ${error.message}</p>`;
+            }
+        }
+        
+        async function checkBooks() {
+            const resultDiv = document.getElementById('books-result');
+            resultDiv.innerHTML = '⏳ Проверка книг...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/books`);
+                const books = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = `
+                        <div class="count">Найдено книг: ${books.length}</div>
+                        ${books.length > 0 ? `
+                            <h4>Примеры:</h4>
+                            <pre>${JSON.stringify(books.slice(0, 3).map(b => ({
+                                id: b.id,
+                                title: b.title,
+                                category: b.category
+                            })), null, 2)}</pre>
+                        ` : '<p>❌ Книг нет - создайте тестовую книгу</p>'}
+                    `;
+                } else {
+                    resultDiv.className = 'error';
+                    resultDiv.innerHTML = `<p>❌ Ошибка: ${response.status}</p>`;
+                }
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `<p>💥 Ошибка подключения: ${error.message}</p>`;
+            }
+        }
+        
+        async function getRecommendations() {
+            const resultDiv = document.getElementById('recommendations-result');
+            resultDiv.innerHTML = '⏳ Анализ данных...';
+            
+            try {
+                // Получаем все данные
+                const [markersRes, eventsRes, blogsRes, booksRes] = await Promise.all([
+                    fetch(`${API_BASE}/markers`),
+                    fetch(`${API_BASE}/events`),
+                    fetch(`${API_BASE}/blogs`),
+                    fetch(`${API_BASE}/books`)
+                ]);
+                
+                const markers = markersRes.ok ? await markersRes.json() : [];
+                const events = eventsRes.ok ? await eventsRes.json() : [];
+                const blogs = blogsRes.ok ? await blogsRes.json() : [];
+                const books = booksRes.ok ? await booksRes.json() : [];
+                
+                let recommendations = [];
+                
+                if (markers.length === 0) {
+                    recommendations.push('❌ Создайте несколько маркеров на карте для тестирования крючков с метками');
+                } else {
+                    recommendations.push('✅ Маркеры есть - можно тестировать крючки с метками');
+                }
+                
+                if (events.length === 0) {
+                    recommendations.push('❌ Создайте несколько событий в календаре для тестирования крючков с событиями');
+                } else {
+                    recommendations.push('✅ События есть - можно тестировать крючки с событиями');
+                }
+                
+                if (blogs.length === 0) {
+                    recommendations.push('❌ Создайте тестовый блог для проверки интерактивности');
+                } else {
+                    recommendations.push('✅ Блоги есть - можно тестировать просмотр');
+                }
+                
+                if (books.length === 0) {
+                    recommendations.push('❌ Создайте тестовую книгу для объединения блогов');
+                } else {
+                    recommendations.push('✅ Книги есть - можно тестировать систему книг');
+                }
+                
+                resultDiv.className = 'warning';
+                resultDiv.innerHTML = `
+                    <h4>📊 Статистика:</h4>
+                    <ul>
+                        <li>Маркеры: ${markers.length}</li>
+                        <li>События: ${events.length}</li>
+                        <li>Блоги: ${blogs.length}</li>
+                        <li>Книги: ${books.length}</li>
+                    </ul>
+                    
+                    <h4>🎯 Рекомендации:</h4>
+                    <ul>
+                        ${recommendations.map(r => `<li>${r}</li>`).join('')}
+                    </ul>
+                    
+                    <h4>🚀 Для тестирования:</h4>
+                    <ol>
+                        <li>Откройте <a href="http://localhost:5173/blogs" target="_blank">http://localhost:5173/blogs</a></li>
+                        <li>Нажмите "Создать блог"</li>
+                        <li>Нажмите "Добавить контент"</li>
+                        <li>Выберите маркер или событие</li>
+                        <li>Опубликуйте блог</li>
+                        <li>Откройте блог и проверьте интерактивность</li>
+                    </ol>
+                `;
+                
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `<p>💥 Ошибка анализа: ${error.message}</p>`;
+            }
+        }
+        
+        // Автоматически запускаем проверку при загрузке
+        window.onload = function() {
+            setTimeout(() => {
+                checkMarkers();
+                checkEvents();
+                checkBlogs();
+                checkBooks();
+                getRecommendations();
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
+

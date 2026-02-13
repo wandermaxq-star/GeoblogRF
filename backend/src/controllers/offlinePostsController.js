@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
+import logger from '../../logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,13 +23,13 @@ if (!fs.existsSync(OFFLINE_POSTS_DIR)) {
  */
 export const createOfflinePost = async (req, res) => {
   // Логируем в самом начале, даже до try-catch
-  console.log('🚀 ===== НАЧАЛО createOfflinePost =====');
-  console.log('📥 Метод:', req.method);
-  console.log('📥 URL:', req.url);
-  console.log('📥 Path:', req.path);
-  console.log('📥 User:', req.user ? { id: req.user.id, role: req.user.role } : 'null');
-  console.log('📥 Body keys:', Object.keys(req.body || {}));
-  console.log('📥 Body:', req.body);
+  logger.info('🚀 ===== НАЧАЛО createOfflinePost =====');
+  logger.info('📥 Метод:', req.method);
+  logger.info('📥 URL:', req.url);
+  logger.info('📥 Path:', req.path);
+  logger.info('📥 User:', req.user ? { id: req.user.id, role: req.user.role } : 'null');
+  logger.info('📥 Body keys:', Object.keys(req.body || {}));
+  logger.info('📥 Body:', req.body);
   
   try {
     
@@ -39,7 +40,7 @@ export const createOfflinePost = async (req, res) => {
     }
 
     const { text, title, regionId, hasImages = false, hasTrack = false } = req.body;
-    console.log('📥 Параметры запроса:', { 
+    logger.info('📥 Параметры запроса:', { 
       text: text?.substring(0, 50), 
       title: title || '(не указан)', 
       regionId, 
@@ -79,7 +80,7 @@ export const createOfflinePost = async (req, res) => {
     const idType = checkIdType.rows[0]?.data_type || 'bigint';
     const isUuidId = idType === 'uuid';
     
-    console.log('📝 Тип колонки id:', idType, 'isUuid:', isUuidId);
+    logger.info('📝 Тип колонки id:', idType, 'isUuid:', isUuidId);
 
     // Создаём запись в БД со статусом pending_images
     // НЕ указываем id - БД сама сгенерирует его (SERIAL/BIGSERIAL или UUID)
@@ -94,7 +95,7 @@ export const createOfflinePost = async (req, res) => {
         AND column_name = 'title'
     `);
     const hasTitle = checkTitle.rows.length > 0;
-    console.log(`📊 Проверка колонки 'title' в 'posts': ${hasTitle ? 'ЕСТЬ' : 'НЕТ'}`);
+    logger.info(`📊 Проверка колонки 'title' в 'posts': ${hasTitle ? 'ЕСТЬ' : 'НЕТ'}`);
 
     if (hasStatus) {
       // Если есть колонка status, добавляем её
@@ -157,14 +158,14 @@ export const createOfflinePost = async (req, res) => {
       }
     }
 
-    console.log('📝 SQL запрос:', insertQuery);
-    console.log('📝 Параметры:', queryParams);
-    console.log('📝 Статус, который будет установлен:', queryParams[queryParams.length - 1] || 'не указан');
+    logger.info('📝 SQL запрос:', insertQuery);
+    logger.info('📝 Параметры:', queryParams);
+    logger.info('📝 Статус, который будет установлен:', queryParams[queryParams.length - 1] || 'не указан');
 
     let result;
     try {
       result = await pool.query(insertQuery, queryParams);
-      console.log('✅ SQL запрос выполнен успешно');
+      logger.info('✅ SQL запрос выполнен успешно');
       
       // Сразу проверяем, какой статус был установлен в БД
       if (result.rows && result.rows.length > 0 && hasStatus) {
@@ -175,7 +176,7 @@ export const createOfflinePost = async (req, res) => {
         );
         if (statusCheck.rows.length > 0) {
           const actualStatus = statusCheck.rows[0].status;
-          console.log(`🔍 Проверка статуса сразу после INSERT: ${actualStatus || 'NULL'}`);
+          logger.info(`🔍 Проверка статуса сразу после INSERT: ${actualStatus || 'NULL'}`);
           if (actualStatus !== 'pending') {
             console.error(`❌ КРИТИЧНО: Статус поста ${createdId} = '${actualStatus}', а должен быть 'pending'!`);
             console.error(`❌ Возможно, в БД установлено значение по умолчанию 'active' для колонки status`);
@@ -186,12 +187,12 @@ export const createOfflinePost = async (req, res) => {
                 'UPDATE posts SET status = $1 WHERE id = $2',
                 ['pending', createdId]
               );
-              console.log(`✅ Статус поста ${createdId} исправлен на 'pending' вручную`);
+              logger.info(`✅ Статус поста ${createdId} исправлен на 'pending' вручную`);
             } catch (fixError) {
               console.error(`❌ Не удалось исправить статус:`, fixError);
             }
           } else {
-            console.log(`✅ Статус поста ${createdId} корректно установлен как 'pending'`);
+            logger.info(`✅ Статус поста ${createdId} корректно установлен как 'pending'`);
           }
         }
       }
@@ -216,7 +217,7 @@ export const createOfflinePost = async (req, res) => {
     }
     
     const createdPostId = result.rows[0].id;
-    console.log(`✅ Пост создан в БД с ID: ${createdPostId}`);
+    logger.info(`✅ Пост создан в БД с ID: ${createdPostId}`);
     
     // ВАЖНО: Если колонки status нет, но мы создали пост без статуса,
     // нужно убедиться, что пост будет виден в модерации
@@ -233,7 +234,7 @@ export const createOfflinePost = async (req, res) => {
       );
       if (statusCheck.rows.length > 0) {
         const actualStatus = statusCheck.rows[0].status;
-        console.log(`✅ Статус поста ${createdPostId}: ${actualStatus || 'NULL'}`);
+        logger.info(`✅ Статус поста ${createdPostId}: ${actualStatus || 'NULL'}`);
         if (actualStatus !== 'pending') {
           console.warn(`⚠️ ВНИМАНИЕ: Статус поста не 'pending'! Пост может не попасть в модерацию!`);
         }
@@ -249,7 +250,7 @@ export const createOfflinePost = async (req, res) => {
       const postDir = path.join(OFFLINE_POSTS_DIR, postId);
       if (!fs.existsSync(postDir)) {
         fs.mkdirSync(postDir, { recursive: true });
-        console.log(`✅ Создана папка для поста: ${postDir}`);
+        logger.info(`✅ Создана папка для поста: ${postDir}`);
       }
     } catch (dirError) {
       console.error('⚠️ Ошибка создания папки (не критично):', dirError);
@@ -260,7 +261,7 @@ export const createOfflinePost = async (req, res) => {
     // Можно использовать отдельную таблицу или расширить posts
     // Пока сохраняем в отдельную таблицу offline_post_metadata
     try {
-      console.log('📝 Создание таблицы offline_post_metadata (если не существует)...');
+      logger.info('📝 Создание таблицы offline_post_metadata (если не существует)...');
       
       // Проверяем тип id в таблице posts, чтобы использовать правильный тип для post_id
       const idTypeCheck = await pool.query(`
@@ -272,7 +273,7 @@ export const createOfflinePost = async (req, res) => {
       const postsIdType = idTypeCheck.rows[0]?.data_type || 'bigint';
       const postIdColumnType = postsIdType === 'uuid' ? 'UUID' : 'BIGINT';
       
-      console.log(`📝 Тип post_id в метаданных: ${postIdColumnType} (соответствует типу posts.id: ${postsIdType})`);
+      logger.info(`📝 Тип post_id в метаданных: ${postIdColumnType} (соответствует типу posts.id: ${postsIdType})`);
       
       await pool.query(`
         CREATE TABLE IF NOT EXISTS offline_post_metadata (
@@ -286,9 +287,9 @@ export const createOfflinePost = async (req, res) => {
           created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         )
       `);
-      console.log('✅ Таблица offline_post_metadata проверена/создана');
+      logger.info('✅ Таблица offline_post_metadata проверена/создана');
 
-      console.log('📝 Вставка метаданных...');
+      logger.info('📝 Вставка метаданных...');
       await pool.query(`
         INSERT INTO offline_post_metadata (
           post_id, region_id, has_images, has_track, images_expected
@@ -299,7 +300,7 @@ export const createOfflinePost = async (req, res) => {
           has_track = EXCLUDED.has_track,
           images_expected = EXCLUDED.images_expected
       `, [postId, regionId, hasImages, hasTrack, hasImages ? 0 : 0]);
-      console.log('✅ Метаданные сохранены');
+      logger.info('✅ Метаданные сохранены');
     } catch (metaError) {
       console.error('⚠️ Ошибка создания метаданных (не критично):', metaError);
       console.error('⚠️ Детали:', {
@@ -310,7 +311,7 @@ export const createOfflinePost = async (req, res) => {
       // Не критично, продолжаем
     }
 
-    console.log(`✅ Создан офлайн пост: ${postId}, ожидается: images=${hasImages}, track=${hasTrack}`);
+    logger.info(`✅ Создан офлайн пост: ${postId}, ожидается: images=${hasImages}, track=${hasTrack}`);
     
     // ВАЖНО: НЕ вызываем checkAndUpdatePostStatus здесь!
     // Пост должен остаться со статусом 'pending' до загрузки всех частей
@@ -326,8 +327,8 @@ export const createOfflinePost = async (req, res) => {
       uploadUrl: `/api/posts/${postId}/images`
     };
     
-    console.log('📤 Отправляем ответ клиенту:', responseData);
-    console.log(`⚠️ Пост ${postId} создан со статусом 'pending' и НЕ будет автоматически одобрен`);
+    logger.info('📤 Отправляем ответ клиенту:', responseData);
+    logger.info(`⚠️ Пост ${postId} создан со статусом 'pending' и НЕ будет автоматически одобрен`);
     
     res.status(201).json(responseData);
   } catch (error) {
@@ -486,7 +487,7 @@ export const uploadPostImages = async (req, res) => {
     // Проверяем, все ли части загружены, чтобы перевести в awaiting_moderation
     await checkAndUpdatePostStatus(postId);
 
-    console.log(`✅ Загружено ${files.length} изображений для поста ${postId}`);
+    logger.info(`✅ Загружено ${files.length} изображений для поста ${postId}`);
 
     res.status(200).json({
       message: 'Изображения успешно загружены',
@@ -586,7 +587,7 @@ export const uploadPostTrack = async (req, res) => {
     // Проверяем, все ли части загружены
     await checkAndUpdatePostStatus(postId);
 
-    console.log(`✅ Трек загружен для поста ${postId}`);
+    logger.info(`✅ Трек загружен для поста ${postId}`);
 
     res.status(200).json({
       message: 'Трек успешно загружен',
@@ -644,14 +645,14 @@ async function checkAndUpdatePostStatus(postId) {
       
       if (currentStatus.rows.length > 0) {
         const existingStatus = currentStatus.rows[0].status;
-        console.log(`✅ Пост ${postId} готов к модерации. Текущий статус: ${existingStatus || 'pending'}`);
-        console.log(`⚠️ Пост НЕ будет автоматически одобрен - требуется ручная модерация админом`);
+        logger.info(`✅ Пост ${postId} готов к модерации. Текущий статус: ${existingStatus || 'pending'}`);
+        logger.info(`⚠️ Пост НЕ будет автоматически одобрен - требуется ручная модерация админом`);
         
         // НЕ меняем статус - оставляем как есть ('pending')
         // Пост должен пройти модерацию через админ-панель
       }
     } else {
-      console.log(`⏳ Пост ${postId} еще не готов: imagesReady=${imagesReady}, trackReady=${trackReady}`);
+      logger.info(`⏳ Пост ${postId} еще не готов: imagesReady=${imagesReady}, trackReady=${trackReady}`);
     }
   } catch (error) {
     console.error('Ошибка проверки статуса поста:', error);

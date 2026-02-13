@@ -13,6 +13,7 @@
 import pool from '../../db.js';
 import { autoAnalyzeContent } from '../middleware/autoModeration.js';
 import { calculateLevelFromTotalXP } from '../utils/xpCalculator.js';
+import logger from '../../logger.js';
 
 /**
  * Типы контента и соответствующие источники XP
@@ -71,7 +72,7 @@ export async function createContentWithModeration(contentType, contentData, user
       // Запускаем асинхронно (не блокируем ответ)
       autoAnalyzeContent(contentType, content.id, content)
         .then(() => {
-          console.log(`✅ ИИ-помощник: анализ ${contentType} ${content.id} завершён`);
+          logger.info(`✅ ИИ-помощник: анализ ${contentType} ${content.id} завершён`);
         })
         .catch(err => {
           console.error(`❌ ИИ-помощник: ошибка анализа ${contentType} ${content.id}:`, err);

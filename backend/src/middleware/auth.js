@@ -1,23 +1,24 @@
 import { verifyToken, extractTokenFromHeader } from '../utils/jwt.js';
+import logger from '../../logger.js';
 
 export const authenticateToken = (req, res, next) => {
   try {
     // Логируем все запросы к аналитике для отладки
     const isAnalyticsRequest = req.path?.includes('/analytics');
     if (isAnalyticsRequest) {
-      console.log('🔐 Middleware authenticateToken для /analytics');
-      console.log('🔐 Path:', req.path);
-      console.log('🔐 Method:', req.method);
-      console.log('🔐 Headers:', Object.keys(req.headers));
-      console.log('🔐 Authorization header:', req.headers['authorization'] ? 'present' : 'missing');
+      logger.info('🔐 Middleware authenticateToken для /analytics');
+      logger.info('🔐 Path:', req.path);
+      logger.info('🔐 Method:', req.method);
+      logger.info('🔐 Headers:', Object.keys(req.headers));
+      logger.info('🔐 Authorization header:', req.headers['authorization'] ? 'present' : 'missing');
     }
     
     // Логируем только для офлайн постов для отладки
     const isOfflinePost = req.path?.includes('/offline-posts');
     if (isOfflinePost) {
-      console.log('🔐 Middleware authenticateToken для /offline-posts');
-      console.log('🔐 Headers:', Object.keys(req.headers));
-      console.log('🔐 Authorization header:', req.headers['authorization'] ? 'present' : 'missing');
+      logger.info('🔐 Middleware authenticateToken для /offline-posts');
+      logger.info('🔐 Headers:', Object.keys(req.headers));
+      logger.info('🔐 Authorization header:', req.headers['authorization'] ? 'present' : 'missing');
     }
     
     const authHeader = req.headers['authorization'];
@@ -33,7 +34,7 @@ export const authenticateToken = (req, res, next) => {
     }
 
     if (isOfflinePost) {
-      console.log('🔐 Токен извлечен, проверяем валидность...');
+      logger.info('🔐 Токен извлечен, проверяем валидность...');
     }
     
     const decoded = verifyToken(token);
@@ -48,7 +49,7 @@ export const authenticateToken = (req, res, next) => {
     }
 
     if (isOfflinePost) {
-      console.log('✅ Токен валиден, user:', decoded.id);
+      logger.info('✅ Токен валиден, user:', decoded.id);
     }
     
     req.user = decoded;

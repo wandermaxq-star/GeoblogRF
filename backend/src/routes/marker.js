@@ -5,6 +5,7 @@ import { validateMarker } from '../middleware/validation.js';
 import pool from '../../db.js';
 import { checkPointAgainstZones } from '../utils/zoneGuard.js';
 import { isWithinRussiaBounds } from '../middleware/russiaValidation.js';
+import logger from '../../logger.js';
 
 const router = express.Router();
 
@@ -19,7 +20,7 @@ router.get('/markers', async (req, res) => {
     `);
     // Логируем creator_id, is_active и visibility для каждого маркера
     result.rows.forEach((marker, index) => {
-      console.log(`Marker ${index}: creator_id: ${marker.creator_id}, is_active: ${marker.is_active}, visibility: ${marker.visibility}`);
+      logger.info(`Marker ${index}: creator_id: ${marker.creator_id}, is_active: ${marker.is_active}, visibility: ${marker.visibility}`);
     });
     
     res.json(result.rows);
@@ -162,10 +163,10 @@ router.post('/markers', authenticateToken, validateMarker, async (req, res) => {
   
   // Устанавливаем статус: админ может сразу 'active', остальные - 'pending' (требуют модерации)
   const finalStatus = isAdmin ? 'active' : 'pending';
-  console.log(`📊 Статус метки: ${finalStatus} (пользователь: ${userRole}, админ: ${isAdmin})`);
+  logger.info(`📊 Статус метки: ${finalStatus} (пользователь: ${userRole}, админ: ${isAdmin})`);
   
   // Логируем входящие данные для диагностики
-  console.log('📝 POST /api/markers - Входящие данные:', {
+  logger.info('📝 POST /api/markers - Входящие данные:', {
     title,
     category,
     latitude: typeof latitude === 'number' ? latitude : `(${typeof latitude}) ${latitude}`,
@@ -179,7 +180,7 @@ router.post('/markers', authenticateToken, validateMarker, async (req, res) => {
     // Проверка российских границ
     if (typeof longitude === 'number' && typeof latitude === 'number') {
       const isWithinBounds = isWithinRussiaBounds(Number(latitude), Number(longitude));
-      console.log('🌍 Проверка границ РФ:', { latitude, longitude, isWithinBounds });
+      logger.info('🌍 Проверка границ РФ:', { latitude, longitude, isWithinBounds });
       if (!isWithinBounds) {
         return res.status(422).json({ 
           message: 'Маркер должен находиться в пределах Российской Федерации',
@@ -187,7 +188,7 @@ router.post('/markers', authenticateToken, validateMarker, async (req, res) => {
         });
       }
     } else {
-      console.log('⚠️ Координаты не являются числами:', { latitude, longitude, latType: typeof latitude, lngType: typeof longitude });
+      logger.info('⚠️ Координаты не являются числами:', { latitude, longitude, latType: typeof latitude, lngType: typeof longitude });
     }
 
     // Проверка зон (если есть загруженные зоны)

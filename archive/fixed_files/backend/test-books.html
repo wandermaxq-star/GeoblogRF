@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест API книг</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Тест API книг</h1>
+    
+    <div class="test-section">
+        <h3>1. Создание таблицы books</h3>
+        <button onclick="createBooksTable()">Создать таблицу</button>
+        <div id="create-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. Получение списка книг</h3>
+        <button onclick="getBooks()">Получить книги</button>
+        <div id="books-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. Создание новой книги</h3>
+        <button onclick="createBook()">Создать книгу</button>
+        <div id="create-book-result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3002/api';
+        
+        async function createBooksTable() {
+            const resultDiv = document.getElementById('create-result');
+            resultDiv.innerHTML = '⏳ Создание таблицы...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/books/init-table`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = `
+                        <h4>✅ Таблица создана успешно!</h4>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'error';
+                    resultDiv.innerHTML = `
+                        <h4>❌ Ошибка создания таблицы</h4>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `
+                    <h4>💥 Ошибка подключения</h4>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+        
+        async function getBooks() {
+            const resultDiv = document.getElementById('books-result');
+            resultDiv.innerHTML = '⏳ Получение книг...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/books`);
+                const books = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = `
+                        <h4>✅ Книги получены (${books.length} шт.)</h4>
+                        <pre>${JSON.stringify(books, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'error';
+                    resultDiv.innerHTML = `
+                        <h4>❌ Ошибка получения книг</h4>
+                        <pre>${JSON.stringify(books, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `
+                    <h4>💥 Ошибка подключения</h4>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+        
+        async function createBook() {
+            const resultDiv = document.getElementById('create-book-result');
+            resultDiv.innerHTML = '⏳ Создание книги...';
+            
+            try {
+                const bookData = {
+                    title: 'Тестовая книга',
+                    description: 'Это тестовая книга для проверки API',
+                    category: 'mixed',
+                    status: 'draft'
+                };
+                
+                const response = await fetch(`${API_BASE}/books`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer test-token' // Для тестирования
+                    },
+                    body: JSON.stringify(bookData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = `
+                        <h4>✅ Книга создана успешно!</h4>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'error';
+                    resultDiv.innerHTML = `
+                        <h4>❌ Ошибка создания книги</h4>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `
+                    <h4>💥 Ошибка подключения</h4>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
+
