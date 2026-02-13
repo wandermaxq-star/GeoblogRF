@@ -396,6 +396,17 @@ GET /api/health
 - **Использование памяти**
 - **Активность пользователей**
 
+## 🗃️ Archived dev scripts
+Чтобы снизить шум в корне `backend` и улучшить читаемость репозитория, одноразовые и тестовые скрипты были перемещены в `archive/fixed_files/backend/`. Эти файлы сохранины в архиве (не удалены) и доступны для восстановления при необходимости.
+
+Перенесённые файлы (пример):
+- `testapi.js`, `test_friends_api.js`, `quick-test.js`, `simple-test.js`, `test-api.html`, `test-blog-api.html`, `test-books.html`, `test-events.html`, `test-hashtag-websocket.html`, `test-login.html`
+- `websocket-server.js`, `websocket-standalone.js`, `server-simple.js`
+- `create-test-user.js`, `create-test-user-with-phone.js`, `create-simple-user.js`
+- `1.csv`, `event.csv`, `hashtag-chat-server.js`
+
+> Примечание: инструменты обслуживания и полезные проверки (`check_*.js`, `audit-db.js`, `remove-debug-logs.js`) оставлены в папке `backend/` и помечены как dev-tools.
+
 ## 🌟 Уникальные возможности
 
 ### Интерактивные посты
