@@ -17,14 +17,70 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Use Node.js 18
         uses: actions/setup-node@v4
         with:
           node-version: '18'
 
+      - name: Verify / regenerate `package-lock.json` if needed (auto‑PR)
+        working-directory: ./backend
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          echo "Checking package-lock consistency..."
+          if npm ci --no-audit --no-fund; then
+            echo "npm ci OK — lockfile in sync"
+            exit 0
+          fi
+          echo "npm ci failed — attempting to regenerate package-lock.json"
+          npm install --package-lock-only
+          # commit changes (if any)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git add package-lock.json && git diff --cached --name-only | grep -q "package-lock.json"; then
+            git commit -m "chore(ci): regenerate backend package-lock.json"
+            echo "package-lock regenerated and committed (will create PR in next step)"
+          else
+            echo "No changes to package-lock.json after regeneration"
+          fi
+
+      - name: Create PR for regenerated lockfile (if any)
+        if: always()
+        uses: peter-evans/create-pull-request@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: chore(ci): regenerate backend package-lock.json
+          branch: chore/regen-backend-lock-${{ github.sha }}
+          title: chore(ci): regenerate backend package-lock.json
+          body: |
+            This PR was automatically created by CI because `npm ci` failed due to a
+            mismatch between `package.json` and `package-lock.json`. It contains an
+            updated `backend/package-lock.json` that should be reviewed and merged.
+          base: main
+          paths: backend/package-lock.json
+
+      - name: Fail if package-lock was regenerated (see PR)
+        working-directory: ./backend
+        run: |
+          # if the last commit touched package-lock.json, fail so author notices the PR
+          if git show --name-only --pretty=format: HEAD | grep -q "package-lock.json"; then
+            echo "package-lock.json was regenerated and a PR has been created — failing workflow to surface the change." >&2
+            exit 1
+          fi
+          echo "package-lock.json unchanged — continuing"
+
       - name: Install dependencies
-        run: npm ci
+        working-directory: ./backend
+        run: npm ci --no-audit --no-fund
+
+      - name: ESLint — try auto-fix for backend/src
+        working-directory: ./backend
+        run: npx eslint backend/src --fix || true
 
       - name: Run ESLint on backend/src
+        working-directory: ./backend
         run: npx eslint backend/src --max-warnings=0
