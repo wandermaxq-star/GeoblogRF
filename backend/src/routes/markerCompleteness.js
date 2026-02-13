@@ -1,9 +1,8 @@
 import express from 'express';
 import pool from '../../db.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { 
 import logger from '../../logger.js';
-
+import { 
   calculateMarkerCompleteness, 
   getStatusDescription,
   getPriorityImprovements,

@@ -1,8 +1,7 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
-import { 
 import logger from '../../logger.js';
-
+import { 
   checkForDuplicateMarkers,
   getNearbyIncompleteMarkers,
   checkUserCanCreateMarker

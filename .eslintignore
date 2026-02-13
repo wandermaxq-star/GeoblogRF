@@ -4,3 +4,10 @@ archive/
 archive/**
 coverage/
 **/package-lock.json
+
+# Backend: ignore SQL / migrations / docs for ESLint
+backend/src/migrations/**
+backend/src/database/migrations/**
+backend/src/**/*.sql
+backend/src/**/*.md
+backend/src/**/*.ts
