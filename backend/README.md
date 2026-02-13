@@ -180,7 +180,17 @@ LOG_FILE=logs/app.log
 # WebSocket
 WS_PORT=8080
 WS_HOST=localhost
+
+# OpenRouteService (required for routing) — set in production
+OPENROUTE_SERVICE_API_KEY=your_openrouteservice_api_key
+
+# SMS provider (required in production)
+SMS_RU_API_ID=your_sms_ru_api_id
 ```
+
+> Security notes:
+- Removed hard-coded OpenRouteService token from the code — `OPENROUTE_SERVICE_API_KEY` is now required and the server will return 503 when missing.
+- `SMS_RU_API_ID` must be provided in production (service will fail fast if missing).
 
 ## 📋 Команды
 

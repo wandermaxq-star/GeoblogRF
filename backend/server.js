@@ -318,7 +318,12 @@ app.post('/ors/v2/directions/:profile/geojson', async (req, res) => {
     }
 
     // Проверяем API ключ
-    const apiKey = process.env.OPENROUTE_SERVICE_API_KEY || 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYwOGRiYTc1N2I2MzBlM2Q0NmY3NzAzOThlM2M1YjEwODQxNGU5ZmZiYTEwY2Q4YjRlZWU4YzRlIiwiaCI6Im11cm11cjY0In0=';
+    // OpenRouteService API key must come from env. Do NOT fall back to a hard-coded token.
+    const apiKey = process.env.OPENROUTE_SERVICE_API_KEY;
+    if (!apiKey) {
+      logger.error('OpenRouteService API key is not configured (OPENROUTE_SERVICE_API_KEY)');
+      return res.status(503).json({ error: 'OpenRouteService API key not configured' });
+    }
 
     const response = await fetch(`https://api.openrouteservice.org/v2/directions/${profile}/geojson`, {
       method: 'POST',
@@ -440,8 +445,12 @@ async function startServer() {
   }
 }
 
-// Запускаем сервер
-startServer();
+// Экспортируем `app` для тестов и запускаем сервер только в ненастроенном тестовом окружении
+export default app;
+
+if (process.env.NODE_ENV !== 'test') {
+  startServer();
+}
 
 // Глобальные ловушки ошибок, чтобы процесс не «умирал» молча
 process.on('unhandledRejection', (reason) => {

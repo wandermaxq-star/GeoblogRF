@@ -4,9 +4,14 @@ import logger from '../../logger.js';
 
 class SMSService {
   constructor() {
-    this.apiId = process.env.SMS_RU_API_ID || 'test-api-id';
+    this.apiId = process.env.SMS_RU_API_ID || null;
     this.baseUrl = 'https://sms.ru';
     this.isTestMode = process.env.NODE_ENV !== 'production';
+
+    // Fail fast in production when SMS provider credentials are missing
+    if (!this.apiId && process.env.NODE_ENV === 'production') {
+      throw new Error('SMS_RU_API_ID is required in production environment');
+    }
   }
 
   /**
