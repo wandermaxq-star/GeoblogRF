@@ -1,9 +1,14 @@
-import request from 'supertest';
-import fs from 'fs';
-import path from 'path';
-import app from '../server.js';
+const request = require('supertest');
+const fs = require('fs');
+const path = require('path');
+
+let app;
 
 describe('Upload endpoint', () => {
+  beforeAll(async () => {
+    app = (await import('../server.js')).default;
+  });
+
   test('accepts image upload (guest)', async () => {
     const buffer = Buffer.from([0x89,0x50,0x4E,0x47]); // PNG header (partial)
 

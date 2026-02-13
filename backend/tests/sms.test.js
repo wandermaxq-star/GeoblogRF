@@ -1,6 +1,10 @@
-import smsService from '../src/services/smsService.js';
+let smsService;
 
 describe('SMS service (test mode)', () => {
+  beforeAll(async () => {
+    smsService = (await import('../src/services/smsService.js')).default;
+  });
+
   test('generateCode returns 6-digit string', () => {
     const code = smsService.generateCode();
     expect(typeof code).toBe('string');
