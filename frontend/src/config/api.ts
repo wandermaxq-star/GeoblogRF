@@ -1,6 +1,6 @@
 export const API_KEYS = {
-  YANDEX_MAPS: '36b83eab-e2fd-41bd-979d-b9044cfffeab',
-  STADIA_MAPS: '63f59cb0-85af-464d-8f87-fc84e01f03bf',
-  // ORS (OpenRouteService) — нужен бесплатный ключ с https://openrouteservice.org/dev/#/signup
-  ORS: '',
+  YANDEX_MAPS: import.meta.env.VITE_YANDEX_MAPS_API_KEY || '',
+  STADIA_MAPS: import.meta.env.VITE_STADIA_MAPS_API_KEY || '',
+  // ORS (OpenRouteService)
+  ORS: import.meta.env.VITE_OPENROUTESERVICE_API_KEY || '',
 };

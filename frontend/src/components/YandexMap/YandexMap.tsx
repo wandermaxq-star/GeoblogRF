@@ -168,7 +168,8 @@ const YandexMap: React.FC<YandexMapProps> = ({
         }
         // Загружаем скрипт
         const script = document.createElement('script');
-        script.src = 'https://api-maps.yandex.ru/2.1/?apikey=36b83eab-e2fd-41bd-979d-b9044cfffeab&lang=ru_RU';
+        const yandexKey = import.meta.env.VITE_YANDEX_MAPS_API_KEY || '';
+        script.src = `https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(yandexKey)}&lang=ru_RU`;
         script.async = true;
         
         let resolved = false;

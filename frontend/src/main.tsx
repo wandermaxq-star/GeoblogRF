@@ -45,7 +45,8 @@ import ErrorBoundary from './components/ErrorBoundary';
     const existingScript = document.querySelector('script[src*="api-maps.yandex.ru"]');
     if (!existingScript) {
       const script = document.createElement('script');
-      script.src = 'https://api-maps.yandex.ru/2.1/?apikey=36b83eab-e2fd-41bd-979d-b9044cfffeab&lang=ru_RU';
+      const yandexKey = import.meta.env.VITE_YANDEX_MAPS_API_KEY || '';
+      script.src = `https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(yandexKey)}&lang=ru_RU`;
       script.async = true;
       script.defer = true;
       // Начинаем загрузку скрипта в фоне
