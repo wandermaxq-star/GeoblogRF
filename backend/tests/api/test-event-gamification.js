@@ -12,7 +12,7 @@ async function testEventGamification() {
     const userData = {
       username: 'gamification_test_user',
       email: 'gamification_test@test.com',
-      password: 'test123456'
+      password: TEST_PWD
     };
 
     const userResponse = await fetch(`${API_BASE_URL}/api/users/register`, {

@@ -1,9 +1,10 @@
 import http from 'http';
+import { ADMIN_PWD } from '../test-credentials.js';
 
 // Тестируем вход с новым простым пользователем
 const testData = {
   email: 'admin@test.com',
-  password: 'admin123'
+  password: ADMIN_PWD
 };
 
 const postData = JSON.stringify(testData);

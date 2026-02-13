@@ -2,7 +2,7 @@ import http from 'http';
 
 const postData = JSON.stringify({
   email: 'Testuser@example.com',
-  password: 'test123'
+  password: TEST_PWD
 });
 
 const options = {

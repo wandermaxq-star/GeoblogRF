@@ -14,7 +14,7 @@ async function testSMSVerification() {
       body: JSON.stringify({
         email: 'test-sms-new@example.com',
         username: 'test-sms-user-new',
-        password: 'test123',
+        password: TEST_PWD,
         phone: '+79991234568',
         first_name: 'Тест',
         last_name: 'SMS'

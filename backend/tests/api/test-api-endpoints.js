@@ -5,7 +5,7 @@ const BASE_URL = 'http://localhost:3002/api';
 // Тестовые данные для входа (используем созданного тестового пользователя)
 const testUser = {
   email: 'testapi@example.com',
-  password: 'testpass123'
+  password: TEST_PWD
 };
 
 async function testAPIEndpoints() {

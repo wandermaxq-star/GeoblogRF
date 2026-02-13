@@ -1,4 +1,5 @@
 import fetch from 'node-fetch';
+import { NEW_PWD } from '../test-credentials.js';
 
 async function testPasswordReset() {
   console.log('🔐 Тестируем восстановление пароля...\n');
@@ -27,11 +28,12 @@ async function testPasswordReset() {
 
     // 2. Получаем код из базы данных
     const { Pool } = await import('pg');
+    const DB_PWD = process.env.TEST_DB_PASSWORD || 'pg_temp';
     const pool = new Pool({
       user: 'bestuser_temp',
       host: 'localhost',
       database: 'bestsite',
-      password: '55555',
+      password: DB_PWD,
       port: 5432,
     });
 
@@ -62,7 +64,7 @@ async function testPasswordReset() {
       body: JSON.stringify({
         phone: '+79991234568',
         code: resetCode,
-        newPassword: 'newpassword123'
+        newPassword: NEW_PWD
       }),
     });
 

@@ -1,4 +1,5 @@
 import http from 'http';
+import { TEST_PWD } from '../test-credentials.js';
 
 // Тестируем разные варианты данных для входа
 const testCases = [
@@ -6,21 +7,21 @@ const testCases = [
     name: 'Testuser@example.com с test123',
     data: {
       email: 'Testuser@example.com',
-      password: 'test123'
+      password: TEST_PWD
     }
   },
   {
     name: 'test@example.com с password123',
     data: {
       email: 'test@example.com',
-      password: 'password123'
+      password: TEST_PWD
     }
   },
   {
     name: 'newuser@example.com (проверим)',
     data: {
       email: 'newuser@example.com',
-      password: 'password123'
+      password: TEST_PWD
     }
   }
 ];

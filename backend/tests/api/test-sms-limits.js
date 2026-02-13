@@ -14,7 +14,7 @@ async function testSMSSendLimits() {
       body: JSON.stringify({
         email: 'limit-test-1@example.com',
         username: 'limit-test-1',
-        password: 'test123',
+        password: TEST_PWD,
         phone: testPhone,
         first_name: 'Тест',
         last_name: 'Лимитов'

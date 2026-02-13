@@ -3,7 +3,7 @@ import http from 'http';
 // Тестируем вход с данными, которые пользователь вводит на фронтенде
 const testData = {
   email: 'Testuser@example.com',
-  password: 'test123'
+  password: TEST_PWD
 };
 
 const postData = JSON.stringify(testData);

@@ -11,7 +11,7 @@ async function testAuth() {
       },
       body: JSON.stringify({
         email: 'test@example.com',
-        password: 'test123'
+        password: TEST_PWD
       }),
     });
     
