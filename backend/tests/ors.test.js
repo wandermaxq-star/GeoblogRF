@@ -1,14 +1,11 @@
-const request = require('supertest');
-const nock = require('nock');
-
-let app;
+import request from 'supertest';
+import nock from 'nock';
+import app from '../server.js';
 
 describe('ORS proxy', () => {
-  beforeAll(async () => {
+  beforeAll(() => {
     process.env.OPENROUTE_SERVICE_API_KEY = 'test-key';
-    app = (await import('../server.js')).default;
   });
-
   afterEach(() => {
     nock.cleanAll();
   });
