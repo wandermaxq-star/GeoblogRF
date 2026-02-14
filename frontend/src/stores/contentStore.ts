@@ -55,9 +55,10 @@ export interface ContentState {
 
 export const useContentStore = create<ContentState>()(
   subscribeWithSelector((set, get) => ({
-    // Начальное состояние - карта открыта сразу для быстрой загрузки
-    leftContent: 'map',
-    rightContent: null,
+    // Начальное состояние - посты как главная страница (без карты)
+    // Карта включается через Sidebar или при навигации на /map
+    leftContent: null,
+    rightContent: 'posts',
     isMobile: typeof window !== 'undefined' ? window.innerWidth < 768 : false,
     // По умолчанию показываем карту на фоне (можно скрыть через setShowBackgroundMap)
     showBackgroundMap: true,
