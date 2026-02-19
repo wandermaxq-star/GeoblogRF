@@ -76,7 +76,7 @@ const PlannerPage: React.FC = () => {
 
   // Фильтры и настройки карты (как в десктопной версии)
   const [draftFilters, setDraftFilters] = useState({
-    categories: [] as string[],
+    categories: ['attraction'] as string[],
     radiusOn: false,
     radius: 10,
     preset: null as string | null,
@@ -115,7 +115,7 @@ const PlannerPage: React.FC = () => {
 
   const handleReset = () => {
     const defaultFilters = {
-      categories: [],
+      categories: ['attraction'],
       radiusOn: false,
       radius: 10,
       preset: null,

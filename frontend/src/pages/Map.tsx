@@ -390,7 +390,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
     radius: number;
     preset: string | null;
   }>({
-    categories: [],
+    categories: ['attraction'],
     radiusOn: false,
     radius: 10,
     preset: null,
@@ -701,7 +701,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
 
   const handleReset = () => {
     const defaultFilters = {
-      categories: [],
+      categories: ['attraction'],
       radiusOn: false,
       radius: 10,
       preset: null,
