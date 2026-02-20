@@ -1,7 +1,7 @@
 import React from 'react';
 import StarRating from '../ui/StarRating';
 import { useRating } from '../../hooks/useRating';
-import { X, Calendar, MapPin, Users, Clock, Star, MessageCircle, Map, ExternalLink } from 'lucide-react';
+import { X, Calendar, MapPin, Clock, Star, MessageCircle } from 'lucide-react';
 import { ExternalEvent } from '../../services/externalEventsService';
 import { useFavorites } from '../../contexts/FavoritesContext';
 import ReportButton from '../Moderation/ReportButton';
@@ -94,195 +94,175 @@ export const EventsListModal: React.FC<EventsListModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-transparent backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+    <div
+      className="absolute inset-0 z-50 flex items-center justify-center p-4"
+      style={{
+        borderRadius: 'inherit',
+        background: 'rgba(0, 0, 0, 0.3)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+      }}
+    >
+      <div
+        className="w-full max-h-[85%] overflow-hidden flex flex-col animate-[slideUpGlass_0.35s_ease-out]"
+        style={{
+          maxWidth: 'min(92%, 480px)',
+          background: 'linear-gradient(135deg, rgba(30, 20, 60, 0.72), rgba(40, 30, 80, 0.65))',
+          backdropFilter: 'blur(24px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          borderRadius: '28px',
+          boxShadow: '0 16px 48px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+        }}
+      >
         {/* Заголовок */}
-        <div className="bg-gradient-to-r from-blue-500 to-indigo-500 px-6 py-4 text-white">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Calendar className="w-6 h-6 mr-3" />
-              <div>
-                <h2 className="text-xl font-bold">События {date}</h2>
-                <p className="text-blue-100 text-sm">{events.length} мероприятий найдено</p>
-              </div>
+        <div className="px-5 py-3.5 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(168, 85, 247, 0.25)', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+              <Calendar className="w-4.5 h-4.5 text-purple-300" />
             </div>
-            <button
-              onClick={onClose}
-              className="text-white/80 hover:text-white transition-colors p-2 rounded-full hover:bg-white/10"
-            >
-              <X className="w-6 h-6" />
-            </button>
+            <div>
+              <h2 className="text-base font-bold text-white/95 leading-tight">События {date}</h2>
+              <p className="text-xs text-white/50">{events.length} мероприятий</p>
+            </div>
           </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"
+            style={{ background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.1)' }}
+          >
+            <X className="w-4 h-4 text-white/70" />
+          </button>
         </div>
 
-        {/* Содержимое */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-          <div className="grid gap-4">
-            {events.map((event) => (
-              <div
-                key={event.id}
-                className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-all duration-200 cursor-pointer group"
-                onClick={() => onEventClick(event)}
-              >
-                {/* Заголовок и источник */}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <h3 className="font-bold text-lg text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">
+        {/* Карточки событий */}
+        <div className="px-4 py-3 overflow-y-auto flex-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.15) transparent' }}>
+          <div className="flex flex-col gap-3">
+            {events.map((event) => {
+              const eventAny = event as any;
+              let mainPhoto: string | null = null;
+              if (eventAny.cover_image_url) mainPhoto = eventAny.cover_image_url;
+              else if (event.image_url) mainPhoto = event.image_url;
+              else if (eventAny.photo_urls) {
+                const photos = Array.isArray(eventAny.photo_urls)
+                  ? eventAny.photo_urls.filter(Boolean)
+                  : typeof eventAny.photo_urls === 'string'
+                    ? eventAny.photo_urls.split(',').map((s: string) => s.trim()).filter(Boolean)
+                    : [];
+                if (photos.length > 0) mainPhoto = photos[0];
+              }
+
+              return (
+                <div
+                  key={event.id}
+                  className="group cursor-pointer transition-all duration-200 hover:scale-[1.01]"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '20px',
+                    padding: '14px',
+                    boxShadow: '0 2px 12px rgba(0, 0, 0, 0.1)',
+                  }}
+                  onClick={() => onEventClick(event)}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                    e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                  }}
+                >
+                  {/* Верхняя строка: название + действия */}
+                  <div className="flex items-start justify-between gap-2 mb-2.5">
+                    <h3 className="font-semibold text-sm text-white/90 leading-snug line-clamp-2 flex-1 group-hover:text-purple-200 transition-colors">
                       {event.title}
                     </h3>
-                    <div className="flex items-center mt-1 space-x-3">
-                      <span className="text-2xl" title={`Источник: ${event.source}`}>
-                        {getSourceIcon(event.source)}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {event.id && <EventRating eventId={event.id} />}
+                      <button
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
+                        title={isFavorite(event) ? 'В избранном' : 'В избранное'}
+                        onClick={(e) => { e.stopPropagation(); toggleFavorite(event); }}
+                      >
+                        <Star className={`w-3.5 h-3.5 ${isFavorite(event) ? 'text-yellow-400 fill-yellow-400' : 'text-white/40'}`} />
+                      </button>
+                      <button
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
+                        title="Обсуждения"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 text-white/40" />
+                      </button>
+                      <ReportButton
+                        contentId={event.id.toString()}
+                        contentType="event"
+                        contentTitle={event.title}
+                        variant="icon"
+                        size="sm"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center"
+                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' } as any}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Фото + описание в строку */}
+                  <div className="flex gap-3 mb-2.5">
+                    {/* Миниатюра фото */}
+                    <div
+                      className="w-20 h-20 shrink-0 rounded-2xl overflow-hidden flex items-center justify-center"
+                      style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.06)' }}
+                    >
+                      {mainPhoto ? (
+                        <img src={mainPhoto} alt={event.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="text-white/20 text-2xl">📷</div>
+                      )}
+                    </div>
+                    {/* Описание */}
+                    <div className="flex-1 min-w-0">
+                      {event.description && (
+                        <p className="text-xs text-white/50 line-clamp-3 leading-relaxed mb-1.5">
+                          {event.description}
+                        </p>
+                      )}
+                      {event.price && (
+                        <span className="text-xs text-emerald-300 font-medium">{event.price}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Мета-информация + кнопка */}
+                  <div className="flex items-center justify-between" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '10px' }}>
+                    <div className="flex items-center gap-3 text-xs text-white/45 overflow-hidden">
+                      <span className="flex items-center gap-1 shrink-0">
+                        <Clock className="w-3 h-3 text-purple-300/60" />
+                        {formatDate(event.start_date)}
                       </span>
-                      {event.category && (
-                        <span className="text-lg" title="Категория">
-                          {getCategoryIcon(event.category)}
+                      {event.location?.address && (
+                        <span className="flex items-center gap-1 truncate">
+                          <MapPin className="w-3 h-3 text-rose-300/60 shrink-0" />
+                          <span className="truncate">{event.location.address}</span>
                         </span>
                       )}
                     </div>
-                  </div>
-                  
-                  {/* Действия */}
-                  <div className="flex space-x-2 ml-4 items-center">
-                    {event.id && (
-                      <EventRating eventId={event.id} />
-                    )}
                     <button
-                      className={`p-2 bg-white/80 rounded-lg hover:bg-white transition-colors ${isFavorite(event) ? 'ring-2 ring-yellow-400' : ''}`}
-                      title={isFavorite(event) ? 'В избранном' : 'В избранное'}
-                      onClick={(e) => { e.stopPropagation(); toggleFavorite(event); }}
+                      onClick={(e) => { e.stopPropagation(); onEventClick(event); }}
+                      className="shrink-0 px-3 py-1.5 text-xs font-semibold rounded-xl transition-all hover:scale-105"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.4), rgba(124, 58, 237, 0.5))',
+                        border: '1px solid rgba(168, 85, 247, 0.3)',
+                        color: 'rgba(255, 255, 255, 0.9)',
+                      }}
                     >
-                      <Star className={`w-4 h-4 ${isFavorite(event) ? 'text-yellow-500 fill-yellow-500' : 'text-gray-500'}`} />
-                    </button>
-                    <button className="p-2 bg-white/80 rounded-lg hover:bg-white transition-colors" title="Обсуждения" onClick={(e)=>e.stopPropagation()}>
-                      <MessageCircle className="w-4 h-4 text-blue-500" />
-                    </button>
-                    <ReportButton
-                      contentId={event.id.toString()}
-                      contentType="event"
-                      contentTitle={event.title}
-                      variant="icon"
-                      size="sm"
-                      className="p-2 bg-white/80 rounded-lg hover:bg-white transition-colors"
-                    />
-                    <button className="p-2 bg-white/80 rounded-lg hover:bg-white transition-colors" title="Построить маршрут" onClick={(e)=>e.stopPropagation()}>
-                      <Map className="w-4 h-4 text-green-500" />
+                      Детали
                     </button>
                   </div>
                 </div>
-
-                {/* Основная информация с фото */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  {/* Левая колонка: фото и информация под ним */}
-                  <div className="space-y-3">
-                    {/* Главное фото события */}
-                    <div className="relative w-full h-48 rounded-lg overflow-hidden bg-gray-200">
-                      {(() => {
-                        const eventAny = event as any;
-                        // Получаем главное фото (приоритет: cover_image_url > image_url > первое из photo_urls)
-                        let mainPhoto: string | null = null;
-                        if (eventAny.cover_image_url) {
-                          mainPhoto = eventAny.cover_image_url;
-                        } else if (event.image_url) {
-                          mainPhoto = event.image_url;
-                        } else if (eventAny.photo_urls) {
-                          let allPhotos: string[] = [];
-                          if (Array.isArray(eventAny.photo_urls)) {
-                            allPhotos = eventAny.photo_urls.filter(Boolean);
-                          } else if (typeof eventAny.photo_urls === 'string') {
-                            allPhotos = eventAny.photo_urls.split(',').map((s: string) => s.trim()).filter(Boolean);
-                          }
-                          if (allPhotos.length > 0) {
-                            mainPhoto = allPhotos[0];
-                          }
-                        }
-                        
-                        return mainPhoto ? (
-                          <img 
-                            src={mainPhoto} 
-                            alt={event.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
-                            <div className="text-center">
-                              <div className="text-2xl mb-2">📷</div>
-                              <div>Фото сюда вставлять</div>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                    
-                    {/* Дата и адрес под фото */}
-                    <div className="space-y-2">
-                      <div className="flex items-center text-gray-600">
-                        <Clock className="w-4 h-4 mr-2 text-blue-500" />
-                        <span className="text-sm">{formatDate(event.start_date)}</span>
-                      </div>
-                      
-                      {event.location?.address && (
-                        <div className="flex items-center text-gray-600">
-                          <MapPin className="w-4 h-4 mr-2 text-red-500" />
-                          <span className="text-sm line-clamp-1">{event.location.address}</span>
-                        </div>
-                      )}
-
-                      {event.attendees_count && (
-                        <div className="flex items-center text-gray-600">
-                          <Users className="w-4 h-4 mr-2 text-green-500" />
-                          <span className="text-sm">{event.attendees_count} участников</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Правая колонка: описание */}
-                  <div className="space-y-2">
-                    {event.description && (
-                      <p className="text-gray-600 text-sm line-clamp-3">
-                        {event.description}
-                      </p>
-                    )}
-                    
-                    {event.price && (
-                      <div className="text-sm">
-                        <span className="text-gray-500">Стоимость: </span>
-                        <span className="font-medium text-green-600">{event.price}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Дополнительные действия */}
-                <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-                  <div className="flex space-x-2">
-                    {event.url && (
-                      <a
-                        href={event.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <ExternalLink className="w-4 h-4 mr-1" />
-                        Подробнее
-                      </a>
-                    )}
-                  </div>
-                  
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEventClick(event);
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium"
-                  >
-                    Открыть детали
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
@@ -295,6 +275,13 @@ export const EventsListModal: React.FC<EventsListModalProps> = ({
         itemType={currentItem?.type}
         itemTitle={currentItem?.title}
       />
+
+      <style>{`
+        @keyframes slideUpGlass {
+          from { opacity: 0; transform: translateY(16px) scale(0.97); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
     </div>
   );
 };

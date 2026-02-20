@@ -2,13 +2,31 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { MockEvent } from '../components/TravelCalendar/mockEvents';
 
+export interface PickedLocation {
+  lat: number;
+  lng: number;
+  address?: string;
+  name?: string;
+  category?: string;
+  type?: string;
+}
+
 export interface EventsState {
   // Открытые события (из календаря) - отображаются на карте
   openEvents: MockEvent[];
   
   // Выбранное событие (для детального просмотра)
   selectedEvent: MockEvent | null;
-  
+
+  // --- Режим выбора места события на карте ---
+  isPickingEventLocation: boolean;
+  pickedEventLocation: PickedLocation | null;
+  // Маркер места события на карте (живёт пока форма открыта)
+  eventLocationMarker: { lat: number; lng: number } | null;
+
+  // Метод: событие, на которое нужно сфокусировать карту
+  focusEvent: MockEvent | null;
+
   // Методы для управления открытыми событиями
   setOpenEvents: (events: MockEvent[]) => void;
   addOpenEvent: (event: MockEvent) => void;
@@ -17,6 +35,15 @@ export interface EventsState {
   
   // Методы для управления выбранным событием
   setSelectedEvent: (event: MockEvent | null) => void;
+  
+  // Picking
+  startPickingLocation: () => void;
+  stopPickingLocation: () => void;
+  setPickedEventLocation: (loc: PickedLocation | null) => void;
+  setEventLocationMarker: (coords: { lat: number; lng: number } | null) => void;
+
+  // Focus
+  setFocusEvent: (event: MockEvent | null) => void;
   
   // Проверка, открыто ли событие
   isEventOpen: (eventId: number) => boolean;
@@ -27,6 +54,10 @@ export const useEventsStore = create<EventsState>()(
     // Начальное состояние
     openEvents: [],
     selectedEvent: null,
+    isPickingEventLocation: false,
+    pickedEventLocation: null,
+    eventLocationMarker: null,
+    focusEvent: null,
     
     // Установка всех открытых событий
     setOpenEvents: (events: MockEvent[]) => {
@@ -62,6 +93,25 @@ export const useEventsStore = create<EventsState>()(
     // Установка выбранного события
     setSelectedEvent: (event: MockEvent | null) => {
       set({ selectedEvent: event });
+    },
+
+    // Pick-location
+    startPickingLocation: () => {
+      set({ isPickingEventLocation: true, pickedEventLocation: null });
+    },
+    stopPickingLocation: () => {
+      set({ isPickingEventLocation: false });
+    },
+    setPickedEventLocation: (loc: PickedLocation | null) => {
+      set({ pickedEventLocation: loc, isPickingEventLocation: false });
+    },
+    setEventLocationMarker: (coords: { lat: number; lng: number } | null) => {
+      set({ eventLocationMarker: coords });
+    },
+
+    // Focus
+    setFocusEvent: (event: MockEvent | null) => {
+      set({ focusEvent: event });
     },
     
     // Проверка, открыто ли событие

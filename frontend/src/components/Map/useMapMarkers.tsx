@@ -199,9 +199,10 @@ export function useMapMarkers(opts: UseMapMarkersOptions) {
         } catch (err) { }
       });
 
-      // Event markers
-      const isEventPanelMode = leftContent && rightContent;
-      const shouldShowEventMarkers = isEventPanelMode && selectedEvent !== null;
+      // Event markers — purple style, always show when calendar is active
+      const calendarIsActive = (leftContent === 'calendar' || rightContent === 'calendar' ||
+        leftContent === 'planner' || rightContent === 'planner');
+      const shouldShowEventMarkers = calendarIsActive && openEvents.length > 0;
 
       if (shouldShowEventMarkers) {
         openEvents.forEach((event: any) => {
@@ -209,13 +210,15 @@ export function useMapMarkers(opts: UseMapMarkersOptions) {
           const lng = event.longitude;
 
           if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-            const categoryColor = '#6b7280';
             const isSelected = selectedEvent?.id === event.id;
-            const iconSize = isSelected ? 50 : 40;
+            const iconSize = isSelected ? 44 : 34;
+            const bgStyle = isSelected
+              ? 'background: linear-gradient(135deg, #a855f7, #7c3aed); box-shadow: 0 0 16px 4px rgba(124,58,237,0.45);'
+              : 'background: linear-gradient(135deg, #7c3aed, #6d28d9); box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
 
             const eventIcon = mapFacade().createDivIcon({
               className: 'event-marker-icon ' + (isSelected ? 'event-marker-selected' : ''),
-              html: '<div class="event-marker-base" style="width: ' + iconSize + 'px; height: ' + iconSize + 'px; background-color: ' + categoryColor + '; border: 2px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); ' + (isSelected ? 'animation: eventMarkerPulse 2s ease-in-out infinite;' : '') + '"><i class="fas fa-calendar" style="color: #ffffff; font-size: ' + (iconSize * 0.4) + 'px;"></i></div>',
+              html: '<div class="event-marker-base" style="width: ' + iconSize + 'px; height: ' + iconSize + 'px; ' + bgStyle + ' border: 2px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; ' + (isSelected ? 'animation: eventMarkerPulse 2s ease-in-out infinite;' : '') + '"><i class="fas fa-calendar" style="color: #ffffff; font-size: ' + (iconSize * 0.4) + 'px;"></i></div>',
               iconSize: [iconSize, iconSize],
               iconAnchor: [iconSize / 2, iconSize],
               popupAnchor: [0, -iconSize],

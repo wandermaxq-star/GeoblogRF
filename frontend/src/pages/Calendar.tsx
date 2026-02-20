@@ -26,7 +26,10 @@ import AdminModerationModal from '../components/Moderation/AdminModerationModal'
 import { getPendingContentCounts } from '../services/localModerationStorage';
 import { offlineContentStorage, OfflineEventDraft } from '../services/offlineContentStorage';
 import { MockEvent } from '../components/TravelCalendar/mockEvents';
-import { FaCloud } from 'react-icons/fa';
+import { FaCloud, FaKeyboard, FaCrosshairs } from 'react-icons/fa';
+import { useEventsStore } from '../stores/eventsStore';
+import { useContentStore } from '../stores/contentStore';
+import { geocodingService } from '../services/geocodingService';
 
 const CalendarPage: React.FC = () => {
   const { registerPanel, unregisterPanel } = usePanelRegistration();
@@ -36,6 +39,29 @@ const CalendarPage: React.FC = () => {
   const [showModerationModal, setShowModerationModal] = useState(false);
   const [moderationCount, setModerationCount] = useState(0);
 
+  // --- eventsStore: pick-location ---
+  const pickedEventLocation = useEventsStore(s => s.pickedEventLocation);
+  const isPickingEventLocation = useEventsStore(s => s.isPickingEventLocation);
+  const startPickingLocation = useEventsStore(s => s.startPickingLocation);
+  const stopPickingLocation = useEventsStore(s => s.stopPickingLocation);
+  const setPickedEventLocation = useEventsStore(s => s.setPickedEventLocation);
+  const setEventLocationMarker = useEventsStore(s => s.setEventLocationMarker);
+  const setFocusEvent = useEventsStore(s => s.setFocusEvent);
+  const leftContent = useContentStore(s => s.leftContent);
+  const rightContent = useContentStore(s => s.rightContent);
+  const hasMapPaired = leftContent === 'map' || rightContent === 'map' || leftContent === 'planner' || rightContent === 'planner';
+  const [locationPickedConfirm, setLocationPickedConfirm] = useState(false);
+
+  // Адресный поиск
+  const [addressQuery, setAddressQuery] = useState('');
+  const [addressResults, setAddressResults] = useState<Array<{name: string; label: string; coordinates: [number, number]}>>([]);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  // Ручной ввод координат
+  const [manualLat, setManualLat] = useState('');
+  const [manualLng, setManualLng] = useState('');
+  // Режим ввода: 'map' | 'coords' | 'address'
+  const [locationInputMode, setLocationInputMode] = useState<'map' | 'coords' | 'address'>('map');
+
   // Загружаем счётчик модерации
   useEffect(() => {
     if (isAdmin) {
@@ -43,6 +69,56 @@ const CalendarPage: React.FC = () => {
       setModerationCount(counts.event);
     }
   }, [isAdmin]);
+
+  // Синхронизация pickedEventLocation из store → eventConstructor
+  useEffect(() => {
+    if (pickedEventLocation) {
+      setEventConstructor(prev => ({
+        ...prev,
+        location: {
+          title: pickedEventLocation.name || prev.location.title,
+          address: pickedEventLocation.address || prev.location.address,
+          coordinates: { lat: pickedEventLocation.lat, lng: pickedEventLocation.lng }
+        }
+      }));
+      setManualLat(pickedEventLocation.lat.toFixed(6));
+      setManualLng(pickedEventLocation.lng.toFixed(6));
+      // Показать подтверждение
+      setLocationPickedConfirm(true);
+      setTimeout(() => setLocationPickedConfirm(false), 4000);
+      // Авто-раскрываем секцию Местоположение
+      setEventConstructor(prev => ({
+        ...prev,
+        showBasicInfo: false,
+        showCategories: false,
+        showLocation: true,
+        showAdditional: false,
+        showSeasonsHashtags: false,
+        showPhotos: false,
+        showAdditionalParams: false
+      }));
+      setLocationInputMode('map');
+      // Сбрасываем после применения
+      setPickedEventLocation(null);
+    }
+  }, [pickedEventLocation]);
+
+  // Поиск адреса с debounce
+  useEffect(() => {
+    if (!addressQuery || addressQuery.trim().length < 3) {
+      setAddressResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsSearchingAddress(true);
+      try {
+        const places = await geocodingService.searchPlaces(addressQuery);
+        setAddressResults(places.map(p => ({ name: p.name, label: p.label, coordinates: p.coordinates })));
+      } catch { setAddressResults([]); }
+      setIsSearchingAddress(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [addressQuery]);
 
 
   // Состояния для боковых панелей
@@ -573,6 +649,7 @@ const CalendarPage: React.FC = () => {
 
   return (
     <MirrorGradientContainer className="page-layout-container page-container calendar-mode">
+      <div style={{ position: 'relative', height: '100%', width: '100%' }}>
       <div className="page-main-area" style={{ height: '100%' }}>
         <div className="page-content-wrapper" style={{ height: '100%' }}>
           <div className="page-main-panel relative" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -620,16 +697,16 @@ const CalendarPage: React.FC = () => {
             {/* Левая выдвигающаяся панель — добавить событие */}
             <GlassPanel
               isOpen={leftPanelOpen}
-              onClose={() => setLeftPanelOpen(false)}
+              onClose={() => { if (!isPickingEventLocation) { stopPickingLocation(); setEventLocationMarker(null); setLeftPanelOpen(false); } }}
               position="left"
               width="400px"
-              closeOnOverlayClick={true}
+              closeOnOverlayClick={!isPickingEventLocation}
               showCloseButton={false}
               className="calendar-panel"
             >
               <GlassHeader
                 title="Добавить событие"
-                onClose={() => setLeftPanelOpen(false)}
+                onClose={() => { stopPickingLocation(); setEventLocationMarker(null); setLeftPanelOpen(false); }}
                 showCloseButton={true}
               />
               <div className="glass-panel-content h-full flex flex-col calendar-panel-content">
@@ -762,39 +839,105 @@ const CalendarPage: React.FC = () => {
 
                   {/* Местоположение */}
                   <div className="border-b-[1.5px] border-[#bcbcbc]">
-                    <button
-                      onClick={() => {
-                        setEventConstructor(prev => ({
-                          ...prev,
-                          showBasicInfo: false,
-                          showCategories: false,
-                          showLocation: !prev.showLocation,
-                          showAdditional: false,
-                          showSeasonsHashtags: false,
-                          showPhotos: false,
-                          showAdditionalParams: false
-                        }));
-                      }}
-                      className="w-full px-4 py-3 text-left flex items-center transition-all duration-300 calendar-accordion-button"
-                    >
-                      <div className="w-8 h-8 flex items-center justify-center text-[#888] mr-3">
-                        <FaMapMarkerAlt />
-                      </div>
-                      <span className="flex-1 text-[#222]" style={{ fontSize: '0.88em', fontWeight: '600' }}>
-                        {eventConstructor.location.title ? `Местоположение: ${eventConstructor.location.title}` : 'Местоположение'}
-                      </span>
-                      <div className="w-4 h-4 flex items-center justify-center text-[#888]">
-                        {eventConstructor.showLocation ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                      </div>
-                    </button>
+                    <div className="flex items-center">
+                      <button
+                        onClick={() => {
+                          setEventConstructor(prev => ({
+                            ...prev,
+                            showBasicInfo: false,
+                            showCategories: false,
+                            showLocation: !prev.showLocation,
+                            showAdditional: false,
+                            showSeasonsHashtags: false,
+                            showPhotos: false,
+                            showAdditionalParams: false
+                          }));
+                        }}
+                        className="flex-1 px-4 py-3 text-left flex items-center transition-all duration-300 calendar-accordion-button"
+                      >
+                        <div className="w-8 h-8 flex items-center justify-center text-[#888] mr-3">
+                          <FaMapMarkerAlt />
+                        </div>
+                        <span className="flex-1 text-[#222]" style={{ fontSize: '0.88em', fontWeight: '600' }}>
+                          {eventConstructor.location.title ? `Местоположение: ${eventConstructor.location.title}` : 'Местоположение'}
+                        </span>
+                        <div className="w-4 h-4 flex items-center justify-center text-[#888]">
+                          {eventConstructor.showLocation ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </div>
+                      </button>
+                      {/* Кнопка быстрого выбора места на карте — прямо на строке аккордеона */}
+                      {hasMapPaired && (
+                        <button
+                          type="button"
+                          title={isPickingEventLocation ? 'Отменить выбор места' : 'Указать место на карте'}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isPickingEventLocation) {
+                              stopPickingLocation();
+                            } else {
+                              startPickingLocation();
+                              setEventConstructor(prev => ({
+                                ...prev,
+                                showBasicInfo: false,
+                                showCategories: false,
+                                showLocation: true,
+                                showAdditional: false,
+                                showSeasonsHashtags: false,
+                                showPhotos: false,
+                                showAdditionalParams: false
+                              }));
+                              setLocationInputMode('map');
+                            }
+                          }}
+                          className={`mr-3 w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 ${
+                            isPickingEventLocation
+                              ? 'bg-violet-600 text-white shadow-lg shadow-violet-300 animate-pulse'
+                              : 'bg-violet-100 text-violet-600 hover:bg-violet-200 hover:shadow-md'
+                          }`}
+                        >
+                          <FaCrosshairs size={16} />
+                        </button>
+                      )}
+                    </div>
                     {eventConstructor.showLocation && (
                       <div className="px-4 py-3 bg-white border-t border-[#bcbcbc]">
                         <div className="space-y-3">
+                          {/* Индикатор режима выбора */}
+                          {isPickingEventLocation && (
+                            <div className="px-3 py-2 bg-violet-50 border border-violet-300 rounded-lg flex items-center justify-between">
+                              <span className="text-violet-700 text-sm font-medium flex items-center gap-2">
+                                <FaCrosshairs size={14} className="animate-spin" style={{ animationDuration: '3s' }} />
+                                Кликните по карте для выбора места...
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => stopPickingLocation()}
+                                className="text-xs text-violet-500 hover:text-violet-700 font-medium"
+                              >
+                                Отмена
+                              </button>
+                            </div>
+                          )}
+                          {/* Подтверждение выбора */}
+                          {locationPickedConfirm && !isPickingEventLocation && (
+                            <div className="px-3 py-2 bg-green-50 border border-green-300 rounded-lg">
+                              <div className="flex items-center gap-2">
+                                <span className="text-green-600 text-sm font-semibold">✅ Место определено!</span>
+                              </div>
+                              {eventConstructor.location.title && (
+                                <div className="text-green-700 text-xs mt-1 font-medium">📍 {eventConstructor.location.title}</div>
+                              )}
+                              {eventConstructor.location.address && (
+                                <div className="text-green-600 text-xs mt-0.5 truncate">{eventConstructor.location.address}</div>
+                              )}
+                            </div>
+                          )}
+                          {/* Название места */}
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Название места</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Название места</label>
                             <input
                               type="text"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-violet-500"
                               value={eventConstructor.location.title}
                               onChange={(e) => setEventConstructor({ 
                                 ...eventConstructor, 
@@ -803,32 +946,249 @@ const CalendarPage: React.FC = () => {
                               placeholder="Название места проведения"
                             />
                           </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Адрес</label>
-                            <input
-                              type="text"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                              value={eventConstructor.location.address}
-                              onChange={(e) => setEventConstructor({ 
-                                ...eventConstructor, 
-                                location: { ...eventConstructor.location, address: e.target.value }
-                              })}
-                              placeholder="Адрес места проведения"
-                            />
+
+                          {/* Переключатель способа ввода */}
+                          <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+                            {hasMapPaired && (
+                              <button
+                                type="button"
+                                onClick={() => setLocationInputMode('map')}
+                                className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
+                                  locationInputMode === 'map'
+                                    ? 'bg-violet-500 text-white shadow-sm'
+                                    : 'text-gray-600 hover:text-violet-600'
+                                }`}
+                              >
+                                <FaCrosshairs size={12} />
+                                На карте
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setLocationInputMode('coords')}
+                              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
+                                locationInputMode === 'coords'
+                                  ? 'bg-violet-500 text-white shadow-sm'
+                                  : 'text-gray-600 hover:text-violet-600'
+                              }`}
+                            >
+                              <FaKeyboard size={12} />
+                              Координаты
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setLocationInputMode('address')}
+                              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
+                                locationInputMode === 'address'
+                                  ? 'bg-violet-500 text-white shadow-sm'
+                                  : 'text-gray-600 hover:text-violet-600'
+                              }`}
+                            >
+                              <FaSearch size={12} />
+                              Адрес
+                            </button>
                           </div>
-                          {/* Компонент выбора места с картой */}
-                          <div className="mt-4">
-                            <EventLocationPicker
-                              location={eventConstructor.location}
-                              onLocationChange={(newLocation) => {
-                                setEventConstructor({
-                                  ...eventConstructor,
-                                  location: newLocation
-                                });
-                              }}
-                              onPreciseClick={() => setShowLocationModal(true)}
-                            />
-                          </div>
+
+                          {/* === Способ 1: Клик по карте === */}
+                          {locationInputMode === 'map' && hasMapPaired && (
+                            <div className="space-y-2">
+                              {isPickingEventLocation ? (
+                                <div className="flex items-center justify-between px-4 py-2.5 bg-violet-50 border border-violet-300 rounded-lg">
+                                  <span className="text-violet-700 text-sm font-medium flex items-center gap-2">
+                                    <FaCrosshairs size={14} className="animate-spin" style={{ animationDuration: '3s' }} />
+                                    Ожидание клика по карте...
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => stopPickingLocation()}
+                                    className="text-xs text-violet-500 hover:text-violet-700 font-medium"
+                                  >
+                                    Отмена
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => startPickingLocation()}
+                                  className="w-full py-2.5 px-4 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-lg font-medium text-sm hover:from-violet-600 hover:to-purple-700 transition-all shadow-md flex items-center justify-center gap-2"
+                                >
+                                  <FaCrosshairs size={14} />
+                                  Указать место на карте
+                                </button>
+                              )}
+                              <p className="text-xs text-gray-500 text-center">
+                                {isPickingEventLocation ? 'При клике будет определено название места, адрес и координаты' : 'Кликните по карте слева для выбора точки'}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* === Способ 2: Ввод координат === */}
+                          {locationInputMode === 'coords' && (
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-xs text-gray-500 mb-1">Широта (lat)</label>
+                                  <input
+                                    type="number"
+                                    step="0.000001"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-violet-500 text-sm"
+                                    value={manualLat}
+                                    onChange={(e) => setManualLat(e.target.value)}
+                                    placeholder="55.7558"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs text-gray-500 mb-1">Долгота (lng)</label>
+                                  <input
+                                    type="number"
+                                    step="0.000001"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-violet-500 text-sm"
+                                    value={manualLng}
+                                    onChange={(e) => setManualLng(e.target.value)}
+                                    placeholder="37.6176"
+                                  />
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const lat = parseFloat(manualLat);
+                                  const lng = parseFloat(manualLng);
+                                  if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                                    alert('Введите корректные координаты');
+                                    return;
+                                  }
+                                  // Обратный геокодинг
+                                  let address = '';
+                                  try {
+                                    const resp = await fetch(
+                                      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ru`,
+                                      { headers: { 'User-Agent': 'Geoblog/1.0' } }
+                                    );
+                                    if (resp.ok) {
+                                      const data = await resp.json();
+                                      address = data.display_name || '';
+                                    }
+                                  } catch { /* ignore */ }
+                                  setEventConstructor(prev => ({
+                                    ...prev,
+                                    location: {
+                                      ...prev.location,
+                                      address: address || prev.location.address,
+                                      coordinates: { lat, lng }
+                                    }
+                                  }));
+                                  // Показать на карте, если есть
+                                  if (hasMapPaired) {
+                                    setFocusEvent({ id: -1, title: 'preview', description: '', date: '', categoryId: '', hashtags: [], latitude: lat, longitude: lng } as any);
+                                  }
+                                }}
+                                className="w-full py-2 px-4 bg-violet-500 text-white rounded-lg text-sm font-medium hover:bg-violet-600 transition-colors"
+                              >
+                                Применить координаты
+                              </button>
+                            </div>
+                          )}
+
+                          {/* === Способ 3: Поиск по адресу === */}
+                          {locationInputMode === 'address' && (
+                            <div className="space-y-2">
+                              <div className="relative">
+                                <FaSearch size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                  type="text"
+                                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-violet-500 text-sm"
+                                  value={addressQuery}
+                                  onChange={(e) => setAddressQuery(e.target.value)}
+                                  placeholder="Введите адрес или название города"
+                                />
+                              </div>
+                              {isSearchingAddress && <div className="text-xs text-gray-500 text-center">Поиск...</div>}
+                              {addressResults.length > 0 && (
+                                <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg">
+                                  {addressResults.map((place, idx) => (
+                                    <button
+                                      key={idx}
+                                      type="button"
+                                      onClick={() => {
+                                        const [lat, lng] = place.coordinates;
+                                        setEventConstructor(prev => ({
+                                          ...prev,
+                                          location: {
+                                            title: prev.location.title || place.name,
+                                            address: place.label,
+                                            coordinates: { lat, lng }
+                                          }
+                                        }));
+                                        setManualLat(lat.toFixed(6));
+                                        setManualLng(lng.toFixed(6));
+                                        setAddressQuery('');
+                                        setAddressResults([]);
+                                        if (hasMapPaired) {
+                                          setFocusEvent({ id: -1, title: 'preview', description: '', date: '', categoryId: '', hashtags: [], latitude: lat, longitude: lng } as any);
+                                        }
+                                      }}
+                                      className="w-full px-3 py-2 text-left text-sm hover:bg-violet-50 border-b border-gray-100 last:border-0 transition-colors"
+                                    >
+                                      <div className="font-medium text-gray-800">{place.name}</div>
+                                      <div className="text-xs text-gray-500 truncate">{place.label}</div>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Текущие координаты (отображение) */}
+                          {eventConstructor.location.coordinates.lat !== 0 && eventConstructor.location.coordinates.lng !== 0 && (
+                            <div className="px-3 py-2 bg-violet-50 border border-violet-200 rounded-lg">
+                              <div className="flex items-center gap-2">
+                                <FaMapMarkerAlt size={14} className="text-violet-500 flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  {eventConstructor.location.title && (
+                                    <div className="text-sm font-semibold text-violet-800 truncate">
+                                      {eventConstructor.location.title}
+                                    </div>
+                                  )}
+                                  <div className="text-xs font-medium text-violet-700">
+                                    {eventConstructor.location.coordinates.lat.toFixed(5)}, {eventConstructor.location.coordinates.lng.toFixed(5)}
+                                  </div>
+                                  {eventConstructor.location.address && (
+                                    <div className="text-xs text-violet-600 truncate mt-0.5">{eventConstructor.location.address}</div>
+                                  )}
+                                </div>
+                                {hasMapPaired && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setFocusEvent({ id: -1, title: 'preview', description: '', date: '', categoryId: '', hashtags: [], latitude: eventConstructor.location.coordinates.lat, longitude: eventConstructor.location.coordinates.lng } as any);
+                                    }}
+                                    className="text-xs text-violet-600 hover:text-violet-800 font-medium whitespace-nowrap"
+                                  >
+                                    Показать →
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Fallback: MiniEventMap для solo-режима */}
+                          {!hasMapPaired && (
+                            <div className="mt-2">
+                              <EventLocationPicker
+                                location={eventConstructor.location}
+                                onLocationChange={(newLocation) => {
+                                  setEventConstructor({
+                                    ...eventConstructor,
+                                    location: newLocation
+                                  });
+                                  setManualLat(newLocation.coordinates.lat.toFixed(6));
+                                  setManualLng(newLocation.coordinates.lng.toFixed(6));
+                                }}
+                                onPreciseClick={() => setShowLocationModal(true)}
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -1212,7 +1572,7 @@ const CalendarPage: React.FC = () => {
                     </div>
                     <div style={{ fontSize: 12, color: '#444' }}>Очки: <span style={{ fontWeight: 700 }}>{pointsEstimate.total}</span> <span style={{ color: '#6b7280' }}>({pointsEstimate.base} + {pointsEstimate.attach})</span></div>
                   </div>
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-2 flex-wrap gap-y-2">
                     {user && (
                       <GlassButton
                         onClick={handleSaveEventOffline}
@@ -1351,8 +1711,8 @@ const CalendarPage: React.FC = () => {
 
       {/* Модальное окно превью события */}
       {showEventPreview && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="absolute inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 rounded-inherit" style={{ borderRadius: 'inherit' }}>
+          <div className="bg-white rounded-xl p-5 w-[90%] max-w-lg max-h-[85%] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-gray-800">Превью события</h2>
               <button
@@ -1418,6 +1778,7 @@ const CalendarPage: React.FC = () => {
           }}
         />
       )}
+      </div>
     </MirrorGradientContainer>
   );
 };

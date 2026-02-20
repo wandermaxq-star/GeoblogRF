@@ -217,7 +217,31 @@ const Map: React.FC<MapProps> = ({
     const openEvents = useEventsStore((state: EventsState) => state.openEvents);
     const selectedEvent = useEventsStore((state: EventsState) => state.selectedEvent);
     const setSelectedEvent = useEventsStore((state: EventsState) => state.setSelectedEvent);
+    const isPickingEventLocation = useEventsStore((state: EventsState) => state.isPickingEventLocation);
+    const setPickedEventLocation = useEventsStore((state: EventsState) => state.setPickedEventLocation);
+    const eventLocationMarker = useEventsStore((state: EventsState) => state.eventLocationMarker);
+    const setEventLocationMarker = useEventsStore((state: EventsState) => state.setEventLocationMarker);
+    const focusEvent = useEventsStore((state: EventsState) => state.focusEvent);
+    const setFocusEvent = useEventsStore((state: EventsState) => state.setFocusEvent);
+    const isPickingEventLocationRef = useRef(false);
     const mapDisplayMode = useMapDisplayMode();
+
+    // Sync picking ref + crosshair cursor
+    useEffect(() => {
+        isPickingEventLocationRef.current = isPickingEventLocation;
+        if (isPickingEventLocation) {
+            setMapMessage(null);
+        }
+        // Crosshair cursor on map container
+        const container = mapRef.current?.getContainer?.();
+        if (container) {
+            if (isPickingEventLocation) {
+                container.style.cursor = 'crosshair';
+            } else {
+                container.style.cursor = '';
+            }
+        }
+    }, [isPickingEventLocation]);
 
     // --- STATE ---
     const [isLoading, setIsLoading] = useState(true);
@@ -728,6 +752,61 @@ const Map: React.FC<MapProps> = ({
 
                 mapRef.current?.on('click', async (e: any) => {
                     if (!mapRef.current) return; // Guard to avoid crashes if map is gone
+
+                    // --- Pick event location mode ---
+                    if (isPickingEventLocationRef.current) {
+                        const clickedLatLng = e.latlng;
+                        setMapMessage('🔍 Ищем информацию об этом месте...');
+
+                        // Сразу ставим маркер через store (он будет жить пока форма открыта)
+                        setEventLocationMarker({ lat: clickedLatLng.lat, lng: clickedLatLng.lng });
+
+                        // Полноценное обнаружение места через placeDiscoveryService (как в «Добавить метку»)
+                        let pickedName = '';
+                        let pickedAddress = '';
+                        let pickedCategory = '';
+                        let pickedType = '';
+
+                        try {
+                            const searchResult = await placeDiscoveryService.discoverPlace(clickedLatLng.lat, clickedLatLng.lng);
+                            if (searchResult.places.length > 0 && searchResult.bestMatch) {
+                                const best = searchResult.bestMatch;
+                                pickedName = best.name || '';
+                                pickedAddress = best.address || '';
+                                pickedCategory = best.category || '';
+                                pickedType = best.type || '';
+                            }
+                        } catch (_) { /* placeDiscovery мог упасть, fallback на Nominatim */ }
+
+                        // Fallback: Nominatim reverse geocode если ничего не нашлось
+                        if (!pickedAddress) {
+                            try {
+                                const resp = await fetch(
+                                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${clickedLatLng.lat}&lon=${clickedLatLng.lng}&accept-language=ru&addressdetails=1`,
+                                    { headers: { 'User-Agent': 'Geoblog/1.0' } }
+                                );
+                                if (resp.ok) {
+                                    const data = await resp.json();
+                                    pickedAddress = data.display_name || '';
+                                    if (!pickedName && data.name) {
+                                        pickedName = data.name;
+                                    }
+                                }
+                            } catch (_) { /* ignore */ }
+                        }
+
+                        setPickedEventLocation({
+                            lat: clickedLatLng.lat,
+                            lng: clickedLatLng.lng,
+                            address: pickedAddress,
+                            name: pickedName,
+                            category: pickedCategory,
+                            type: pickedType,
+                        });
+                        setMapMessage(null);
+                        return;
+                    }
+
                     if (isAddingMarkerModeRef.current) {
                         if (tempMarkerRef.current) {
                             try { mapRef.current.removeLayer(tempMarkerRef.current); } catch (err) { }
@@ -1158,9 +1237,9 @@ const Map: React.FC<MapProps> = ({
             }
         });
 
-        // Event markers
-        const isEventPanelMode = leftContent && rightContent;
-        const shouldShowEventMarkers = isEventPanelMode && selectedEvent !== null;
+        // Event markers — show whenever calendar is paired with map
+        const calendarIsActive = (leftContent as string) === 'calendar' || (rightContent as string) === 'calendar';
+        const shouldShowEventMarkers = calendarIsActive && openEvents.length > 0;
 
         if (shouldShowEventMarkers) {
             openEvents.forEach((event: MockEvent) => {
@@ -1169,16 +1248,6 @@ const Map: React.FC<MapProps> = ({
 
                 if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
                     const category = getCategoryById(event.categoryId);
-                    const colorMap: { [key: string]: string } = {
-                        'bg-red-500': '#ef4444', 'bg-orange-500': '#f97316', 'bg-sky-500': '#0ea5e9',
-                        'bg-emerald-500': '#10b981', 'bg-violet-500': '#8b5cf6', 'bg-amber-500': '#f59e0b',
-                        'bg-pink-500': '#ec4899', 'bg-fuchsia-500': '#d946ef', 'bg-indigo-500': '#6366f1',
-                        'bg-lime-500': '#84cc16', 'bg-cyan-500': '#06b6d4', 'bg-yellow-400': '#facc15',
-                        'bg-rose-500': '#f43f5e', 'bg-purple-600': '#9333ea', 'bg-purple-500': '#a855f7',
-                        'bg-orange-400': '#fb923c', 'bg-teal-500': '#14b8a6', 'bg-blue-400': '#60a5fa',
-                        'bg-neutral-800': '#262626'
-                    };
-                    const categoryColor = category?.color ? (colorMap[category.color] || '#6b7280') : '#6b7280';
 
                     const categoryIconMap: { [key: string]: string } = {
                         'festival': 'fa-bullhorn', 'concert': 'fa-music', 'exhibition': 'fa-image',
@@ -1189,12 +1258,16 @@ const Map: React.FC<MapProps> = ({
                     };
                     const categoryIcon = categoryIconMap[event.categoryId] || 'fa-calendar';
 
+                    // Фиолетовый базовый цвет для всех маркеров событий
+                    const eventBaseColor = '#7c3aed';
+                    const eventSelectedColor = '#a855f7';
+
                     const isSelected = selectedEvent?.id === event.id;
-                    const iconSize = isSelected ? 40 : 32;
+                    const iconSize = isSelected ? 44 : 34;
 
                     const eventIcon = mapFacade().createDivIcon({
                         className: `event-marker-icon ${isSelected ? 'event-marker-selected' : ''}`,
-                        html: `<div class="event-marker-base" style="width: ${iconSize}px; height: ${iconSize}px; background-color: ${categoryColor}; border: 2px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); ${isSelected ? 'animation: eventMarkerPulse 2s ease-in-out infinite;' : ''}"><i class="fas ${categoryIcon}" style="color: #ffffff; font-size: ${iconSize * 0.4}px;"></i></div>`,
+                        html: `<div class="event-marker-base" style="width: ${iconSize}px; height: ${iconSize}px; background: linear-gradient(135deg, ${isSelected ? eventSelectedColor : eventBaseColor}, ${isSelected ? '#c084fc' : '#6d28d9'}); border: 2.5px solid rgba(255,255,255,0.9); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(124,58,237,0.45), 0 0 0 ${isSelected ? '4px' : '0px'} rgba(168,85,247,0.35); ${isSelected ? 'animation: eventMarkerPulse 2s ease-in-out infinite;' : ''} transition: all 0.3s ease;"><i class="fas ${categoryIcon}" style="color: #ffffff; font-size: ${iconSize * 0.38}px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));"></i></div>`,
                         iconSize: [iconSize, iconSize],
                         iconAnchor: [iconSize / 2, iconSize],
                         popupAnchor: [0, -iconSize],
@@ -1276,9 +1349,22 @@ const Map: React.FC<MapProps> = ({
         if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
 
         try {
-            mapRef.current.setView([lat, lng], 14, { animate: true, duration: 0.5 });
+            const map = mapRef.current;
+            const targetZoom = 14;
+            const mapSize = map.getSize();
+
+            if (isTwoPanelMode && mapSize.x > 0) {
+                const projected = map.project([lat, lng], targetZoom);
+                const targetScreenX = mapSize.x * 0.25;
+                const dx = targetScreenX - (mapSize.x / 2);
+                const offsetPoint = mapFacade().point(projected.x - dx, projected.y);
+                const offsetCenter = map.unproject(offsetPoint, targetZoom);
+                map.setView(offsetCenter, targetZoom, { animate: true, duration: 0.5 });
+            } else {
+                map.setView([lat, lng], targetZoom, { animate: true, duration: 0.5 });
+            }
         } catch (error) { }
-    }, [selectedEvent]);
+    }, [selectedEvent, isTwoPanelMode]);
 
     // --- ROUTE RENDER ---
     useEffect(() => {
@@ -1433,12 +1519,54 @@ const Map: React.FC<MapProps> = ({
         if (flyToCoordinates && mapRef.current) {
             const [lng, lat] = flyToCoordinates;
             if (Number.isFinite(lng) && Number.isFinite(lat)) {
-                mapRef.current.flyTo(flyToCoordinates, mapRef.current.getZoom(), { animate: true, duration: 1.2 });
+                const map = mapRef.current;
+                const currentZoom = map.getZoom();
+                const mapSize = map.getSize();
+
+                // В двухоконном режиме смещаем центр, чтобы точка оказалась в видимой части
+                if (isTwoPanelMode && mapSize.x > 0) {
+                    const projected = map.project(flyToCoordinates, currentZoom);
+                    const targetScreenX = mapSize.x * 0.25;
+                    const dx = targetScreenX - (mapSize.x / 2);
+                    const offsetPoint = mapFacade().point(projected.x - dx, projected.y);
+                    const offsetCenter = map.unproject(offsetPoint, currentZoom);
+                    map.flyTo(offsetCenter, currentZoom, { animate: true, duration: 1.2 });
+                } else {
+                    map.flyTo(flyToCoordinates, currentZoom, { animate: true, duration: 1.2 });
+                }
             } else {
                 console.warn('[Map] flyTo skipped — invalid coordinates:', flyToCoordinates);
             }
         }
-    }, [flyToCoordinates]);
+    }, [flyToCoordinates, isTwoPanelMode]);
+
+    // --- FLY TO FOCUSED EVENT ---
+    useEffect(() => {
+        if (focusEvent && mapRef.current) {
+            const lat = focusEvent.latitude;
+            const lng = focusEvent.longitude;
+            if (Number.isFinite(lat) && Number.isFinite(lng) && !isNaN(lat) && !isNaN(lng)) {
+                const map = mapRef.current;
+                const targetZoom = 13;
+                const mapSize = map.getSize();
+
+                // В двухоконном режиме смещаем центр карты влево (на 25% ширины),
+                // чтобы маркер оказался посередине видимой части карты, а не под правой панелью
+                if (isTwoPanelMode && mapSize.x > 0) {
+                    const projected = map.project([lat, lng], targetZoom);
+                    const targetScreenX = mapSize.x * 0.25;
+                    const dx = targetScreenX - (mapSize.x / 2);
+                    const offsetPoint = mapFacade().point(projected.x - dx, projected.y);
+                    const offsetCenter = map.unproject(offsetPoint, targetZoom);
+                    map.flyTo(offsetCenter, targetZoom, { animate: true, duration: 1.2 });
+                } else {
+                    map.flyTo([lat, lng], targetZoom, { animate: true, duration: 1.2 });
+                }
+            }
+            // Сбрасываем после полёта
+            setTimeout(() => setFocusEvent(null), 1500);
+        }
+    }, [focusEvent, setFocusEvent, isTwoPanelMode]);
 
     // --- SEARCH RADIUS CIRCLE ---
     useEffect(() => {
@@ -1877,6 +2005,39 @@ const Map: React.FC<MapProps> = ({
                 {/* selectedMarkerPopup убран — MarkerPopup рендерится только через Leaflet popupopen handler */}
                 {eventPopup}
                 {mapMessage && <MapMessage>{mapMessage}</MapMessage>}
+
+                {/* Фиолетовый баннер режима выбора места события */}
+                {isPickingEventLocation && (
+                    <div style={{
+                        position: 'absolute',
+                        top: 10,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        zIndex: 1000,
+                        background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+                        color: '#fff',
+                        padding: '12px 24px',
+                        borderRadius: 12,
+                        fontWeight: 600,
+                        fontSize: '0.95em',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        boxShadow: '0 4px 20px rgba(124,58,237,0.4)',
+                        pointerEvents: 'auto',
+                        whiteSpace: 'nowrap',
+                    }}>
+                        <span style={{ animation: 'pickBannerPulse 2s ease-in-out infinite', display: 'inline-block' }}>📍</span>
+                        Кликните по карте для выбора места
+                        <button
+                            onClick={() => useEventsStore.getState().stopPickingLocation()}
+                            style={{ marginLeft: 10, background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', padding: '4px 10px', borderRadius: 6, cursor: 'pointer', fontSize: '0.85em' }}
+                        >
+                            Отмена
+                        </button>
+                        <style>{`@keyframes pickBannerPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.2); } } @keyframes pickMarkerPulse { 0%,100% { box-shadow: 0 0 20px 6px rgba(124,58,237,0.5); } 50% { box-shadow: 0 0 30px 10px rgba(124,58,237,0.8); } }`}</style>
+                    </div>
+                )}
 
                 {isDiscoveringPlace && (
                     <div className="map-overlay-loading">

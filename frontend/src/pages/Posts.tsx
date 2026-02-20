@@ -101,6 +101,10 @@ const PostsPage: React.FC = () => {
           // - Показываем свои посты со статусом 'pending' (на модерации)
           if (!isAdmin && user?.id) {
             postsData = postsData.filter((post: PostDTO) => {
+              // Посты без статуса (мок-данные, черновики) — показываем
+              if (!post.status) {
+                return true;
+              }
               // Показываем активные посты всех пользователей
               if (post.status === 'active') {
                 return true;

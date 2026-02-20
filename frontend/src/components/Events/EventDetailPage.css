@@ -1,16 +1,17 @@
 /* Overlay */
 .event-detail-overlay {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: 9999;
+  z-index: 60;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
-  background: rgba(0, 0, 0, 0.3);
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.25);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   animation: fadeInOverlay 0.3s ease-out;
+  border-radius: inherit;
 }
 
 @keyframes fadeInOverlay {
@@ -25,8 +26,8 @@
 /* Контейнер события - прозрачное стекло */
 .event-detail-container {
   width: 100%;
-  max-width: 550px;
-  max-height: 75vh;
+  max-width: 500px;
+  max-height: 90%;
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px) saturate(180%);
   -webkit-backdrop-filter: blur(10px) saturate(180%);

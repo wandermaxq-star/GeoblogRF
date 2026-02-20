@@ -7,7 +7,7 @@ import logger from '../../logger.js';
 const router = express.Router();
 
 // GET /api/posts - Получить все посты
-router.get('/posts', async (req, res) => {
+router.get('/posts', optionalAuthenticateToken, async (req, res) => {
   try {
     const { limit = 50, offset = 0, search, sort = 'created_at DESC' } = req.query;
 

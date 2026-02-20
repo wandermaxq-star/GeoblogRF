@@ -241,6 +241,17 @@ const TravelCalendar: React.FC<TravelCalendarProps> = ({
 
   const addOpenEvent = useEventsStore((state) => state.addOpenEvent);
   const setSelectedEventInStore = useEventsStore((state) => state.setSelectedEvent);
+  const setOpenEvents = useEventsStore((state) => state.setOpenEvents);
+  const setFocusEvent = useEventsStore((state) => state.setFocusEvent);
+
+  // Синхронизируем filteredEvents + mockEvents → eventsStore.openEvents для отображения на карте
+  useEffect(() => {
+    const allEvents = [...filteredEvents, ...mockEvents];
+    const validEvents = allEvents.filter(
+      ev => !isNaN(ev.latitude) && !isNaN(ev.longitude) && ev.latitude !== 0 && ev.longitude !== 0
+    );
+    setOpenEvents(validEvents);
+  }, [filteredEvents, setOpenEvents]);
 
   const handleDateClick = (day: number, month: number, year: number) => {
     const clickedDate = new Date(year, month, day);
@@ -284,6 +295,8 @@ const TravelCalendar: React.FC<TravelCalendarProps> = ({
     setSelectedEvent(mockEvent);
     setShowEventsModal(false);
     setSelectedEventInStore(mockEvent);
+    // Фокус карты на событии
+    setFocusEvent(mockEvent);
   };
 
   const adaptMockEventToExternal = (event: MockEvent): ExternalEvent => ({
@@ -315,7 +328,7 @@ const TravelCalendar: React.FC<TravelCalendarProps> = ({
                   currentDate={currentDate}
                   onDateChange={(d) => setCurrentDate(d)}
                   onMonthChange={(d) => setCurrentDate(d)}
-                  events={[...realEvents, ...pendingEventDrafts]}
+                  events={[...realEvents, ...pendingEventDrafts, ...mockEvents]}
                   selectedDate={selectedDate}
                   onDateClick={handleDateClick}
                   onSearchClick={onSearchClick}

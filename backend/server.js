@@ -199,7 +199,7 @@ app.get('/api/test', (req, res) => {
     app.use('/api/marker-completeness', markerCompletenessModule.default || markerCompletenessModule);
     app.use('/api/marker-duplication', markerDuplicationModule.default || markerDuplicationModule);
     app.use('/api/event-gamification', eventGamificationModule.default || eventGamificationModule);
-    app.use('/api/posts', postsRoutesModule.default || postsRoutesModule);
+    app.use('/api', postsRoutesModule.default || postsRoutesModule);
     app.use('/api/sms-stats', smsStatsRoutesModule.default || smsStatsRoutesModule);
     app.use('/api/gamification', gamificationRoutesModule.default || gamificationRoutesModule);
     app.use('/api/global-goals', globalGoalsRoutesModule.default || globalGoalsRoutesModule);

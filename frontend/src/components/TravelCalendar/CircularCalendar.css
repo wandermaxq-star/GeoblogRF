@@ -210,17 +210,28 @@
 }
 .ccal-mini-day.has-event {
   position: relative;
+  background: rgba(168, 85, 247, 0.25);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px rgba(168, 85, 247, 0.6);
+  font-weight: 700;
+  animation: ccal-mini-pulse 2s ease-in-out infinite;
 }
 .ccal-mini-day.has-event::after {
   content: '';
   position: absolute;
-  bottom: 0;
+  bottom: -1px;
   left: 50%;
   transform: translateX(-50%);
   width: 3px;
   height: 3px;
-  background: #fbbf24;
+  background: #a855f7;
   border-radius: 50%;
+  box-shadow: 0 0 4px rgba(168, 85, 247, 0.8);
+}
+
+@keyframes ccal-mini-pulse {
+  0%, 100% { box-shadow: 0 0 0 1.5px rgba(168, 85, 247, 0.6); }
+  50% { box-shadow: 0 0 0 2.5px rgba(168, 85, 247, 0.3), 0 0 6px rgba(168, 85, 247, 0.2); }
 }
 
 /* Бейдж количества событий */
@@ -228,11 +239,18 @@
   font-size: 7px;
   font-weight: 700;
   color: #fff;
-  background: rgba(239,68,68,0.85);
+  background: linear-gradient(135deg, #a855f7, #7c3aed);
   border-radius: 6px;
-  padding: 1px 4px;
-  margin-top: 1px;
+  padding: 1px 5px;
+  margin-top: 2px;
   line-height: 1.2;
+  box-shadow: 0 1px 4px rgba(124, 58, 237, 0.4);
+  animation: ccal-badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes ccal-badge-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
 }
 
 /* ---- Центральный круг с годом ---- */
@@ -383,18 +401,26 @@
 
 .ccal-expanded-day.has-event {
   position: relative;
+  background: rgba(168, 85, 247, 0.18);
+  box-shadow: inset 0 0 0 2px rgba(168, 85, 247, 0.5);
+  animation: ccal-expanded-glow 2.5s ease-in-out infinite;
 }
 
 .ccal-expanded-day.has-event::after {
   content: '';
   position: absolute;
-  right: 6px;
-  bottom: 6px;
-  width: 6px;
-  height: 6px;
+  right: 4px;
+  bottom: 4px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: #f59e0b;
-  box-shadow: 0 0 6px rgba(245,158,11,0.6);
+  background: linear-gradient(135deg, #a855f7, #7c3aed);
+  box-shadow: 0 0 6px rgba(168, 85, 247, 0.7);
+}
+
+@keyframes ccal-expanded-glow {
+  0%, 100% { box-shadow: inset 0 0 0 2px rgba(168, 85, 247, 0.5); }
+  50% { box-shadow: inset 0 0 0 2.5px rgba(168, 85, 247, 0.7), 0 0 12px rgba(168, 85, 247, 0.15); }
 }
 
 .ccal-year {
