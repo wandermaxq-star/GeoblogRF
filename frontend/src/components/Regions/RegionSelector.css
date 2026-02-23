@@ -1,34 +1,47 @@
+/* ============================================
+   RegionSelector.css
+   
+   Dropdown рендерится через React Portal в body,
+   вне backdrop-filter родителя.
+   
+   Тема: CSS-переменные var(--glass-*) из _glass-theme.css
+   автоматически переключаются через [data-theme].
+   
+   Фоны/бордеры тоже через переменные → 
+   работает и light, и dark без дополнительных классов.
+   ============================================ */
+
+/* === КОНТЕЙНЕР === */
 .region-selector-container {
   position: relative;
   display: inline-block;
   z-index: 10000;
 }
 
+/* === КНОПКА В ТОПБАРЕ ===
+   Кнопка внутри glass-тулбара → свой backdrop-filter НЕ нужен,
+   иначе двойной слой стекла даёт белую непрозрачную плашку.
+   ============================================ */
 .region-selector-button {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  /* Тёмный стиль - прозрачный фон внутри тёмного контейнера */
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--glass-card-bg);
+  border: 1px solid var(--glass-border-color);
   border-radius: 12px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--glass-card-text);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: none;
+  transition: all 0.2s ease;
   min-width: 200px;
   text-align: left;
 }
 
 .region-selector-button:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.25);
-  box-shadow: none;
+  background: var(--glass-card-bg-hover);
+  border-color: var(--glass-border-color-hover);
 }
 
 .region-selector-button:active {
@@ -38,7 +51,7 @@
 .region-selector-icon {
   font-size: 16px;
   flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--glass-card-text);
 }
 
 .region-selector-text {
@@ -54,6 +67,7 @@
   opacity: 0.7;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  color: var(--glass-card-text);
 }
 
 .region-selector-value {
@@ -62,49 +76,115 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--glass-card-text);
 }
 
 .region-selector-placeholder {
   font-size: 13px;
   opacity: 0.6;
   font-style: italic;
+  color: var(--glass-text-muted);
 }
 
 .region-selector-arrow {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--glass-text-secondary);
   flex-shrink: 0;
   transition: transform 0.3s ease;
 }
 
+
+/* === DROPDOWN ===
+   Рендерится через Portal в body → отдельный glass-слой
+   поверх карты. Нужен свой backdrop-filter.
+   ============================================ */
 .region-selector-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
   min-width: 320px;
   max-width: 400px;
   max-height: 500px;
-  /* Тёмное матовое стекло для dropdown */
-  background: rgba(30, 30, 35, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border-radius: 14px;
   overflow: hidden;
   z-index: 10001;
   display: flex;
   flex-direction: column;
+  background: var(--region-dropdown-bg, rgba(255, 255, 255, 0.18));
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid var(--glass-border-color);
+  box-shadow: var(--glass-shadow-container);
+  animation: regionFadeIn 0.2s ease-out;
 }
 
+@keyframes regionFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+/* === HEADER === */
 .region-selector-header {
   padding: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--glass-border-color);
 }
 
+.region-selector-title {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--glass-card-text);
+}
+
+.region-selector-subtitle {
+  margin: 0 0 12px 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--glass-card-text-secondary);
+}
+
+
+/* === ВКЛАДКИ === */
+.region-selector-tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+
+.region-selector-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: var(--glass-card-bg);
+  border: 1px solid var(--glass-border-color);
+  color: var(--glass-card-text-secondary);
+}
+
+.region-selector-tab:hover {
+  background: var(--glass-card-bg-hover);
+  border-color: var(--glass-border-color-hover);
+}
+
+.region-selector-tab-active {
+  background: #2563eb !important;
+  color: white !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.region-selector-tab-icon {
+  font-size: 14px;
+}
+
+
+/* === ПОИСК === */
 .region-selector-search {
   position: relative;
   margin-top: 12px;
@@ -116,67 +196,54 @@
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.5);
   font-size: 14px;
   pointer-events: none;
+  color: var(--glass-card-text-muted);
 }
 
 .region-selector-search-input {
   width: 100%;
   padding: 10px 12px 10px 36px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  color: rgba(255, 255, 255, 0.95);
   font-size: 14px;
   outline: none;
   transition: all 0.2s ease;
   box-sizing: border-box;
+  background: var(--glass-card-bg);
+  border: 1px solid var(--glass-border-color);
+  color: var(--glass-card-text);
 }
 
 .region-selector-search-input::placeholder {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--glass-card-text-muted);
 }
 
 .region-selector-search-input:focus {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(76, 201, 240, 0.4);
-  box-shadow: 0 0 0 3px rgba(76, 201, 240, 0.1);
+  background: var(--glass-card-bg-hover);
+  border-color: var(--glass-border-color-hover);
 }
 
-.region-selector-title {
-  margin: 0 0 8px 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.95);
-}
 
-.region-selector-subtitle {
-  margin: 0 0 12px 0;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
-  line-height: 1.4;
-}
-
+/* === БЛОК «ВАШ РЕГИОН» === */
 .region-selector-home {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 12px;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+  background: rgba(59, 130, 246, 0.1);
   border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 12px;
+  overflow: hidden;
+  position: relative;
 }
 
 .region-selector-home-icon-wrapper {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%);
-  border: 2px solid rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.1);
+  border: 2px solid rgba(59, 130, 246, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -216,13 +283,13 @@
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #6b7280;
   font-weight: 600;
+  color: var(--glass-card-text-muted);
 }
 
 .region-selector-home-text {
   font-weight: 600;
-  color: #1e40af;
+  color: #60a5fa;
   font-size: 13px;
 }
 
@@ -232,62 +299,56 @@
   flex-shrink: 0;
 }
 
+
+/* === СПИСОК === */
 .region-selector-list {
   flex: 1;
   overflow-y: auto;
   padding: 8px;
   max-height: 350px;
-  background: rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .region-selector-list::-webkit-scrollbar {
-  width: 6px;
+  display: none;
+  width: 0;
+  height: 0;
 }
 
-.region-selector-list::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 3px;
-}
 
-.region-selector-list::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 3px;
-}
-
-.region-selector-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
-}
-
+/* === ЭЛЕМЕНТ СПИСКА === */
 .region-selector-item {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
   margin-bottom: 4px;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   position: relative;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  background: var(--glass-card-bg);
+  border: 1px solid var(--glass-border-color);
+  color: var(--glass-card-text-secondary);
 }
 
 .region-selector-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: var(--glass-card-bg-hover);
+  border-color: var(--glass-border-color-hover);
+  transform: translateY(-1px);
 }
 
+/* Выбранный */
 .region-selector-item-selected {
-  background: rgba(76, 201, 240, 0.15);
+  background: rgba(76, 201, 240, 0.13);
   border-color: rgba(76, 201, 240, 0.3);
 }
 
 .region-selector-item-selected:hover {
   background: rgba(76, 201, 240, 0.2);
+  border-color: rgba(76, 201, 240, 0.4);
 }
 
 .region-selector-item-home {
@@ -295,14 +356,45 @@
 }
 
 .region-selector-item-disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .region-selector-item-disabled:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--glass-card-bg);
+  transform: none;
 }
 
+
+/* === ТЕКСТ === */
+.region-selector-item-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--glass-card-text);
+}
+
+.region-selector-item-subtitle {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--glass-card-text-muted);
+}
+
+.region-selector-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.region-selector-home-badge {
+  font-size: 14px;
+  color: #3b82f6;
+  margin-left: auto;
+}
+
+
+/* === ЧЕКБОКС === */
 .region-selector-checkbox {
   position: absolute;
   opacity: 0;
@@ -315,18 +407,16 @@
   position: relative;
   width: 20px;
   height: 20px;
-  border: 2px solid rgba(255, 255, 255, 0.4);
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
   flex-shrink: 0;
   transition: all 0.2s ease;
+  border: 2px solid var(--glass-border-color);
+  background: var(--glass-card-bg);
 }
 
 .region-selector-item:hover .region-selector-checkmark {
-  border-color: rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.3);
+  border-color: var(--glass-border-color-hover);
+  background: var(--glass-card-bg-hover);
 }
 
 .region-selector-checkbox:checked ~ .region-selector-checkmark {
@@ -351,24 +441,13 @@
   cursor: not-allowed;
 }
 
-.region-selector-item-name {
-  flex: 1;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 500;
-}
 
-.region-selector-home-badge {
-  font-size: 14px;
-  color: #3b82f6;
-  margin-left: auto;
-}
-
+/* === КНОПКА СКАЧИВАНИЯ === */
 .region-selector-download-button {
   margin-left: auto;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 8px;
   padding: 6px 10px;
   color: #3b82f6;
   font-size: 12px;
@@ -376,36 +455,37 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
 }
 
 .region-selector-download-button:hover {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.25);
+  border-color: rgba(59, 130, 246, 0.4);
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
 }
 
+
+/* === FOOTER === */
 .region-selector-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  border-top: 1px solid var(--glass-border-color);
+  background: transparent;
 }
 
 .region-selector-clear {
   padding: 6px 12px;
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 6px;
+  border-radius: 8px;
   color: #dc2626;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
 }
 
 .region-selector-clear:hover {
@@ -415,81 +495,92 @@
 
 .region-selector-count {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
   font-weight: 500;
+  color: var(--glass-card-text-muted);
 }
 
-/* Адаптивность */
+
+/* === DARK-ТЕМА: dropdown (portal → body, отдельный glass-слой) ===
+   В dark текст должен быть белым, бордеры — светлыми */
+[data-theme="dark"] .region-selector-dropdown {
+  background: var(--region-dropdown-bg, rgba(0, 0, 0, 0.12));
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: var(--glass-shadow-container);
+}
+
+[data-theme="dark"] .region-selector-title,
+[data-theme="dark"] .region-selector-item-name {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .region-selector-subtitle,
+[data-theme="dark"] .region-selector-home-label {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="dark"] .region-selector-search-input {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+[data-theme="dark"] .region-selector-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="dark"] .region-selector-tab {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="dark"] .region-selector-tab:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="dark"] .region-selector-item {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+[data-theme="dark"] .region-selector-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .region-selector-checkmark {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .region-selector-count {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="dark"] .region-selector-header {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .region-selector-footer {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+
+/* === Адаптивность === */
 @media (max-width: 768px) {
   .region-selector-dropdown {
     min-width: 280px;
     max-width: calc(100vw - 32px);
   }
-  
+
   .region-selector-button {
     min-width: 150px;
     padding: 8px 12px;
   }
-  
+
   .region-selector-value {
     font-size: 12px;
   }
-}
-
-/* Вкладки для переключения между регионами и столицами */
-.region-selector-tabs {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  margin-bottom: 8px;
-}
-
-.region-selector-tab {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.region-selector-tab:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.region-selector-tab-active {
-  background: rgba(76, 201, 240, 0.2);
-  border-color: rgba(76, 201, 240, 0.4);
-  color: #4cc9f0;
-}
-
-.region-selector-tab-icon {
-  font-size: 14px;
-}
-
-/* Контент элемента (для столиц с подзаголовком) */
-.region-selector-item-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-}
-
-.region-selector-item-subtitle {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
-  font-weight: 400;
 }
 

@@ -14,7 +14,7 @@
 import { MarkerData } from '../types/marker';
 import apiClient from '../api/apiClient';
 import { recordGuestAction } from './guestActionsService';
-import { addXPForMarker } from '../utils/gamificationHelper';
+// gamificationHelper загружается динамически для уменьшения main bundle
 import storageService from './storageService';
 
 interface ContentSource {
@@ -29,100 +29,12 @@ interface ContentSource {
   hashtags?: string[];
 }
 
-// Единая точка входа через ProjectManager
-import { projectManager } from './projectManager';
+// ProjectManager импортируется напрямую потребителями (Map, Planner, Test)
 
 export const getAllMarkers = async (): Promise<MarkerData[]> => {
   // В markerService.ts, функция getAllMarkers:
   const response = await apiClient.get('/markers');
   console.log('[markerService] Received markers:', response.data?.length || 0);
-
-  // ЕСЛИ API вернул 0 маркеров — показываем тестовые метки (Москва + Владимир)
-  if (!response.data || response.data.length === 0) {
-      console.log('[markerService] No markers from API, using test markers');
-      return [
-          // --- Москва ---
-          {
-            id: 'test-msk-1',
-            title: 'Красная площадь',
-            description: 'Главная площадь Москвы — исторический и культурный центр России. Кремль, Собор Василия Блаженного, ГУМ.',
-            latitude: 55.7539,
-            longitude: 37.6208,
-            category: 'attraction',
-            rating: 4.9,
-            rating_count: 312,
-            photo_urls: [],
-            hashtags: ['#москва', '#кремль', '#история'],
-            author_name: 'GeoBlog',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            likes_count: 48,
-            comments_count: 12,
-            shares_count: 7,
-            status: 'active',
-            is_verified: true,
-          } as MarkerData,
-          {
-            id: 'test-msk-2',
-            title: 'Парк Горького',
-            description: 'Центральный парк культуры и отдыха имени Горького — зелёный оазис у набережной Москвы-реки.',
-            latitude: 55.7312,
-            longitude: 37.6031,
-            category: 'nature',
-            rating: 4.7,
-            rating_count: 187,
-            photo_urls: [],
-            hashtags: ['#парк', '#отдых', '#природа'],
-            author_name: 'GeoBlog',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            likes_count: 35,
-            comments_count: 8,
-            shares_count: 3,
-            status: 'active',
-          } as MarkerData,
-          // --- Владимир ---
-          {
-            id: 'test-vlad-1',
-            title: 'Успенский собор',
-            description: 'Белокаменный собор XII века — памятник ЮНЕСКО. Фрески Андрея Рублёва.',
-            latitude: 56.1267,
-            longitude: 40.4108,
-            category: 'culture',
-            rating: 4.8,
-            rating_count: 94,
-            photo_urls: [],
-            hashtags: ['#владимир', '#собор', '#юнеско'],
-            author_name: 'GeoBlog',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            likes_count: 22,
-            comments_count: 5,
-            shares_count: 2,
-            status: 'active',
-            is_verified: true,
-          } as MarkerData,
-          {
-            id: 'test-vlad-2',
-            title: 'Золотые ворота',
-            description: 'Памятник древнерусской архитектуры XII века. Единственные сохранившиеся городские ворота домонгольской Руси.',
-            latitude: 56.1283,
-            longitude: 40.3975,
-            category: 'attraction',
-            rating: 4.6,
-            rating_count: 72,
-            photo_urls: [],
-            hashtags: ['#владимир', '#история', '#золотоекольцо'],
-            author_name: 'GeoBlog',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            likes_count: 18,
-            comments_count: 3,
-            shares_count: 1,
-            status: 'active',
-          } as MarkerData,
-      ];
-  }
 
   return response.data || [];
 };
@@ -402,12 +314,14 @@ export const createMarker = async (markerData: {
           const hasDescription = !!markerData.description;
           const completeness = hasDescription && hasPhoto ? 100 : hasDescription ? 80 : hasPhoto ? 60 : 40;
 
-          addXPForMarker(marker.id, {
-            hasPhoto,
-            hasDescription,
-            completeness,
-            userId,
-          }).catch(err => console.error('Gamification error:', err));
+          import('../utils/gamificationHelper').then(({ addXPForMarker }) => {
+            addXPForMarker(marker.id, {
+              hasPhoto,
+              hasDescription,
+              completeness,
+              userId,
+            }).catch(err => console.error('Gamification error:', err));
+          }).catch(() => {});
         }
       }, 0);
     }
@@ -470,8 +384,6 @@ export const uploadImage = async (file: File): Promise<string> => {
 export const markerService = {
   getAllMarkers,
   getMarkersByBounds,
-  // Экспортируем ProjectManager для централизованного доступа
-  projectManager,
   getMarkersByCategories, // Новая функция для фильтрации по категориям
   createMarkerFromContent,
   createMarker,

@@ -206,7 +206,7 @@ export const approveContent = async (req, res) => {
       // Legacy 'blogs' support removed — handled via 'posts' case above.
       case 'comments':
         tableName = 'comments';
-        authorIdColumn = 'user_id';
+        authorIdColumn = 'author_id';  // таблица comments использует author_id
         break;
       case 'chats':
         tableName = 'chat_messages';

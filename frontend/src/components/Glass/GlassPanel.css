@@ -19,28 +19,19 @@
   pointer-events: all;
 }
 
-/* Базовые стили панели - ИСПРАВЛЕНО для карты */
+/* Базовые стили панели — Layer 1 через CSS vars */
 .glass-panel {
   position: fixed;
   z-index: 100;
   
-  /* Fallback для старых браузеров */
-  background: rgba(255, 255, 255, 0.1);
-  
-  /* Стеклянный эффект - точно как в MapActionButtons */
-  backdrop-filter: blur(10px) saturate(180%);
-  -webkit-backdrop-filter: blur(10px) saturate(180%); /* Для Safari */
-  
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  /* Layer 1: контейнер */
+  background: var(--glass-l1-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-l1-border);
   border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  
-  /* Градиент для читаемости */
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    rgba(255, 255, 255, 0.05) 100%
-  );
+  box-shadow: var(--glass-l1-shadow);
+  color: var(--glass-text);
   
   /* Анимация появления */
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -62,27 +53,16 @@
 /* Если backdrop-filter не поддерживается */
 @supports not (backdrop-filter: blur(10px)) {
   .glass-panel {
-    background: rgba(255, 255, 255, 0.85); /* Более непрозрачный фон */
+    background: rgba(255, 255, 255, 0.85);
+  }
+  [data-theme="dark"] .glass-panel {
+    background: rgba(0, 0, 0, 0.85);
   }
 }
 
-/* Специальный стиль для панелей календаря - ПРОЗРАЧНОЕ стекло как в map.tsx и planner.tsx */
+/* Специальный стиль для панелей календаря — наследует через CSS vars */
 .calendar-panel.glass-panel {
-  /* Fallback для старых браузеров */
-  background: rgba(255, 255, 255, 0.1) !important;
-  
-  /* Стеклянный эффект - точно как в MapActionButtons и обычных панелях */
-  backdrop-filter: blur(10px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(10px) saturate(180%) !important;
-  
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  
-  /* Градиент для читаемости - ПРОЗРАЧНЫЙ */
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    rgba(255, 255, 255, 0.05) 100%
-  ) !important;
+  /* Всё через CSS vars — никаких хардкодов */
 }
 
 /* Открытое состояние */
@@ -200,36 +180,32 @@
   transform: translate(-50%, calc(-50% - 12vh - 90px)) scale(1);
 }
 
-/* Header панели */
+/* Header панели — Layer 2 */
 .glass-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid var(--glass-l2-border);
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px) saturate(180%);
-  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  background: var(--glass-l2-bg);
 }
 
 .glass-panel-title {
   margin: 0;
   font-size: 24px;
   font-weight: 700;
-  color: rgba(0, 0, 0, 0.9);
+  color: var(--glass-text);
   line-height: 1.2;
 }
 
-/* Кнопка закрытия */
+/* Кнопка закрытия — Layer 2 */
 .glass-panel-close {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px) saturate(180%);
-  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border: 1px solid var(--glass-l2-border);
+  background: var(--glass-l2-bg);
   
   display: flex;
   align-items: center;
@@ -237,18 +213,15 @@
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   
-  color: rgba(0, 0, 0, 0.8);
+  color: var(--glass-text);
   padding: 0;
   margin: 0;
-  
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .glass-panel-close:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: var(--glass-l2-bg-hover);
+  border-color: var(--glass-l2-border-hover);
   transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .glass-panel-close:active {
@@ -262,9 +235,9 @@
   overflow-y: auto;
   overflow-x: hidden;
   
-  /* Кастомный скроллбар в стиле стекла */
+  /* Кастомный скроллбар */
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+  scrollbar-color: var(--glass-l2-border) transparent;
 }
 
 .glass-panel-content::-webkit-scrollbar {
@@ -276,46 +249,29 @@
 }
 
 .glass-panel-content::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--glass-l2-border);
   border-radius: 4px;
-  backdrop-filter: blur(10px);
 }
 
 .glass-panel-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--glass-l2-border-hover);
 }
 
-/* Темная тема */
+/* .dark class — legacy, всё автоматически через CSS vars */
 .glass-panel.dark {
-  background: rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  
-  background: linear-gradient(
-    135deg,
-    rgba(0, 0, 0, 0.2) 0%,
-    rgba(0, 0, 0, 0.1) 100%
-  );
-}
-
-@supports not (backdrop-filter: blur(10px)) {
-  .glass-panel.dark {
-    background: rgba(0, 0, 0, 0.75);
-  }
+  /* Пустой — наследует через CSS vars */
 }
 
 .glass-panel.dark .glass-panel-title {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--glass-text);
 }
 
 .glass-panel.dark .glass-panel-close {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
+  /* Наследует через CSS vars */
 }
 
 .glass-panel.dark .glass-panel-close:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  /* Наследует через CSS vars */
 }
 
 /* Адаптивность */
@@ -371,4 +327,16 @@
 /* Левая панель в констрейн режиме - остается слева, но не выходит за центр */
 .glass-panel-constrained.glass-panel-left {
   max-width: calc(50% - 2cm) !important;
+}
+
+/* Анимация пульсации для временной метки на карте */
+@keyframes pulse-temp-marker {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 12px rgba(255,0,0,0.5), 0 0 0 4px rgba(255,0,0,0.2);
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow: 0 2px 16px rgba(255,0,0,0.7), 0 0 0 8px rgba(255,0,0,0.15);
+  }
 }

@@ -1,0 +1,235 @@
+/* ============================================
+   GLASS THEME — Единая система стекла
+   
+   4 состояния:
+   ┌────────────┬──────────────────────────────┬──────────────────────────────┐
+   │            │ LIGHT                        │ DARK                         │
+   ├────────────┼──────────────────────────────┼──────────────────────────────┤
+   │ Layer 1    │ Светлый gradient + blur      │ Тёмный gradient + blur       │
+   │ (панели)   │ rgba(255,255,255, 0.1/0.05)  │ rgba(0,0,0, 0.1/0.05)        │
+   ├────────────┼──────────────────────────────┼──────────────────────────────┤
+   │ Layer 2    │ Светлые кнопки/инпуты        │ Тёмные кнопки/инпуты         │
+   │ (контролы) │ rgba(255,255,255, 0.1)       │ rgba(0,0,0, 0.06)            │
+   └────────────┴──────────────────────────────┴──────────────────────────────┘
+   
+   Использование:
+     class="glass-l1"  — для контейнеров (тулбары, панели, попапы)
+     class="glass-l2"  — для элементов внутри (кнопки, инпуты, чипсы)
+   
+   Автоматически переключается при data-theme="light"|"dark".
+   ============================================ */
+
+/* === LIGHT (по умолчанию) === */
+:root,
+[data-theme="light"] {
+  /* --- Layer 1: контейнеры (тулбары, панели, попапы) --- */
+  --glass-l1-bg: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+  --glass-l1-border: rgba(255, 255, 255, 0.2);
+  --glass-l1-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+
+  /* --- Layer 2: кнопки, инпуты, чипсы внутри контейнеров --- */
+  --glass-l2-bg: rgba(255, 255, 255, 0.1);
+  --glass-l2-border: rgba(255, 255, 255, 0.2);
+  --glass-l2-bg-hover: rgba(255, 255, 255, 0.15);
+  --glass-l2-border-hover: rgba(255, 255, 255, 0.3);
+  --glass-l2-bg-active: rgba(255, 255, 255, 0.2);
+  --glass-l2-border-active: rgba(255, 255, 255, 0.4);
+  --glass-l2-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+  /* --- Общие: blur, текст, радиусы --- */
+  --glass-blur: blur(10px) saturate(180%);
+  --glass-blur-strong: blur(16px) saturate(180%);
+  --glass-text: rgba(0, 0, 0, 0.8);
+  --glass-text-secondary: rgba(0, 0, 0, 0.5);
+  --glass-text-muted: rgba(0, 0, 0, 0.35);
+  --glass-card-text: rgba(0, 0, 0, 0.8);
+  --glass-card-text-secondary: rgba(0, 0, 0, 0.5);
+  --glass-card-text-muted: rgba(0, 0, 0, 0.35);
+  --glass-radius: 20px;
+  --glass-radius-sm: 12px;
+  --glass-radius-xs: 8px;
+  --glass-overlay: rgba(0, 0, 0, 0);
+
+  /* --- Legacy (обратная совместимость) --- */
+  --glass-bg: rgba(255, 255, 255, 0.1);
+  --glass-bg-hover: rgba(255, 255, 255, 0.15);
+  --glass-bg-active: rgba(255, 255, 255, 0.2);
+  --glass-card-bg: rgba(255, 255, 255, 0.15);
+  --glass-card-bg-hover: rgba(255, 255, 255, 0.22);
+  --glass-border-color: rgba(255, 255, 255, 0.2);
+  --glass-border-color-hover: rgba(255, 255, 255, 0.3);
+  --glass-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --glass-shadow-hover: 0 6px 20px rgba(0, 0, 0, 0.2);
+  --glass-shadow-container: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --region-dropdown-bg: rgba(255, 255, 255, 0.18);
+}
+
+/* === DARK ===
+   Зеркало light, но rgba(0,0,0,...) вместо rgba(255,255,255,...)
+   Эталон: glass-dark из _content.css (панель постов)
+   ============================================ */
+[data-theme="dark"] {
+  /* --- Layer 1: контейнеры --- */
+  --glass-l1-bg: linear-gradient(135deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.05) 100%);
+  --glass-l1-border: rgba(0, 0, 0, 0.12);
+  --glass-l1-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+
+  /* --- Layer 2: кнопки, инпуты --- */
+  --glass-l2-bg: rgba(0, 0, 0, 0.06);
+  --glass-l2-border: rgba(0, 0, 0, 0.12);
+  --glass-l2-bg-hover: rgba(0, 0, 0, 0.1);
+  --glass-l2-border-hover: rgba(0, 0, 0, 0.12);
+  --glass-l2-bg-active: rgba(0, 0, 0, 0.14);
+  --glass-l2-border-active: rgba(0, 0, 0, 0.2);
+  --glass-l2-shadow: none;
+
+  /* --- Общие --- */
+  --glass-blur: blur(10px) saturate(180%);
+  --glass-blur-strong: blur(16px) saturate(180%);
+  --glass-text: rgba(0, 0, 0, 0.85);
+  --glass-text-secondary: rgba(0, 0, 0, 0.6);
+  --glass-text-muted: rgba(0, 0, 0, 0.4);
+  --glass-card-text: #ffffff;
+  --glass-card-text-secondary: rgba(255, 255, 255, 0.85);
+  --glass-card-text-muted: rgba(255, 255, 255, 0.6);
+  --glass-radius: 20px;
+  --glass-radius-sm: 12px;
+  --glass-radius-xs: 8px;
+  --glass-overlay: rgba(0, 0, 0, 0.15);
+
+  /* --- Legacy --- */
+  --glass-bg: rgba(0, 0, 0, 0.1);
+  --glass-bg-hover: rgba(0, 0, 0, 0.15);
+  --glass-bg-active: rgba(0, 0, 0, 0.2);
+  --glass-card-bg: rgba(0, 0, 0, 0.1);
+  --glass-card-bg-hover: rgba(0, 0, 0, 0.15);
+  --glass-border-color: rgba(0, 0, 0, 0.12);
+  --glass-border-color-hover: rgba(0, 0, 0, 0.2);
+  --glass-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  --glass-shadow-hover: 0 6px 20px rgba(0, 0, 0, 0.25);
+  --glass-shadow-container: 0 8px 32px rgba(0, 0, 0, 0.15);
+  --region-dropdown-bg: rgba(0, 0, 0, 0.12);
+}
+
+/* ============================================
+   УТИЛИТАРНЫЕ КЛАССЫ — используй ТОЛЬКО эти два
+   ============================================ */
+
+/* Layer 1 — контейнеры (тулбары, панели, попапы, сайдбары) */
+.glass-l1 {
+  background: var(--glass-l1-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-l1-border);
+  box-shadow: var(--glass-l1-shadow);
+  color: var(--glass-text);
+  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Layer 2 — кнопки, инпуты, чипсы внутри контейнеров */
+.glass-l2 {
+  background: var(--glass-l2-bg);
+  border: 1px solid var(--glass-l2-border);
+  color: var(--glass-text);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.glass-l2:hover:not(:disabled):not(.selected) {
+  background: var(--glass-l2-bg-hover);
+  border-color: var(--glass-l2-border-hover);
+}
+
+.glass-l2:active:not(:disabled),
+.glass-l2.active {
+  background: var(--glass-l2-bg-active);
+  border-color: var(--glass-l2-border-active);
+}
+
+/* Layer 1 strong — для модальных окон, топбара (более плотный blur) */
+.glass-l1-strong {
+  background: var(--glass-l1-bg);
+  backdrop-filter: var(--glass-blur-strong);
+  -webkit-backdrop-filter: var(--glass-blur-strong);
+  border: 1px solid var(--glass-l1-border);
+  box-shadow: var(--glass-l1-shadow);
+  color: var(--glass-text);
+  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* === Legacy-классы (обратная совместимость, НЕ используй в новом коде) === */
+
+.glass-surface {
+  background: var(--glass-l2-bg) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-l1-border);
+  box-shadow: var(--glass-l2-shadow);
+  color: var(--glass-text);
+}
+
+.glass-surface:hover {
+  background: var(--glass-l2-bg-hover) !important;
+  border-color: var(--glass-l2-border-hover);
+}
+
+.glass-surface-strong {
+  background: var(--glass-l1-bg) !important;
+  backdrop-filter: var(--glass-blur-strong);
+  -webkit-backdrop-filter: var(--glass-blur-strong);
+  border: 1px solid var(--glass-l1-border);
+  box-shadow: var(--glass-l1-shadow);
+  color: var(--glass-text);
+}
+
+.glass-card {
+  background: var(--glass-l2-bg) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-l2-border);
+  box-shadow: var(--glass-l2-shadow);
+  border-radius: var(--glass-radius-sm);
+  color: var(--glass-text);
+  transition: background 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.glass-card:hover {
+  background: var(--glass-l2-bg-hover) !important;
+  border-color: var(--glass-l2-border-hover);
+}
+
+/* === Кнопка переключения темы (Layer 2) === */
+
+.theme-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--glass-l2-border);
+  background: var(--glass-l2-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: var(--glass-text);
+  font-size: 16px;
+  padding: 0;
+  outline: none;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--glass-l2-bg-hover);
+  border-color: var(--glass-l2-border-hover);
+  box-shadow: var(--glass-l2-shadow);
+  transform: scale(1.08);
+}
+
+.theme-toggle-btn:active {
+  transform: scale(0.95);
+}
+
+/* === Topbar dropdown items === */
+.topbar-dropdown-item:hover {
+  background: var(--glass-bg-hover);
+}

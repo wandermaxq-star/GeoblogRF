@@ -156,7 +156,8 @@ app.get('/api/test', (req, res) => {
       adminStatsRoutesModule,
       analyticsRoutesModule,
       offlinePostsRoutesModule,
-      tileRoutesModule
+      tileRoutesModule,
+      commentRoutesModule
     ] = await Promise.all([
       import('./src/routes/userRoutes.js'),
       import('./src/routes/eventRoutes.js'),
@@ -181,7 +182,8 @@ app.get('/api/test', (req, res) => {
       import('./src/routes/adminStatsRoutes.js'),
       import('./src/routes/analyticsRoutes.js'),
       import('./src/routes/offlinePostsRoutes.js'),
-      import('./src/routes/tileRoutes.js')
+      import('./src/routes/tileRoutes.js'),
+      import('./src/routes/commentRoutes.js')
     ]);
 
     app.use('/api/users', userRoutesModule.default || userRoutesModule);
@@ -208,6 +210,7 @@ app.get('/api/test', (req, res) => {
     app.use('/api/analytics', analyticsRoutesModule.default || analyticsRoutesModule);
     app.use('/api/offline-posts', offlinePostsRoutesModule.default || offlinePostsRoutesModule);
     app.use('/api/tiles', tileRoutesModule.default || tileRoutesModule);
+    app.use('/api', commentRoutesModule.default || commentRoutesModule);
 
     logger.info('Dynamic routes registered');
   } catch (err) {
@@ -362,7 +365,7 @@ app.post('/api/markers/:id/photos', upload.single('image'), async (req, res) => 
 // Все endpoints для markers, events, users теперь в соответствующих routes
 
 // Preflight для ORS
-app.options('/ors/*', (req, res) => {
+app.options('/api/ors/*', (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -370,7 +373,7 @@ app.options('/ors/*', (req, res) => {
 });
 
 // Прокси для OpenRouteService API
-app.post('/ors/v2/directions/:profile/geojson', async (req, res) => {
+app.post('/api/ors/v2/directions/:profile/geojson', async (req, res) => {
   try {
     const { profile } = req.params;
     const { coordinates, radiuses } = req.body || {};

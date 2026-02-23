@@ -660,6 +660,11 @@ html, body, #root {
 .mirror-bg {
   background: #e8e8e8;
 }
+/* В тёмном glass-режиме posts — контейнер не диктует цвет, стекло само всё делает */
+.mirror-bg.posts-mode.glass-dark,
+.mirror-bg.posts-mode.glass-light {
+  background: transparent;
+}
 
 .mirror-bg-vertical {
   background: #e8e8e8;
@@ -928,6 +933,9 @@ html, body, #root {
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
+}
+/* Прозрачный фон нужен только для НЕ-posts режимов (карта и т.п.) */
+.page-container:not(.posts-mode) .page-main-panel {
   background: transparent !important;
 }
 

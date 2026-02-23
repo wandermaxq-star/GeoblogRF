@@ -26,6 +26,8 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
+  /* Нижняя «рамка» контейнера — скролл-область не доходит до низа */
+  padding-bottom: 16px;
 
   /* Плавные переходы для смены варианта стекла */
   transition: background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
@@ -36,18 +38,18 @@
 }
 .page-container.posts-mode .posts-scroll-area::after {
   content: "";
-  position: absolute;
+  position: sticky;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 2cm; /* строго указанная зона */
+  display: block;
+  height: 24px;
   pointer-events: none;
   z-index: 15;
-  background: linear-gradient(to top, rgba(255,255,255,0.06), rgba(255,255,255,0));
-  -webkit-backdrop-filter: blur(6px) saturate(130%);
-  backdrop-filter: blur(6px) saturate(130%);
-  border-bottom-left-radius: 20px;
-  border-bottom-right-radius: 20px;
+  background: linear-gradient(to top, rgba(255,255,255,0.12), rgba(255,255,255,0));
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+  margin-top: -24px;
 }
 
 /* Быстрый выключатель для разработки: добавить класс на body чтобы полностью убрать эффект */
@@ -98,7 +100,7 @@ body.disable-posts-blur .page-container.posts-mode * {
   position: relative;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 12px 16px 30px 16px;
+  padding: 12px 16px 16px 16px;
   scrollbar-width: none;
   -ms-overflow-style: none;
   pointer-events: auto; /* allow scrolling and interaction */
@@ -121,7 +123,7 @@ body.disable-posts-blur .page-container.posts-mode * {
   padding-bottom: 20px !important;
 }
 
-/* Элементы постов — матовое полупрозрачное стекло с эффектом морфизма */
+/* Элементы постов — Layer 2 внутри glass-контейнера (БЕЗ собственного backdrop-filter) */
 .post-item,
 .posts-scroll-area .space-y-4>div {
   margin-bottom: 16px;
@@ -129,134 +131,142 @@ body.disable-posts-blur .page-container.posts-mode * {
   border-radius: 12px;
   position: relative;
   overflow: hidden;
-
-  /* Основная заливка — лёгкая белая полупрозрачность, фильтр для морфизма */
-  background: rgba(255,255,255,0.06);
-  -webkit-backdrop-filter: blur(12px) saturate(160%);
-  backdrop-filter: blur(12px) saturate(160%);
-  border: 1px solid rgba(255,255,255,0.12);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
-
+  background: var(--glass-l2-bg);
+  border: 1px solid var(--glass-l2-border);
+  box-shadow: var(--glass-l2-shadow);
   transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
   color: inherit;
 }
 
-/* Внутренний матовый слой для усиления морфизма */
-.post-item::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  /* stronger inner matte gradient */
-  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
-  mix-blend-mode: overlay;
-  pointer-events: none;
-  z-index: 0;
-}
+/* ::before overlay убран — лишний слой затемнения */
 
-/* Tweak for light/darker backgrounds to ensure perceived matteness */
-.page-container.posts-mode.glass-light .post-item {
-  background: rgba(255,255,255,0.26); /* more opaque to be 'matte' */
-  -webkit-backdrop-filter: blur(18px) saturate(170%);
-  backdrop-filter: blur(18px) saturate(170%);
-  border: 1px solid rgba(15,23,42,0.06);
-  box-shadow: 0 14px 34px rgba(3,6,12,0.18);
+/* ===== Post cards — Layer 2 через CSS vars, автоматическая смена тем ===== */
+/* Больше не нужны отдельные glass-light / glass-dark — vars переключаются сами */
+.page-container.posts-mode .post-item {
+  background: var(--glass-l2-bg) !important;
+  border: 1px solid var(--glass-l2-border) !important;
+  box-shadow: var(--glass-l2-shadow) !important;
+  color: var(--glass-card-text) !important;
 }
-
-.page-container.posts-mode.glass-dark .post-item {
-  background: rgba(255,255,255,0.04);
-  -webkit-backdrop-filter: blur(10px) saturate(150%);
-  backdrop-filter: blur(10px) saturate(150%);
-  border: 1px solid rgba(255,255,255,0.10);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+.page-container.posts-mode .post-item:hover {
+  background: var(--glass-l2-bg-hover) !important;
+  border-color: var(--glass-l2-border-hover) !important;
+  transform: translateY(-2px);
 }
 
 /* Контент поверх матового слоя */
 .post-item > * { position: relative; z-index: 1; }
 
-.post-item:hover,
-.posts-scroll-area .space-y-4>div:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.18);
-  transform: translateY(-2px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+/* ===== LIGHT variant: text colors (dark text on light glass) ===== */
+.page-container.posts-mode.glass-light .posts-scroll-area h2,
+.page-container.posts-mode.glass-light .posts-scroll-area h3,
+.page-container.posts-mode.glass-light .posts-scroll-area .text-xl,
+.page-container.posts-mode.glass-light .posts-scroll-area .text-lg,
+.page-container.posts-mode.glass-light .posts-scroll-area .font-bold,
+.page-container.posts-mode.glass-light .posts-scroll-area .font-semibold {
+  color: #1a1a2e;
+  text-shadow: none;
+}
+.page-container.posts-mode.glass-light .posts-scroll-area p,
+.page-container.posts-mode.glass-light .posts-scroll-area .text-gray-600,
+.page-container.posts-mode.glass-light .posts-scroll-area .text-gray-700,
+.page-container.posts-mode.glass-light .posts-scroll-area .text-sm {
+  color: #444;
+  text-shadow: none;
+}
+.page-container.posts-mode.glass-light .posts-scroll-area .text-gray-500,
+.page-container.posts-mode.glass-light .posts-scroll-area .text-xs {
+  color: #8e8e8e;
 }
 
-/* Выделенный пост — более выраженное светлое стекло */
-.post-item.selected,
-.posts-scroll-area .space-y-4>div.selected {
-  background: rgba(255, 255, 255, 0.42);
-  border: 1px solid rgba(255,255,255,0.5);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+/* ===== DARK variant: text colors (2 слоя стекла → белый текст) ===== */
+.page-container.posts-mode.glass-dark .posts-scroll-area h2,
+.page-container.posts-mode.glass-dark .posts-scroll-area h3,
+.page-container.posts-mode.glass-dark .posts-scroll-area .text-xl,
+.page-container.posts-mode.glass-dark .posts-scroll-area .text-lg,
+.page-container.posts-mode.glass-dark .posts-scroll-area .font-bold,
+.page-container.posts-mode.glass-dark .posts-scroll-area .font-semibold {
+  color: var(--glass-card-text);
+  text-shadow: none;
+}
+.page-container.posts-mode.glass-dark .posts-scroll-area p,
+.page-container.posts-mode.glass-dark .posts-scroll-area .text-gray-600,
+.page-container.posts-mode.glass-dark .posts-scroll-area .text-gray-700,
+.page-container.posts-mode.glass-dark .posts-scroll-area .text-sm {
+  color: var(--glass-card-text-secondary);
+  text-shadow: none;
+}
+.page-container.posts-mode.glass-dark .posts-scroll-area .text-gray-500,
+.page-container.posts-mode.glass-dark .posts-scroll-area .text-xs {
+  color: var(--glass-card-text-muted);
 }
 
-.post-item.selected:hover,
-.posts-scroll-area .space-y-4>div.selected:hover {
-  background: rgba(255,255,255,0.5);
-  border-color: rgba(255,255,255,0.6);
-}
-
-/* Текст и контент внутри постов (под dark-glass) */
-.posts-scroll-area h2,
-.posts-scroll-area h3,
-.posts-scroll-area .text-xl,
-.posts-scroll-area .text-lg,
-.posts-scroll-area .font-bold,
-.posts-scroll-area .font-semibold {
-  color: #f1f5f9; /* light on dark */
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-}
-.posts-scroll-area p,
-.posts-scroll-area .text-gray-600,
-.posts-scroll-area .text-gray-700,
-.posts-scroll-area .text-sm {
-  color: rgba(241,245,249,0.88);
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
-}
-.posts-scroll-area .text-gray-500,
-.posts-scroll-area .text-xs {
-  color: rgba(241,245,249,0.7);
+/* ===== Selected postcard — через CSS vars, автоматическая смена тем ===== */
+.page-container.posts-mode .post-item.selected {
+  background: var(--glass-l2-bg-active) !important;
+  border: 1px solid var(--glass-l2-border-active) !important;
+  box-shadow: var(--glass-l2-shadow) !important;
 }
 
 .posts-static-header h1 {
-  color: #1a1a2e;
-  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.6);
+  color: inherit;
 }
 .posts-static-header button,
 .posts-static-header .btn {
   text-shadow: none;
 }
 
-/* ===== POSTS GLASS VARIANTS (light / dark) ===== */
-/* Light: полупрозрачное матовое стекло (сильная матовость, контур видимый) */
-.page-container.posts-mode.glass-light .page-main-panel {
-  /* stronger, milkier background */
-  background: linear-gradient(135deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.12) 100%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  backdrop-filter: blur(18px) saturate(160%);
-  /* visible, slightly dark contour so block stands out over map */
-  border: 1px solid rgba(15,23,42,0.10);
-  box-shadow: 0 20px 48px rgba(3, 6, 12, 0.18);
-  color: #0f1720; /* dark text */
+/* ===== POSTS GLASS CONTAINER — Layer 1 через CSS vars ===== */
+/* Автоматически переключается light↔dark через --glass-l1-* */
+.page-container.posts-mode.glass-light .page-main-panel,
+.page-container.posts-mode.glass-dark .page-main-panel {
+  background: var(--glass-l1-bg) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  border: 1px solid var(--glass-l1-border) !important;
+  box-shadow: var(--glass-l1-shadow) !important;
+  color: var(--glass-text) !important;
   transition: all 0.25s ease;
   position: relative;
   overflow: hidden;
 }
 
-/* subtle inner overlay to create frosted, non-transparent look */
-.page-container.posts-mode.glass-light .page-main-panel::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06));
-  pointer-events: none;
-  z-index: 1;
-  mix-blend-mode: normal;
+/* Без дополнительного ::before — контейнер сам по себе лёгкий */
+.page-container.posts-mode.glass-light .page-main-panel::before,
+.page-container.posts-mode.glass-dark .page-main-panel::before {
+  display: none;
 }
 
-/* Inner frame in scroll area that outlines content and separates it from edges */
-.page-container.posts-mode.glass-light .posts-scroll-area::before {
+/* scroll-area fadeout — через CSS vars */
+.page-container.posts-mode.glass-light .posts-scroll-area::after,
+.page-container.posts-mode.glass-dark .posts-scroll-area::after {
+  background: linear-gradient(to top, rgba(0,0,0,0.04), rgba(0,0,0,0));
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  backdrop-filter: blur(6px) saturate(120%);
+}
+
+/* Header — унифицированный через CSS vars */
+.page-container.posts-mode.glass-light .posts-static-header,
+.page-container.posts-mode.glass-dark .posts-static-header {
+  background: var(--glass-l2-bg) !important;
+  border-bottom: 1px solid var(--glass-l2-border) !important;
+}
+.page-container.posts-mode.glass-light .posts-static-header h1,
+.page-container.posts-mode.glass-dark .posts-static-header h1 {
+  color: var(--glass-text) !important;
+  text-shadow: none;
+}
+.page-container.posts-mode.glass-dark .posts-static-header,
+.page-container.posts-mode.glass-dark .posts-static-header *,
+.page-container.posts-mode.glass-dark .posts-main-title,
+.page-container.posts-mode.glass-dark .posts-title-row,
+.page-container.posts-mode.glass-dark .posts-controls-row {
+  color: var(--glass-text) !important;
+}
+
+/* Inner frame in scroll area */
+.page-container.posts-mode.glass-light .posts-scroll-area::before,
+.page-container.posts-mode.glass-dark .posts-scroll-area::before {
   content: '';
   position: absolute;
   left: 12px;
@@ -265,51 +275,89 @@ body.disable-posts-blur .page-container.posts-mode * {
   bottom: 48px;
   border-radius: 12px;
   background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(15,23,42,0.06);
+  border: 1px solid rgba(15,23,42,0.04);
   z-index: 2;
   pointer-events: none;
 }
 
-.page-container.posts-mode.glass-light .posts-scroll-area::after {
-  background: linear-gradient(to top, rgba(0,0,0,0.06), rgba(0,0,0,0));
-  -webkit-backdrop-filter: blur(6px) saturate(120%);
-  backdrop-filter: blur(6px) saturate(120%);
+/* Filter buttons — через CSS vars, работает в обеих темах */
+.page-container.posts-mode .filter-btn {
+  color: var(--glass-text) !important;
+  border-color: var(--glass-l2-border) !important;
+  background: var(--glass-l2-bg) !important;
+}
+.page-container.posts-mode .filter-btn:hover {
+  background: var(--glass-l2-bg-hover) !important;
+  color: var(--glass-text) !important;
+}
+.page-container.posts-mode .filter-btn.active {
+  background: var(--glass-l2-bg-active) !important;
+  color: var(--glass-text) !important;
+  border-color: var(--glass-l2-border-active) !important;
+  font-weight: 600;
 }
 
-/* Dark: единый тёмный стиль (как в Favorites) */
-.page-container.posts-mode.glass-dark .page-main-panel {
-  background: linear-gradient(135deg, rgba(24, 28, 36, 0.90) 0%, rgba(36, 42, 58, 0.88) 100%);
-  -webkit-backdrop-filter: blur(28px) saturate(190%);
-  backdrop-filter: blur(28px) saturate(190%);
-  border: 1px solid rgba(255,255,255,0.14);
-  box-shadow: 0 30px 60px rgba(5, 8, 15, 0.6), 0 10px 24px rgba(10, 14, 25, 0.45);
-  color: #f1f5f9;
-  transition: all 0.25s ease;
+/* Close panel / state views */
+.page-container.posts-mode .posts-close-panel-btn {
+  color: var(--glass-text) !important;
+}
+.page-container.posts-mode .posts-close-panel-btn:hover {
+  color: var(--glass-text) !important;
+}
+
+/* State views (loading, empty) — через CSS vars */
+.page-container.posts-mode .posts-state-title {
+  color: var(--glass-text) !important;
+}
+.page-container.posts-mode .posts-state-subtitle {
+  color: var(--glass-text-secondary) !important;
+}
+.page-container.posts-mode .posts-state-icon {
+  color: var(--glass-text-muted) !important;
 }
 
 /* Toggle UI for the glass variant */
 .glass-variant-toggle {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   margin-left: 12px;
 }
 .variant-btn {
-  background: rgba(255,255,255,0.03);
+  background: rgba(0,0,0,0.04);
   color: inherit;
-  border: 1px solid rgba(255,255,255,0.06);
-  padding: 6px 8px;
+  border: 1px solid rgba(0,0,0,0.08);
+  padding: 5px 10px;
   border-radius: 8px;
   font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.18s, transform 0.12s;
+  transition: background 0.18s, transform 0.12s, color 0.18s;
 }
 .variant-btn.active {
-  background: rgba(255,255,255,0.12);
-  border-color: rgba(255,255,255,0.18);
+  background: rgba(99,102,241,0.15);
+  border-color: rgba(99,102,241,0.30);
+  color: #6366f1;
   transform: translateY(-1px);
 }
-.variant-btn:hover { background: rgba(255,255,255,0.08); }
+.variant-btn:hover { background: rgba(0,0,0,0.06); }
+
+/* Dark variant overrides for toggle — лёгкая тёмная дымка */
+.page-container.posts-mode.glass-dark .variant-btn {
+  background: rgba(0,0,0,0.06);
+  border-color: rgba(0,0,0,0.1);
+  color: var(--glass-text);
+}
+.page-container.posts-mode.glass-dark .variant-btn.active {
+  background: rgba(0,0,0,0.14);
+  border-color: rgba(0,0,0,0.2);
+  color: var(--glass-text);
+  font-weight: 600;
+}
+.page-container.posts-mode.glass-dark .variant-btn:hover {
+  background: rgba(0,0,0,0.1);
+  color: var(--glass-text);
+}
 
 /* ===== CALENDAR MODE: UNIFIED GLASS — НЕТ ДОПОЛНИТЕЛЬНЫХ СЛОЁВ ===== */
 /* Calendar mode .page-main-panel — прозрачный, glass обеспечивает MainLayout wrapper */
@@ -449,4 +497,21 @@ body.disable-posts-blur .page-container.posts-mode * {
   border-color: rgba(255, 255, 255, 0.4);
   transform: scale(1.05);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* === Inline Create Post Form — glass как контролы карты === */
+.create-post-inline {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(12px) saturate(170%);
+  -webkit-backdrop-filter: blur(12px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  color: var(--glass-text);
+}
+
+.create-post-inline input::placeholder,
+.create-post-inline textarea::placeholder {
+  color: var(--glass-text-muted);
 }

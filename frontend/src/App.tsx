@@ -13,7 +13,7 @@ import { LoadingProvider } from './contexts/LoadingContext';
 import GlobalLoadingOverlay from './components/GlobalLoadingOverlay';
 import { useAuth } from './contexts/AuthContext';
 import { useIsMobile } from './hooks/use-mobile';
-import WelcomeModalWrapper from './components/Gamification/WelcomeModalWrapper';
+const WelcomeModalWrapper = lazy(() => import('./components/Gamification/WelcomeModalWrapper'));
 import ErrorBoundary from './components/ErrorBoundary';
 import ConditionalPage from './components/Mobile/ConditionalPage';
 
@@ -35,8 +35,8 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const CentrePage = lazy(() => import('./pages/CentrePage'));
 
 // Мобильные версии страниц
-// IndexPage загружаем сразу (не lazy) - это главная страница, должна загружаться быстро
-import MobileIndexPage from './pages/Mobile/IndexPage';
+// IndexPage - lazy, загрузится мгновенно при необходимости (только на мобильных)
+const MobileIndexPage = lazy(() => import('./pages/Mobile/IndexPage'));
 const MobilePostsPage = lazy(() => import('./pages/Mobile/PostsPage'));
 const MobileMapPage = lazy(() => import('./pages/Mobile/MapPage'));
 const MobilePlannerPage = lazy(() => import('./pages/Mobile/PlannerPage'));
@@ -210,7 +210,7 @@ export default function App() {
           </GuestProvider>
           </AnalyticsProvider>
           </NotificationProvider>
-          <WelcomeModalWrapper />
+          <Suspense fallback={null}><WelcomeModalWrapper /></Suspense>
         </GamificationProvider>
       </AuthProvider>
     </BrowserRouter>

@@ -4,8 +4,8 @@ import { authenticateToken, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// POST /api/zones/check
-router.post('/zones/check', async (req, res) => {
+// POST /api/zones/check  (mounted at /api/zones in server.js)
+router.post('/check', async (req, res) => {
   try {
     const { points, lineString } = req.body || {};
     const results = [];
@@ -35,10 +35,8 @@ router.post('/zones/check', async (req, res) => {
   }
 });
 
-export default router;
-
-// Admin endpoints (optional minimal)
-router.post('/zones/import', authenticateToken, requireRole(['admin']), async (req, res) => {
+// Admin endpoints
+router.post('/import', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
     const geojson = req.body;
     if (!geojson) return res.status(400).json({ ok: false, message: 'GeoJSON required' });
@@ -49,13 +47,13 @@ router.post('/zones/import', authenticateToken, requireRole(['admin']), async (r
   }
 });
 
-router.post('/zones/clear', authenticateToken, requireRole(['admin']), async (_req, res) => {
+router.post('/clear', authenticateToken, requireRole(['admin']), async (_req, res) => {
   clearZones();
   res.json({ ok: true, stats: getZonesStats() });
 });
 
 // Get all zones (for map rendering)
-router.get('/zones/all', async (_req, res) => {
+router.get('/all', async (_req, res) => {
   try {
     const stats = getZonesStats();
     const zones = getZonesSnapshot();
@@ -64,4 +62,6 @@ router.get('/zones/all', async (_req, res) => {
     res.status(500).json({ ok: false, message: 'Failed to list zones', error: e?.message });
   }
 });
+
+export default router;
 

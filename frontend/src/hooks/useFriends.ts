@@ -24,54 +24,6 @@ export const useFriends = () => {
       } catch (err) {
         setError('Ошибка загрузки друзей');
         setFriends([]);
-        // Загрузка тестовых данных при ошибке API
-        setFriends([
-          {
-            id: '1',
-            username: 'Алексей_Путешественник',
-            email: 'alexey@example.com',
-            avatar_url: undefined,
-            friendship_id: '1',
-            created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 дней назад
-            status: 'online'
-          },
-          {
-            id: '2',
-            username: 'Мария_Фотограф',
-            email: 'maria@example.com',
-            avatar_url: undefined,
-            friendship_id: '2',
-            created_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(), // 15 дней назад
-            status: 'online'
-          },
-          {
-            id: '3',
-            username: 'Дмитрий_Эксперт',
-            email: 'dmitry@example.com',
-            avatar_url: undefined,
-            friendship_id: '3',
-            created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 дней назад
-            status: 'recently'
-          },
-          {
-            id: '4',
-            username: 'Анна_Блогер',
-            email: 'anna@example.com',
-            avatar_url: undefined,
-            friendship_id: '4',
-            created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 дня назад
-            status: 'recently'
-          },
-          {
-            id: '5',
-            username: 'Сергей_Картограф',
-            email: 'sergey@example.com',
-            avatar_url: undefined,
-            friendship_id: '5',
-            created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 день назад
-            status: 'offline'
-          }
-        ]);
       } finally {
         setLoading(false);
       }

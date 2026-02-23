@@ -4,5 +4,6 @@ module.exports = {
   transform: {},
   testRunner: 'jest-circus/runner',
   moduleFileExtensions: ['js', 'json', 'node'],
-  verbose: true
+  verbose: true,
+  forceExit: true
 };

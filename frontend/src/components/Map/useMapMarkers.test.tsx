@@ -114,8 +114,8 @@ describe('useMapMarkers', () => {
     />);
 
     const facade = (await import('../../services/map_facade')).mapFacade();
-    // cluster group is created via the global markerCluster plugin in this hook
-    expect((window as any).L.markerClusterGroup).toHaveBeenCalled();
+    // cluster group is created via the facade's createMarkerClusterGroup
+    expect(facade.createMarkerClusterGroup).toHaveBeenCalled();
     expect(facade.createMarker).toHaveBeenCalled();
     expect(createdMarkers.length).toBeGreaterThan(0);
   });

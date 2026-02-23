@@ -18,6 +18,7 @@ import OfflineDraftsPanel from '../components/Posts/OfflineDraftsPanel';
 import { offlinePostsStorage } from '../services/offlinePostsStorage';
 import { offlineContentStorage } from '../services/offlineContentStorage';
 import { moderationNotifications } from '../services/moderationNotifications';
+import { useThemeStore } from '../stores/themeStore';
 
 // Ленивая загрузка тяжелых компонентов
 const LazyPostConstructor = lazy(() => import('../components/Posts/PostConstructor'));
@@ -45,8 +46,12 @@ const PostsPage: React.FC = () => {
   const [moderationCount, setModerationCount] = useState(0);
   const [showDraftsPanel, setShowDraftsPanel] = useState(false);
   const [draftsCount, setDraftsCount] = useState(0);
-  // Степень матовости/прозрачности: 'light' | 'dark' (светлый по умолчанию)
-  const [glassVariant, setGlassVariant] = useState<'light'|'dark'>('light');
+  // Интеграция с глобальной системой тем: data-theme управляет вариантом стекла
+  const { theme } = useThemeStore();
+  const glassVariant = theme; // 'light' | 'dark' — мапится на CSS-классы glass-light / glass-dark
+
+  // Оверлей больше не нужен — glass L1/L2 автоматически переключается через CSS vars
+  const overlayStyle: React.CSSProperties = {};
 
   // Проверяем двухоконный режим - есть ли левая панель (карта/планировщик)
   const leftContent = useContentStore((state) => state.leftContent);
@@ -552,7 +557,7 @@ const PostsPage: React.FC = () => {
   if (showPostConstructor) {
     return (
       <MirrorGradientContainer className={`page-layout-container page-container posts-mode glass-${glassVariant}`}>
-        <div className="page-main-area">
+        <div className="page-main-area" style={overlayStyle}>
           <div className="page-content-wrapper">
             <div className="page-main-panel relative">
               <Suspense fallback={<div className="text-center p-8">Загрузка конструктора...</div>}>
@@ -600,7 +605,7 @@ const PostsPage: React.FC = () => {
   if (selectedPost && !showInteractivePost) {
     return (
       <MirrorGradientContainer className={`page-layout-container page-container posts-mode glass-${glassVariant}`}>
-        <div className="page-main-area">
+        <div className="page-main-area" style={overlayStyle}>
           <div className="page-content-wrapper">
             <div className="page-main-panel relative">
               <Suspense fallback={<div className="text-center p-8">Загрузка деталей поста...</div>}>
@@ -615,23 +620,13 @@ const PostsPage: React.FC = () => {
 
   return (
     <MirrorGradientContainer className={`page-layout-container page-container posts-mode glass-${glassVariant}`}>
-      <div className="page-main-area">
+      <div className="page-main-area" style={overlayStyle}>
         <div className="page-content-wrapper">
           <div className="page-main-panel relative">
             {/* СТАТИЧНЫЙ ЗАГОЛОВОК */}
             <div className="posts-static-header">
               <div className="posts-title-row">
                 <h1 className="posts-main-title">Лента контента</h1>
-                {/* Кнопка закрытия панели - только в двухоконном режиме */}
-                {isTwoPanelMode && (
-                  <button
-                    onClick={handleClosePanel}
-                    className="posts-close-panel-btn"
-                    title="Закрыть панель постов"
-                  >
-                    <FaTimes className="w-4 h-4" />
-                  </button>
-                )}
               </div>
 
               {/* Фильтры и кнопки */}
@@ -679,11 +674,7 @@ const PostsPage: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Переключатель варианта стекла — светлый / тёмный */}
-                <div className="glass-variant-toggle" role="tablist" aria-label="Вариант стекла">
-                  <button className={`variant-btn ${glassVariant === 'light' ? 'active' : ''}`} onClick={() => setGlassVariant('light')} title="Светлый (как на скрине)">Светл</button>
-                  <button className={`variant-btn ${glassVariant === 'dark' ? 'active' : ''}`} onClick={() => setGlassVariant('dark')} title="Тёмный (как в Избранном)">Тёмн</button>
-                </div> 
+                {/* Переключатель варианта стекла управляется глобальной темой (кнопка в Topbar) */}
 
               </div>
             </div>
@@ -691,6 +682,18 @@ const PostsPage: React.FC = () => {
             {/* СКРОЛЛЬНАЯ ОБЛАСТЬ - только посты */}
             <div className="posts-scroll-area">
               <div className="posts-content-centered">
+                {/* Inline-форма создания поста */}
+                {showCreateModal && (
+                  <div className="mb-4">
+                    <CreatePostModal
+                      isOpen={showCreateModal}
+                      onClose={() => setShowCreateModal(false)}
+                      onPostCreated={handlePostCreated}
+                      inline={true}
+                    />
+                  </div>
+                )}
+
                 {/* Список постов */}
                 <div className="space-y-4">
                   {loading ? (
@@ -746,12 +749,7 @@ const PostsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Модальное окно создания поста */}
-      <CreatePostModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onPostCreated={handlePostCreated}
-      />
+      {/* Форма создания поста теперь встроена в скролл-область */}
 
       {/* Панель офлайн черновиков */}
       <OfflineDraftsPanel

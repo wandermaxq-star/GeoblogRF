@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import styled from 'styled-components';
 import { 
   Heart, 
@@ -13,9 +13,7 @@ import {
   Map
 } from 'lucide-react';
 import { PostDTO, PostReaction } from '../../types/post';
-import MiniMapMarker from './MiniMapMarker';
-import MiniMapRoute from './MiniMapRoute';
-import MiniEventCard from './MiniEventCard';
+import { MiniMapMarker, MiniMapRoute, MiniEventCard } from './LazyMiniComponents';
 import { isGuidePost, getSimplePostText } from '../../utils/postUtils';
 import GuideInline from './GuideInline';
 import PostReactions, { PostReactionComponent } from './PostReactions';
@@ -25,6 +23,9 @@ import ModerationBadge from '../Moderation/ModerationBadge';
 import { GeoBadgeList, GeoRef } from '../Geo/GeoBadge';
 import { useGeoFocusStore } from '../../stores/geoFocusStore';
 import { useContentStore } from '../../stores/contentStore';
+import { useThemeStore } from '../../stores/themeStore';
+
+const PostComments = lazy(() => import('./PostComments'));
 
 interface PostCardProps {
   post: PostDTO;
@@ -38,27 +39,25 @@ interface PostCardProps {
   onToggleExpand?: () => void;
 }
 
-const PostContainer = styled.div<{ template?: string; $isGuide?: boolean }>`
-  /* Match FavoritesPanel item: fully transparent glass card allowing map gradient to show through */
-  background: rgba(255, 255, 255, 0.08);
-  background-image: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-  color: var(--text-primary);
-  backdrop-filter: blur(12px) saturate(170%);
-  -webkit-backdrop-filter: blur(12px) saturate(170%);
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.14);
-  border: 1px solid rgba(255,255,255,0.12);
+const PostContainer = styled.div<{ template?: string; $isGuide?: boolean; $dark?: boolean }>`
+  /* Layer 2 — карточка внутри glass-контейнера, БЕЗ собственного backdrop-filter */
+  background: var(--glass-l2-bg);
+  color: var(--glass-card-text);
+  border-radius: 20px;
+  box-shadow: var(--glass-l2-shadow);
+  border: 1px solid var(--glass-l2-border);
   margin-bottom: 20px;
-  overflow: hidden;
-  transition: transform 220ms cubic-bezier(.22,.9,.32,1), box-shadow 220ms ease, background 220ms ease;
+  padding: 14px;
+  overflow: visible;
+  transition: transform 220ms cubic-bezier(.22,.9,.32,1), box-shadow 220ms ease, background 220ms ease, border-color 220ms ease;
   cursor: pointer;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 
   &:hover {
-    background: rgba(255,255,255,0.12);
-    border: 1px solid rgba(255,255,255,0.18);
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16);
-    transform: translateY(-4px);
+    background: var(--glass-l2-bg-hover);
+    border-color: var(--glass-l2-border-hover);
+    box-shadow: var(--glass-l2-shadow);
+    transform: translateY(-2px);
   }
 
   ${props => {
@@ -125,22 +124,22 @@ const UserDetails = styled.div`
   flex: 1;
 `;
 
-const UserName = styled.div`
+const UserName = styled.div<{ $dark?: boolean }>`
   font-weight: 600;
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--glass-card-text);
   margin-bottom: 2px;
 `;
 
-const PostTime = styled.div`
+const PostTime = styled.div<{ $dark?: boolean }>`
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--glass-card-text-muted);
   display: flex;
   align-items: center;
   gap: 4px;
 `;
 
-const MoreButton = styled.button`
+const MoreButton = styled.button<{ $dark?: boolean }>`
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -151,11 +150,10 @@ const MoreButton = styled.button`
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
-  color: #8e8e8e;
+  color: var(--glass-card-text-muted);
 
   &:hover {
-    background: #f5f5f5;
-    color: #1a1a1a;
+    background: var(--glass-bg-hover);    color: var(--glass-card-text);
   }
 `;
 
@@ -163,23 +161,23 @@ const PostContent = styled.div<{ $isGuide?: boolean }>`
   padding: 0 20px 16px;
 `;
 
-const PostTitle = styled.h3<{ $isGuide?: boolean }>`
+const PostTitle = styled.h3<{ $isGuide?: boolean; $dark?: boolean }>`
   font-size: 16px;
   font-weight: 600;
-  color: #222;
+  color: var(--glass-card-text);
   margin-bottom: 4px;
   line-height: 1.28;
   text-shadow: none;
 `;
 
-const PostMeta = styled.div<{ $isGuide?: boolean }>`
+const PostMeta = styled.div<{ $isGuide?: boolean; $dark?: boolean }>`
   display: flex;
   justify-content: center;
   gap: 16px;
   opacity: 0.9;
   font-size: 12px;
   margin-top: 0;
-  color: var(--text-secondary);
+  color: var(--glass-card-text-muted);
   
   span {
     display: flex;
@@ -188,18 +186,18 @@ const PostMeta = styled.div<{ $isGuide?: boolean }>`
   }
 `;
 
-const XpBadge = styled.span`
-  background: rgba(76, 201, 240, 0.2);
-  color: var(--text-accent);
+const XpBadge = styled.span<{ $dark?: boolean }>`
+  background: ${p => p.$dark ? 'rgba(76, 175, 80, 0.18)' : 'rgba(76, 201, 240, 0.15)'};
+  color: ${p => p.$dark ? '#43a047' : '#0ea5e9'};
   padding: 2px 8px;
   border-radius: 999px;
   font-weight: 600;
   font-size: 12px;
 `;
 
-const PostText = styled.p<{ $isGuide?: boolean }>`
+const PostText = styled.p<{ $isGuide?: boolean; $dark?: boolean }>`
   font-size: ${props => props.$isGuide ? '1.1rem' : '15px'};
-  color: #444;
+  color: var(--glass-card-text-secondary);
   line-height: 1.6;
   margin-bottom: 16px;
   text-align: ${props => props.$isGuide ? 'justify' : 'left'};
@@ -223,9 +221,9 @@ const InteractiveLabel = styled.div`
   gap: 6px;
 `;
 
-const PostActions = styled.div`
+const PostActions = styled.div<{ $dark?: boolean }>`
   padding: 12px 20px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--glass-border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -237,7 +235,7 @@ const ActionButtons = styled.div`
   gap: 20px;
 `;
 
-const ActionButton = styled.button<{ $liked?: boolean }>`
+const ActionButton = styled.button<{ $liked?: boolean; $active?: boolean; $dark?: boolean }>`
   display: flex;
   align-items: center;
   gap: 6px;
@@ -249,11 +247,11 @@ const ActionButton = styled.button<{ $liked?: boolean }>`
   transition: all 0.2s;
   font-size: 14px;
   font-weight: 500;
-  color: ${props => props.$liked ? '#ff3040' : '#8e8e8e'};
+  color: ${p => p.$liked ? '#ff3040' : p.$active ? '#6366f1' : 'var(--glass-card-text-muted)'};
 
   &:hover {
-    background: ${props => props.$liked ? '#fff5f5' : '#f5f5f5'};
-    color: ${props => props.$liked ? '#ff3040' : '#1a1a1a'};
+    background: ${p => p.$liked ? 'rgba(255,48,64,0.10)' : p.$active ? 'rgba(99,102,241,0.12)' : 'var(--glass-bg-hover)'};
+    color: ${p => p.$liked ? '#ff3040' : p.$active ? '#6366f1' : 'var(--glass-card-text)'};
   }
 
   svg {
@@ -262,9 +260,9 @@ const ActionButton = styled.button<{ $liked?: boolean }>`
   }
 `;
 
-const Stats = styled.div`
+const Stats = styled.div<{ $dark?: boolean }>`
   font-size: 12px;
-  color: #8e8e8e;
+  color: var(--glass-card-text-muted);
   font-weight: 500;
 `;
 
@@ -279,9 +277,13 @@ const PostCard: React.FC<PostCardProps> = ({
   expanded = false,
   onToggleExpand
 }) => {
+  const { theme } = useThemeStore();
+  const dk = theme === 'dark';
   const [isLiked, setIsLiked] = useState(post.is_liked);
   const [likesCount, setLikesCount] = useState(post.likes_count);
   const [reactions, setReactions] = useState<PostReaction[]>(post.reactions || []);
+  const [showComments, setShowComments] = useState(false);
+  const [localCommentsCount, setLocalCommentsCount] = useState(post.comments_count ?? 0);
   // Собираем гео-ссылки из полей поста
   const geoRefs = useMemo<GeoRef[]>(() => {
     const refs: GeoRef[] = [];
@@ -363,6 +365,7 @@ const PostCard: React.FC<PostCardProps> = ({
 
   const handleComment = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setShowComments(prev => !prev);
     onComment(post.id);
   };
 
@@ -471,17 +474,17 @@ const PostCard: React.FC<PostCardProps> = ({
   };
 
   return (
-    <PostContainer template={template} $isGuide={guidePost || hasTitle} onClick={handleCardClick} style={{ position: 'relative' }}>
+    <PostContainer className="post-item" template={template} $isGuide={guidePost || hasTitle} $dark={dk} onClick={handleCardClick} style={{ position: 'relative' }}>
       {getStatusBadge()}
       {/* Хедер поста */}
       <PostHeader $isGuide={useGradientHeader}>
         {useGradientHeader ? (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              {post.title && <PostTitle $isGuide={useGradientHeader}>{post.title}</PostTitle>}
+              {post.title && <PostTitle $isGuide={useGradientHeader} $dark={dk}>{post.title}</PostTitle>}
               <GeoBadgeList geoRefs={geoRefs} onOpen={handleGeoOpen} />
             </div>
-            <PostMeta $isGuide={useGradientHeader}>
+            <PostMeta $isGuide={useGradientHeader} $dark={dk}>
               <span>
                 <User size={16} />
                 {post.author_name || 'ГеоБлог.рф'}
@@ -491,7 +494,7 @@ const PostCard: React.FC<PostCardProps> = ({
                 {new Date(post.created_at).toLocaleDateString('ru-RU')}
               </span>
               <span>
-                <XpBadge>
+                <XpBadge $dark={dk}>
                   XP {Math.max(0, (post.likes_count || 0) * 2 + (post.comments_count || 0) * 3)}
                 </XpBadge>
               </span>
@@ -505,16 +508,16 @@ const PostCard: React.FC<PostCardProps> = ({
               </Avatar>
               <UserDetails>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <UserName>{post.author_name}</UserName>
+                  <UserName $dark={dk}>{post.author_name}</UserName>
                   <GeoBadgeList geoRefs={geoRefs} onOpen={handleGeoOpen} />
                 </div>
-                <PostTime>
+                <PostTime $dark={dk}>
                   <Clock size={12} />
                   {formatTime(post.created_at)}
                 </PostTime>
               </UserDetails>
             </UserInfo>
-            <MoreButton>
+            <MoreButton $dark={dk}>
               <MoreHorizontal size={16} />
             </MoreButton>
           </>
@@ -527,13 +530,14 @@ const PostCard: React.FC<PostCardProps> = ({
           <GuideInline post={post} />
         ) : guidePost ? (
           <div style={{ padding: '0 40px' }}>
-            <PostText $isGuide={guidePost}>{displayText}</PostText>
+            <PostText $isGuide={guidePost} $dark={dk}>{displayText}</PostText>
           </div>
         ) : (
           <>
             {displayText && (
               <PostText
                 $isGuide={guidePost}
+                $dark={dk}
                 style={!expanded ? { display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : undefined}
               >
                 {displayText}
@@ -589,7 +593,7 @@ const PostCard: React.FC<PostCardProps> = ({
                   style={{
                     background: 'transparent',
                     border: 'none',
-                    color: '#3b82f6',
+                    color: dk ? '#818cf8' : '#3b82f6',
                     cursor: 'pointer',
                     padding: 0,
                     fontWeight: 600
@@ -602,19 +606,19 @@ const PostCard: React.FC<PostCardProps> = ({
       </PostContent>
 
       {/* Действия */}
-      <PostActions>
+      <PostActions $dark={dk}>
         <ActionButtons>
-          <ActionButton $liked={isLiked} onClick={handleLike}>
+          <ActionButton $liked={isLiked} $dark={dk} onClick={handleLike}>
             <Heart size={18} fill={isLiked ? 'currentColor' : 'none'} />
             {likesCount}
           </ActionButton>
           
-          <ActionButton onClick={handleComment}>
-            <MessageCircle size={18} />
-            {post.comments_count}
+          <ActionButton onClick={handleComment} $active={showComments} $dark={dk}>
+            <MessageCircle size={18} fill={showComments ? 'currentColor' : 'none'} />
+            {localCommentsCount}
           </ActionButton>
           
-          <ActionButton onClick={handleShare}>
+          <ActionButton onClick={handleShare} $dark={dk}>
             <Share size={18} />
           </ActionButton>
         </ActionButtons>
@@ -639,10 +643,24 @@ const PostCard: React.FC<PostCardProps> = ({
           </div>
         )}
         
-        <Stats>
-          {post.likes_count} лайков • {post.comments_count} комментариев
+        <Stats $dark={dk}>
+          {post.likes_count} лайков • {localCommentsCount} комментариев
         </Stats>
       </PostActions>
+
+      {/* Раздел комментариев — stopPropagation чтобы клики внутри не триггерили handleCardClick */}
+      {showComments && (
+        <div onClick={e => e.stopPropagation()}>
+          <Suspense fallback={null}>
+            <PostComments
+              postId={post.id}
+              commentsCount={localCommentsCount}
+              onCountChange={delta => setLocalCommentsCount(prev => Math.max(0, prev + delta))}
+              isDark={dk}
+            />
+          </Suspense>
+        </div>
+      )}
     </PostContainer>
   );
 };

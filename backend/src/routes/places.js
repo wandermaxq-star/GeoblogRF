@@ -21,7 +21,7 @@ function normalizeNominatimReverse(json, lat, lng) {
 }
 
 // GET /api/places/reverse - обратный геокодинг через Nominatim
-router.get('/places/reverse', async (req, res) => {
+router.get('/reverse', async (req, res) => {
   const { lat, lng } = req.query;
   
   if (!lat || !lng) {
@@ -110,7 +110,7 @@ router.get('/places/reverse', async (req, res) => {
 });
 
 // GET /api/places/nearby - поиск ближайших мест через Overpass API
-router.get('/places/nearby', async (req, res) => {
+router.get('/nearby', async (req, res) => {
   const { lat, lng, radius = 1000 } = req.query;
   
   if (!lat || !lng) {

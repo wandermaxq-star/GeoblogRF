@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { MapPin, Navigation, Calendar, Image, Type, Map, Plus, Check, Save, X } from 'lucide-react';
+import { MapPin, Navigation, Calendar, Image, Type, Map, Plus, Check, Save, X, FileText } from 'lucide-react';
 import { useFavorites } from '../../contexts/FavoritesContext';
 import PostMap from '../Maps/PostMap';
 import { normalizeCategoryKey } from '../../constants/markerCategories';
@@ -518,14 +518,16 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
               onClick={() => setPostType('simple')}
               className="pc-btn-full"
             >
-              📝 Простой
+              <FileText size={14} />
+              Простой
             </ControlButton>
             <ControlButton
               active={postType === 'guide'}
               onClick={() => setPostType('guide')}
               className="pc-btn-full"
             >
-              🗺️ Путеводитель
+              <Map size={14} />
+              Путеводитель
             </ControlButton>
           </div>
           
@@ -737,8 +739,9 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
                           Выбрать событие
                         </button>
                         {(section.routeId || section.markerId || section.eventId) && (
-                          <div className="pc-status-badge">
-                            {section.routeId ? '✓ Маршрут добавлен' : section.markerId ? '✓ Метка добавлена' : section.eventId ? '✓ Событие добавлено' : ''}
+                          <div className="pc-status-badge flex items-center gap-1">
+                            <Check size={12} />
+                            {section.routeId ? 'Маршрут добавлен' : section.markerId ? 'Метка добавлена' : section.eventId ? 'Событие добавлено' : ''}
                           </div>
                         )}
                       </div>

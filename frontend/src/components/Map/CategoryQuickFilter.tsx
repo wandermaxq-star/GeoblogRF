@@ -113,18 +113,13 @@ const CategoryQuickFilter: React.FC<CategoryQuickFilterProps> = ({
 
       {/* Раскрытая панель с выбором категорий */}
       {isExpanded && (
-        <div style={{
+        <div className="category-quick-filter-panel glass-l1" style={{
           position: 'absolute',
           bottom: '100%',
           left: 0,
           marginBottom: '8px',
-          background: 'rgba(25, 25, 30, 0.85)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
           borderRadius: '14px',
           padding: '10px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
-          border: '1px solid rgba(255,255,255,0.1)',
           display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
           gap: '4px',
@@ -140,20 +135,19 @@ const CategoryQuickFilter: React.FC<CategoryQuickFilterProps> = ({
                 key={cat.key}
                 onClick={() => toggleCategory(cat.key)}
                 title={cat.label}
+                className={`category-quick-filter-item glass-l2 ${isSelected ? 'selected' : ''}`}
                 style={{
                   display: 'flex',
-                  flexDirection: 'column',
+                  flexDirection: 'column' as const,
                   alignItems: 'center',
                   gap: '3px',
                   padding: '8px 4px',
                   borderRadius: '10px',
-                  border: isSelected
-                    ? `2px solid ${cat.color}`
-                    : '2px solid transparent',
-                  background: isSelected
-                    ? `${cat.color}22`
-                    : 'rgba(255,255,255,0.05)',
-                  color: isSelected ? cat.color : (isDisabled ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.7)'),
+                  ...(isSelected ? {
+                    border: `2px solid ${cat.color}`,
+                    background: `${cat.color}22`,
+                  } : {}),
+                  color: isSelected ? cat.color : (isDisabled ? 'var(--glass-text-muted)' : 'var(--glass-text-secondary)'),
                   cursor: isDisabled ? 'not-allowed' : 'pointer',
                   transition: 'all 0.15s ease',
                   fontSize: '9px',
@@ -179,14 +173,13 @@ const CategoryQuickFilter: React.FC<CategoryQuickFilterProps> = ({
           {selectedCategories.length > 0 && (
             <button
               onClick={clearAll}
+              className="category-quick-filter-reset glass-l2"
               style={{
                 gridColumn: '1 / -1',
                 marginTop: '4px',
                 padding: '6px',
                 borderRadius: '8px',
-                border: '1px solid rgba(255,255,255,0.15)',
-                background: 'rgba(255,255,255,0.08)',
-                color: 'rgba(255,255,255,0.7)',
+                color: 'var(--glass-text-secondary)',
                 cursor: 'pointer',
                 fontSize: '11px',
                 fontWeight: 500,
@@ -202,21 +195,18 @@ const CategoryQuickFilter: React.FC<CategoryQuickFilterProps> = ({
       {/* Основная кнопка-панель */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
+        className="category-quick-filter-trigger glass-l1"
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
           padding: activeCategories.length > 0 ? '8px 14px' : '8px 12px',
-          background: 'rgba(25, 25, 30, 0.75)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
           borderRadius: '12px',
-          border: activeCategories.length > 0
-            ? '1px solid rgba(76, 201, 240, 0.3)'
-            : '1px solid rgba(255,255,255,0.12)',
-          color: '#fff',
+          ...(activeCategories.length > 0 ? {
+            border: '1px solid rgba(76, 201, 240, 0.3)',
+          } : {}),
+          color: 'var(--glass-text)',
           cursor: 'pointer',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
           transition: 'all 0.2s ease',
           fontSize: '13px',
           fontWeight: 500,

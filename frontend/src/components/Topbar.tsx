@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGuest } from '../contexts/GuestContext';
 import { useContentStore } from '../stores/contentStore';
-import { FaBell, FaNewspaper, FaUserPlus, FaSignInAlt } from 'react-icons/fa';
+import { useThemeStore } from '../stores/themeStore';
+import { FaBell, FaNewspaper, FaUserPlus, FaSignInAlt, FaSun, FaMoon } from 'react-icons/fa';
 import NotificationIcon from './Notifications/NotificationIcon';
 import DynamicTitle from './DynamicTitle';
 
@@ -17,6 +18,7 @@ const Topbar: React.FC = () => {
   const [activities] = React.useState<any[]>([]);
   const [postsCount] = React.useState<number>(0);
   const [showUserMenu, setShowUserMenu] = React.useState(false);
+  const { theme, toggleTheme } = useThemeStore();
 
   return (
     <div 
@@ -35,20 +37,20 @@ const Topbar: React.FC = () => {
       <div 
         className="h-[64px] flex items-center justify-between px-8" 
         style={{ 
-          background: 'rgba(255, 255, 255, 0.15)', // Более прозрачный
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          borderBottom: 'none', // Убираем границу снизу - нет разделения с Sidebar
-          boxShadow: '0 2px 12px rgba(0, 0, 0, 0.2)',
-          color: 'var(--text-primary)',
+          background: 'var(--glass-card-bg)',
+          backdropFilter: 'var(--glass-blur-strong)',
+          WebkitBackdropFilter: 'var(--glass-blur-strong)',
+          borderBottom: 'none',
+          boxShadow: 'var(--glass-shadow)',
+          color: 'var(--glass-text)',
           width: '100%',
           height: '100%'
         }}
       >
         <div className="flex items-center">
           <div className="flex items-center mr-8">
-            <i className="fas fa-compass text-2xl" style={{ color: '#000000' }}></i>
-            <span className="ml-3 font-montserrat font-bold text-lg" style={{ color: '#000000' }}>
+            <i className="fas fa-compass text-2xl" style={{ color: 'var(--glass-text)' }}></i>
+            <span className="ml-3 font-montserrat font-bold text-lg" style={{ color: 'var(--glass-text)' }}>
               ГеоБлог.рф
             </span>
           </div>
@@ -64,9 +66,9 @@ const Topbar: React.FC = () => {
               navigate('/activity');
             }}
             title="Лента активности"
-            style={{ color: '#000000' }}
+            style={{ color: 'var(--glass-text)' }}
           >
-            <FaBell className="text-xl" style={{ color: '#000000' }} />
+            <FaBell className="text-xl" style={{ color: 'var(--glass-text)' }} />
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
               {activities?.length > 0 ? activities.length : 0}
             </span>
@@ -80,13 +82,23 @@ const Topbar: React.FC = () => {
               navigate('/posts?posts=1');
             }}
             title="Посты и обсуждения"
-            style={{ color: '#000000' }}
+            style={{ color: 'var(--glass-text)' }}
           >
-            <FaNewspaper className="text-xl" style={{ color: '#000000' }} />
+            <FaNewspaper className="text-xl" style={{ color: 'var(--glass-text)' }} />
             <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full min-w-4 h-4 px-[2px] flex items-center justify-center">
               {postsCount > 99 ? '99+' : postsCount}
             </span>
           </button>
+
+          {/* Переключатель темы light/dark */}
+          <button
+            className="theme-toggle-btn"
+            onClick={toggleTheme}
+            title={theme === 'light' ? 'Переключить на тёмную тему' : 'Переключить на светлую тему'}
+          >
+            {theme === 'light' ? <FaMoon /> : <FaSun />}
+          </button>
+
           {isGuest ? (
             <div className="flex items-center space-x-2">
               {/* Кнопка входа */}
@@ -129,7 +141,7 @@ const Topbar: React.FC = () => {
                 onClick={() => {
                   setShowUserMenu(!showUserMenu);
                 }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#000000' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--glass-text)' }}
               >
                 <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
                   {user?.avatar_url ? (
@@ -139,10 +151,10 @@ const Topbar: React.FC = () => {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <i className="fas fa-user text-lg" style={{ color: '#000000' }}></i>
+                    <i className="fas fa-user text-lg" style={{ color: 'var(--glass-text)' }}></i>
                   )}
                 </div>
-                <span className="ml-3 font-medium" style={{ color: '#000000' }}>
+                <span className="ml-3 font-medium" style={{ color: 'var(--glass-text)' }}>
                   {user.username}
                 </span>
                 <i className={`fas fa-chevron-down ml-2 text-xs transition-transform ${showUserMenu ? 'rotate-180' : ''}`}></i>
@@ -157,9 +169,9 @@ const Topbar: React.FC = () => {
                     onClick={() => setShowUserMenu(false)}
                   ></div>
                   
-                  <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                  <div className="absolute right-0 top-full mt-2 w-64 rounded-lg z-50" style={{ background: 'var(--glass-card-bg)', backdropFilter: 'var(--glass-blur-strong)', WebkitBackdropFilter: 'var(--glass-blur-strong)', border: '1px solid var(--glass-border-color)', boxShadow: 'var(--glass-shadow-container)', color: 'var(--glass-card-text)' }}>
                     {/* Информация о пользователе */}
-                    <div className="p-4 border-b border-gray-200">
+                    <div className="p-4" style={{ borderBottom: '1px solid var(--glass-border-color)' }}>
                       <div className="flex items-center space-x-3">
                         <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
                           {user?.avatar_url ? (
@@ -173,11 +185,11 @@ const Topbar: React.FC = () => {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 truncate">
+                          <p className="font-semibold truncate" style={{ color: 'var(--glass-card-text)' }}>
                             {user?.username}
                           </p>
                           {user?.email && (
-                            <p className="text-sm text-gray-500 truncate">
+                            <p className="text-sm truncate" style={{ color: 'var(--glass-card-text-secondary)' }}>
                               {user.email}
                             </p>
                           )}
@@ -189,12 +201,13 @@ const Topbar: React.FC = () => {
                     <div className="py-2">
                       <button
                         onClick={() => {
-                          navigate('/?profile=1');
+                          useContentStore.getState().setRightContent('profile');
                           setShowUserMenu(false);
                         }}
-                        className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 transition-colors flex items-center"
+                        className="w-full px-4 py-2 text-left transition-colors flex items-center topbar-dropdown-item"
+                        style={{ color: 'var(--glass-card-text)' }}
                       >
-                        <i className="fas fa-user-circle w-5 mr-3 text-gray-400"></i>
+                        <i className="fas fa-user-circle w-5 mr-3" style={{ color: 'var(--glass-card-text-muted)' }}></i>
                         Личный кабинет
                       </button>
                       
@@ -203,13 +216,14 @@ const Topbar: React.FC = () => {
                           setShowUserMenu(false);
                           navigate('/login');
                         }}
-                        className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 transition-colors flex items-center"
+                        className="w-full px-4 py-2 text-left transition-colors flex items-center topbar-dropdown-item"
+                        style={{ color: 'var(--glass-card-text)' }}
                       >
-                        <i className="fas fa-exchange-alt w-5 mr-3 text-gray-400"></i>
+                        <i className="fas fa-exchange-alt w-5 mr-3" style={{ color: 'var(--glass-card-text-muted)' }}></i>
                         Сменить аккаунт
                       </button>
                       
-                      <div className="border-t border-gray-200 my-1"></div>
+                      <div className="my-1" style={{ borderTop: '1px solid var(--glass-border-color)' }}></div>
                       
                       <button
                         onClick={() => {

@@ -50,21 +50,19 @@
   }
 }
 
-/* Темная тема */
+/* Темная тема — лёгкая тёмная дымка */
 .planner-action-buttons-container.dark {
-  background: rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  
   background: linear-gradient(
     135deg,
-    rgba(0, 0, 0, 0.2) 0%,
-    rgba(0, 0, 0, 0.1) 100%
+    rgba(0, 0, 0, 0.1) 0%,
+    rgba(0, 0, 0, 0.05) 100%
   );
+  border: 1px solid rgba(0, 0, 0, 0.12);
 }
 
 @supports not (backdrop-filter: blur(10px)) {
   .planner-action-buttons-container.dark {
-    background: rgba(0, 0, 0, 0.75);
+    background: rgba(0, 0, 0, 0.25);
   }
 }
 
@@ -133,21 +131,21 @@
   }
 }
 
-/* Темная тема для кнопок */
+/* Темная тема для кнопок — лёгкая дымка */
 .planner-action-button.dark {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: var(--glass-text);
 }
 
 .planner-action-button.dark:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.18);
 }
 
 .planner-action-button.dark.active {
-  background: rgba(59, 130, 246, 0.4);
-  border: 2px solid rgba(59, 130, 246, 0.7);
+  background: rgba(59, 130, 246, 0.25);
+  border: 2px solid rgba(59, 130, 246, 0.5);
 }
 
 /* Специальные hover эффекты для кнопок очистки и сохранения */

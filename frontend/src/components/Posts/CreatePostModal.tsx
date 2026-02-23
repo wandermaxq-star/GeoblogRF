@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { FaTimes, FaPlus, FaMapMarkerAlt, FaRoute, FaCalendar, FaPaperPlane, FaEye, FaExpand, FaCompress, FaTrash, FaCloud } from 'react-icons/fa';
+import { FileText, Map as MapIcon, Smartphone, Monitor, BookOpen, Target, Check } from 'lucide-react';
 import { createPost, PostDTO, MapSnapshot } from '../../services/postsService';
 import { useLayoutState } from '../../contexts/LayoutContext';
 import { useFavorites } from '../../contexts/FavoritesContext';
-import MiniMapMarker from './MiniMapMarker';
-import MiniMapRoute from './MiniMapRoute';
-import MiniEventCard from './MiniEventCard';
+import { MiniMapMarker, MiniMapRoute, MiniEventCard } from './LazyMiniComponents';
 import PostPreview from './PostPreview';
 import GuideFormatSelector, { GuideFormat } from './GuideFormatSelector';
 import { offlinePostsStorage } from '../../services/offlinePostsStorage';
@@ -28,9 +27,10 @@ interface CreatePostModalProps {
   onClose: () => void;
   onPostCreated: (post: PostDTO) => void;
   initialRoute?: any;
+  inline?: boolean;
 }
 
-const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onPostCreated, initialRoute }) => {
+const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onPostCreated, initialRoute, inline = false }) => {
   // Тип поста
   const [postType, setPostType] = useState<PostType>('simple');
   
@@ -475,6 +475,357 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onPo
 
   if (!isOpen) return null;
 
+  // === INLINE-форма внутри контейнера постов ===
+  if (inline) {
+    return (
+      <div className="create-post-inline" style={{ padding: '0 4px' }}>
+        {/* Заголовок */}
+        <div className="flex items-center justify-between mb-4 px-2">
+          <h3 className="text-base font-semibold" style={{ color: 'var(--glass-text)' }}>Новый пост</h3>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
+            style={{
+              background: 'rgba(255,255,255,0.3)',
+              backdropFilter: 'blur(10px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(10px) saturate(180%)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              color: 'var(--glass-text)'
+            }}
+          >
+            <FaTimes size={14} />
+          </button>
+        </div>
+
+        {/* Переключатель типа */}
+        <div className="flex gap-2 mb-4 px-2">
+          <button
+            type="button"
+            onClick={() => setPostType('simple')}
+            className="flex-1 px-3 py-2 text-sm font-medium rounded-xl transition-all"
+            style={{
+              background: postType === 'simple' ? 'rgba(255,255,255,0.65)' : 'rgba(255,255,255,0.2)',
+              backdropFilter: 'blur(10px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(10px) saturate(180%)',
+              border: postType === 'simple' ? '1px solid rgba(255,255,255,0.5)' : '1px solid rgba(255,255,255,0.15)',
+              color: 'var(--glass-text)',
+              boxShadow: postType === 'simple' ? '0 4px 12px rgba(0,0,0,0.1)' : 'none'
+            }}
+          >
+            <FileText size={14} className="inline mr-1.5" />
+            Пост
+          </button>
+          <button
+            type="button"
+            onClick={() => setPostType('guide')}
+            className="flex-1 px-3 py-2 text-sm font-medium rounded-xl transition-all"
+            style={{
+              background: postType === 'guide' ? 'rgba(255,255,255,0.65)' : 'rgba(255,255,255,0.2)',
+              backdropFilter: 'blur(10px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(10px) saturate(180%)',
+              border: postType === 'guide' ? '1px solid rgba(255,255,255,0.5)' : '1px solid rgba(255,255,255,0.15)',
+              color: 'var(--glass-text)',
+              boxShadow: postType === 'guide' ? '0 4px 12px rgba(0,0,0,0.1)' : 'none'
+            }}
+          >
+            <MapIcon size={14} className="inline mr-1.5" />
+            Путеводитель
+          </button>
+        </div>
+
+        {/* Форма */}
+        <div className="space-y-3 px-2">
+          {/* Заголовок */}
+          {(postType === 'simple' || (postType === 'guide' && guideFormatSelected)) && (
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-3 py-2 text-sm rounded-xl focus:outline-none"
+              style={{
+                background: 'rgba(255,255,255,0.3)',
+                backdropFilter: 'blur(10px) saturate(180%)',
+                WebkitBackdropFilter: 'blur(10px) saturate(180%)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                color: 'var(--glass-text)',
+                borderRadius: '12px'
+              }}
+              placeholder={postType === 'guide' ? 'Заголовок путеводителя *' : 'Заголовок (необязательно)'}
+            />
+          )}
+
+          {/* Текст */}
+          {(postType === 'simple' || (postType === 'guide' && guideFormatSelected)) && (
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              className="w-full px-3 py-2 text-sm min-h-[100px] focus:outline-none resize-none"
+              style={{
+                background: 'rgba(255,255,255,0.3)',
+                backdropFilter: 'blur(10px) saturate(180%)',
+                WebkitBackdropFilter: 'blur(10px) saturate(180%)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                color: 'var(--glass-text)',
+                borderRadius: '12px'
+              }}
+              placeholder={postType === 'guide' ? 'Вступление *' : 'Напишите ваш пост... *'}
+            />
+          )}
+
+          {/* Фото */}
+          {(postType === 'simple' || (postType === 'guide' && guideFormatSelected)) && (
+            <div
+              className="rounded-xl p-3"
+              style={{
+                background: 'rgba(255,255,255,0.15)',
+                border: '2px dashed rgba(255,255,255,0.25)',
+                borderRadius: '12px'
+              }}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handlePhotoSelect}
+                className="hidden"
+                id="photo-upload-inline"
+                disabled={uploadedFiles.length >= 10}
+              />
+              <label
+                htmlFor="photo-upload-inline"
+                className="cursor-pointer flex items-center justify-center gap-2 py-2 text-sm"
+                style={{
+                  color: 'var(--glass-text-secondary)',
+                  opacity: uploadedFiles.length >= 10 ? 0.5 : 1,
+                  cursor: uploadedFiles.length >= 10 ? 'not-allowed' : 'pointer'
+                }}
+              >
+                <FaPlus size={14} />
+                {uploadedFiles.length >= 10 ? 'Лимит фото' : 'Добавить фото'}
+              </label>
+
+              {photoPreviewUrls.length > 0 && (
+                <div className="grid grid-cols-4 gap-2 mt-2">
+                  {photoPreviewUrls.map((url, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={url}
+                        alt={`Превью ${index + 1}`}
+                        className="w-full h-16 object-cover rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePhoto(index)}
+                        className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                      >
+                        <FaTimes size={10} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Крючок контента (только для простого поста) */}
+          {postType === 'simple' && (
+            <div
+              className="rounded-xl p-3"
+              style={{
+                background: 'rgba(255,255,255,0.15)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: '12px'
+              }}
+            >
+              <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--glass-text)' }}>
+                <input
+                  type="checkbox"
+                  checked={hasHook}
+                  onChange={(e) => {
+                    setHasHook(e.target.checked);
+                    if (!e.target.checked) handleHookSelect(null);
+                  }}
+                  className="w-4 h-4"
+                />
+                Крючок контента
+              </label>
+
+              {hasHook && (
+                <div className="space-y-2 mt-2 max-h-[200px] overflow-y-auto">
+                  <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--glass-text-secondary)' }}>Маршруты</div>
+                  {(favorites?.favoriteRoutes || []).slice(0, 5).map(route => (
+                    <button
+                      key={route.id}
+                      onClick={() => handleHookSelect('route', route.id)}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors"
+                      style={{
+                        background: hookType === 'route' && hookRouteId === route.id ? 'rgba(76, 201, 240, 0.3)' : 'rgba(255,255,255,0.15)',
+                        color: 'var(--glass-text)',
+                        border: hookType === 'route' && hookRouteId === route.id ? '1px solid rgba(76,201,240,0.5)' : '1px solid rgba(255,255,255,0.15)'
+                      }}
+                    >
+                      <FaRoute size={12} />
+                      <span className="flex-1 text-left truncate">{route.title}</span>
+                    </button>
+                  ))}
+
+                  <div className="text-xs font-semibold uppercase tracking-wide mt-2" style={{ color: 'var(--glass-text-secondary)' }}>Метки</div>
+                  {(favorites?.favoritePlaces || []).slice(0, 5).map(place => (
+                    <button
+                      key={place.id}
+                      onClick={() => handleHookSelect('marker', place.id)}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors"
+                      style={{
+                        background: hookType === 'marker' && hookMarkerId === place.id ? 'rgba(76, 201, 240, 0.3)' : 'rgba(255,255,255,0.15)',
+                        color: 'var(--glass-text)',
+                        border: hookType === 'marker' && hookMarkerId === place.id ? '1px solid rgba(76,201,240,0.5)' : '1px solid rgba(255,255,255,0.15)'
+                      }}
+                    >
+                      <FaMapMarkerAlt size={12} />
+                      <span className="flex-1 text-left truncate">{place.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Путеводитель — выбор формата */}
+          {postType === 'guide' && !guideFormatSelected && (
+            <div>
+              <p className="text-sm mb-2" style={{ color: 'var(--glass-text-secondary)' }}>Выберите формат:</p>
+              <GuideFormatSelector selectedFormat={guideFormat} onFormatChange={handleFormatSelect} />
+            </div>
+          )}
+
+          {/* Путеводитель — секции */}
+          {postType === 'guide' && guideFormatSelected && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium" style={{ color: 'var(--glass-text)' }}>Секции</span>
+                <button
+                  type="button"
+                  onClick={addGuideSection}
+                  className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg transition-all"
+                  style={{
+                    background: 'rgba(255,255,255,0.4)',
+                    backdropFilter: 'blur(10px) saturate(180%)',
+                    border: '1px solid rgba(255,255,255,0.3)',
+                    color: 'var(--glass-text)'
+                  }}
+                >
+                  <FaPlus size={10} /> Секция
+                </button>
+              </div>
+
+              {guideSections.map((section, idx) => (
+                <div
+                  key={section.id}
+                  className="rounded-xl p-3 space-y-2"
+                  style={{
+                    background: 'rgba(255,255,255,0.15)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: '12px'
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium" style={{ color: 'var(--glass-text-secondary)' }}>Секция {idx + 1}</span>
+                    <button type="button" onClick={() => removeGuideSection(section.id)} className="text-red-400 hover:text-red-600">
+                      <FaTrash size={12} />
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={section.title}
+                    onChange={(e) => updateGuideSection(section.id, { title: e.target.value })}
+                    className="w-full px-2 py-1.5 text-sm rounded-lg focus:outline-none"
+                    style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--glass-text)' }}
+                    placeholder="Заголовок секции..."
+                  />
+                  <textarea
+                    value={section.content}
+                    onChange={(e) => updateGuideSection(section.id, { content: e.target.value })}
+                    className="w-full px-2 py-1.5 text-sm min-h-[60px] rounded-lg focus:outline-none resize-none"
+                    style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--glass-text)' }}
+                    placeholder="Текст секции..."
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Ошибка */}
+          {error && (
+            <div className="text-red-500 text-sm px-3 py-2 rounded-xl" style={{ background: 'rgba(255,100,100,0.15)', border: '1px solid rgba(255,100,100,0.2)' }}>
+              {error}
+            </div>
+          )}
+
+          {/* Кнопки */}
+          <div className="flex items-center justify-between gap-2 pt-2 pb-1">
+            <button
+              onClick={handleSaveOffline}
+              disabled={loading || (postType === 'simple' && !body.trim()) || (postType === 'guide' && (!title.trim() || !body.trim() || guideSections.length === 0))}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-xl disabled:opacity-40 transition-all"
+              style={{
+                background: 'rgba(255,255,255,0.3)',
+                backdropFilter: 'blur(10px) saturate(180%)',
+                WebkitBackdropFilter: 'blur(10px) saturate(180%)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                color: 'var(--glass-text)'
+              }}
+              title="Сохранить черновик офлайн"
+            >
+              <FaCloud size={12} />
+              Черновик
+            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onClose}
+                className="px-3 py-2 text-sm rounded-xl transition-all"
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  color: 'var(--glass-text-secondary)'
+                }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleCreatePost}
+                disabled={loading || (postType === 'simple' && !body.trim()) || (postType === 'guide' && (!title.trim() || !body.trim() || guideSections.length === 0))}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl disabled:opacity-40 transition-all"
+                style={{
+                  background: 'rgba(255,255,255,0.55)',
+                  backdropFilter: 'blur(12px) saturate(170%)',
+                  WebkitBackdropFilter: 'blur(12px) saturate(170%)',
+                  border: '1px solid rgba(255,255,255,0.35)',
+                  color: 'rgba(0,0,0,0.8)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                }}
+              >
+                {loading ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
+                    Создание...
+                  </>
+                ) : (
+                  <>
+                    <FaPaperPlane size={12} />
+                    Опубликовать
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // === MODAL mode (оригинальный полноэкранный модал) ===
+
   return (
     <>
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -517,7 +868,8 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onPo
                   borderRadius: 'var(--radius-panel)'
                 }}
               >
-                📝 Простой пост
+                <FileText size={15} className="inline mr-1.5" />
+                Простой пост
               </button>
               <button
                 type="button"
@@ -532,7 +884,8 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onPo
                   borderRadius: 'var(--radius-panel)'
                 }}
               >
-                🗺️ Путеводитель
+                <MapIcon size={15} className="inline mr-1.5" />
+                Путеводитель
               </button>
             </div>
           </div>
@@ -776,11 +1129,11 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onPo
                       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
-                              {guideFormat === 'mobile' && '📱'}
-                              {guideFormat === 'desktop' && '💻'}
-                              {guideFormat === 'article' && '📄'}
-                              {guideFormat === 'focus' && '🎯'}
+                            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                              {guideFormat === 'mobile' && <Smartphone size={20} />}
+                              {guideFormat === 'desktop' && <Monitor size={20} />}
+                              {guideFormat === 'article' && <BookOpen size={20} />}
+                              {guideFormat === 'focus' && <Target size={20} />}
                             </div>
                             <div>
                               <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>
@@ -1050,7 +1403,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onPo
                         guideFormat === 'focus' ? 'border-orange-300 bg-orange-50' : 'border-gray-200'
                       }`}>
                         <h4 className="text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
-                          {guideFormat === 'focus' && '✅ '}
+                          {guideFormat === 'focus' && <Check size={13} className="inline mr-1 text-orange-500" />}
                           {section.title || `Секция ${idx + 1}`}
                         </h4>
                         <p className="text-xs text-gray-600 whitespace-pre-wrap mb-2">

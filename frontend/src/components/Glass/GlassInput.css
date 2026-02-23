@@ -128,24 +128,24 @@
   width: 100%;
 }
 
-/* Темная тема */
+/* Темная тема — лёгкая дымка */
 .glass-input.dark {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: var(--glass-text);
 }
 
 .glass-input.dark::placeholder {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--glass-text-muted);
 }
 
 .glass-input.dark:focus {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(59, 130, 246, 0.6);
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(59, 130, 246, 0.5);
 }
 
 .glass-input.dark .glass-input-icon {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--glass-text-secondary);
 }
 
 /* Адаптивность */

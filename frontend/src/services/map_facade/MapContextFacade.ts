@@ -682,6 +682,22 @@ export class MapContextFacade {
     return L.latLng(lat, lon);
   }
 
+  /** Предотвращает перехват кликов Leaflet'ом на DOM-элементе */
+  disableClickPropagation(el: HTMLElement): void {
+    const L = (window as any).L;
+    if (L?.DomEvent) {
+      L.DomEvent.disableClickPropagation(el);
+    }
+  }
+
+  /** Предотвращает перехват скролла Leaflet'ом на DOM-элементе */
+  disableScrollPropagation(el: HTMLElement): void {
+    const L = (window as any).L;
+    if (L?.DomEvent) {
+      L.DomEvent.disableScrollPropagation(el);
+    }
+  }
+
   createPolyline(latlngs: Array<[number, number]>, opts?: any): any {
     try {
       const map: any = this.getMapSafe();
@@ -713,6 +729,27 @@ export class MapContextFacade {
     const map: any = this.getMapSafe();
     if (!map || !L) return null;
     return L.circle(center, opts || {}).addTo(map);
+  }
+
+  createRectangle(bounds: [[number, number], [number, number]], opts?: any): any {
+    const L = (window as any).L;
+    const map: any = this.getMapSafe();
+    if (!map || !L) return null;
+    return L.rectangle(bounds, opts || {}).addTo(map);
+  }
+
+  flyTo(center: [number, number], zoom?: number, opts?: any): void {
+    try {
+      const renderer = this.currentRenderer;
+      if (renderer?.flyTo) {
+        renderer.flyTo(center, zoom, opts);
+        return;
+      }
+      const map: any = this.getMapSafe();
+      map?.flyTo?.(center, zoom, opts);
+    } catch (e) {
+      console.debug('[MapContextFacade] flyTo failed:', e);
+    }
   }
 
   // Removed duplicate fitBounds(bounds: any, opts?: any): void { ... }

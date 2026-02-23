@@ -8,6 +8,7 @@ interface ReportButtonProps {
   variant?: 'button' | 'icon' | 'text';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
+  style?: React.CSSProperties;
 }
 
 const ReportButton: React.FC<ReportButtonProps> = ({
@@ -16,7 +17,8 @@ const ReportButton: React.FC<ReportButtonProps> = ({
   contentTitle,
   variant = 'button',
   size = 'md',
-  className = ''
+  className = '',
+  style
 }) => {
   const [isReporting, setIsReporting] = useState(false);
 
@@ -100,6 +102,7 @@ const ReportButton: React.FC<ReportButtonProps> = ({
       onClick={handleReport}
       disabled={isReporting}
       className={`flex items-center justify-center font-medium disabled:opacity-50 disabled:cursor-not-allowed ${getVariantClasses()} ${className}`}
+      style={style}
       title="Пожаловаться на контент"
     >
       {isReporting ? (

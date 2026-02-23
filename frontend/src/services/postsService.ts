@@ -1,6 +1,6 @@
 import apiClient from '../api/apiClient';
 import { recordGuestAction } from './guestActionsService';
-import { addXPForPost } from '../utils/gamificationHelper';
+// gamificationHelper загружается динамически для уменьшения main bundle
 import storageService from './storageService';
 
 export interface PostReaction {
@@ -116,7 +116,6 @@ export interface ListRepliesResponse {
   total: number;
 }
 
-// Заглушки для API - в реальном проекте здесь будут настоящие HTTP запросы
 export const listPosts = async (params: {
   limit?: number;
   offset?: number;
@@ -172,45 +171,10 @@ export const listPosts = async (params: {
       total: allContent.length
     };
   } catch (error) {
-    console.warn('⚠️ Ошибка при загрузке постов, используем fallback:', error);
-    
-    // Fallback к моковым данным если API недоступен
-    const mockPosts: PostDTO[] = [
-      {
-        id: "1",
-        title: "То что должно отображаться",
-        body: "Это тестовый пост для проверки отображения. Если вы видите этот текст — лента контента работает корректно, но бэкенд API недоступен.",
-        author_id: "1",
-        author_name: "Тестовый пользователь",
-        created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        likes_count: 0,
-        comments_count: 0,
-        is_liked: false,
-        reactions: [],
-        content_type: 'post'
-      },
-      {
-        id: "2",
-        title: "Пост с фото",
-        body: "Пример поста с прикреплённым изображением. Подключите бэкенд для загрузки реальных данных.",
-        author_id: "1",
-        author_name: "Тестовый пользователь",
-        created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-        updated_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-        likes_count: 0,
-        comments_count: 0,
-        is_liked: false,
-        reactions: [],
-        photo_urls: ["https://images.unsplash.com/photo-1513326738677-b964603b136d?w=800&q=80"],
-        content_type: 'post'
-      }
-    ];
-    
-    console.log('📋 Возвращаем моковые данные:', mockPosts.length, 'постов');
+    console.error('❌ Ошибка при загрузке постов:', error);
     return {
-      data: mockPosts,
-      total: mockPosts.length
+      data: [],
+      total: 0
     };
   }
 };
@@ -446,10 +410,12 @@ export const createPost = async (data: CreatePostRequest): Promise<PostDTO> => {
         }
         
         if (userId) {
-          addXPForPost(post.id, {
-            hasPhoto: !!(data.photo_urls && (Array.isArray(data.photo_urls) ? data.photo_urls.length > 0 : data.photo_urls)),
-            hasMarker: !!data.marker_id,
-            userId,
+          import('../utils/gamificationHelper').then(({ addXPForPost }) => {
+            addXPForPost(post.id, {
+              hasPhoto: !!(data.photo_urls && (Array.isArray(data.photo_urls) ? data.photo_urls.length > 0 : data.photo_urls)),
+              hasMarker: !!data.marker_id,
+              userId,
+            }).catch(() => {});
           }).catch(() => {});
         }
       }, 0);
@@ -465,36 +431,28 @@ export const listReplies = async (postId: string, params: {
   limit?: number;
   offset?: number;
 }): Promise<ListRepliesResponse> => {
-  // Заглушка - возвращаем тестовые ответы
-  const mockReplies: ReplyDTO[] = [
-    {
-      id: "1",
-      post_id: postId,
-      body: "Это тестовый ответ на пост",
-      author_name: "Тестовый автор",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }
-  ];
-
-  return {
-    data: mockReplies,
-    total: mockReplies.length
-  };
+  try {
+    const response = await apiClient.get(`/posts/${postId}/replies`, {
+      params: {
+        limit: params.limit || 50,
+        offset: params.offset || 0
+      }
+    });
+    return {
+      data: response.data?.data || response.data || [],
+      total: response.data?.total || 0
+    };
+  } catch (error) {
+    console.error('❌ Ошибка загрузки ответов:', error);
+    return { data: [], total: 0 };
+  }
 };
 
 export const createReply = async (data: CreateReplyRequest): Promise<ReplyDTO> => {
-  // Заглушка - возвращаем созданный ответ
-  const newReply: ReplyDTO = {
-    id: Date.now().toString(),
-    post_id: data.post_id,
-    body: data.body,
-    author_name: "Текущий пользователь",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-
-  return newReply;
+  const response = await apiClient.post(`/posts/${data.post_id}/replies`, {
+    body: data.body
+  });
+  return response.data;
 };
 
 // Добавить/удалить реакцию на пост

@@ -33,10 +33,7 @@ export interface ActivityFeedResponse {
 }
 
 export interface PrivacySettings {
-  room_created_visibility: 'public' | 'friends' | 'private' | 'anonymous';
-  room_joined_visibility: 'public' | 'friends' | 'private' | 'anonymous';
-  blog_created_visibility: 'public' | 'friends' | 'private' | 'anonymous';
-  blog_published_visibility: 'public' | 'friends' | 'private' | 'anonymous';
+  // room/blog visibility убрано — не используется в ленте
   marker_created_visibility: 'public' | 'friends' | 'private' | 'anonymous';
   route_created_visibility: 'public' | 'friends' | 'private' | 'anonymous';
   route_shared_visibility: 'public' | 'friends' | 'private' | 'anonymous';
@@ -163,14 +160,6 @@ class ActivityService {
   // Получить иконку для типа активности
   getActivityIcon(activityType: string): string {
     const iconMap: Record<string, string> = {
-      // Чаты
-      'chat_created': 'FaComments',
-      'chat_joined': 'FaUserPlus',
-      'chat_left': 'FaUserMinus',
-      'chat_message_sent': 'FaPaperPlane',
-      'chat_archived': 'FaArchive',
-      'chat_restored': 'FaUndo',
-      
       // События
       'event_created': 'FaCalendarPlus',
       'event_joined': 'FaCheckCircle',
@@ -198,19 +187,6 @@ class ActivityService {
       'marker_rated': 'FaStar',
       'marker_commented': 'FaComment',
       'marker_visited': 'FaCheckCircle',
-      
-      // Блоги
-      'blog_created': 'FaEdit',
-      'blog_published': 'FaBook',
-      'post_published': 'FaBook',
-      'blog_updated': 'FaEdit',
-      'blog_deleted': 'FaTrash',
-      'blog_favorited': 'FaHeart',
-      'blog_unfavorited': 'FaHeartBroken',
-      'blog_rated': 'FaStar',
-      'blog_commented': 'FaComment',
-      'blog_liked': 'FaThumbsUp',
-      'blog_unliked': 'FaThumbsDown',
       
       // Пользователи и социальные взаимодействия
       'user_followed': 'FaUserFriends',
@@ -278,14 +254,6 @@ class ActivityService {
   // Получить цвет для типа активности
   getActivityColor(activityType: string): string {
     const colorMap: Record<string, string> = {
-      // Чаты - голубой
-      'chat_created': '#17A2B8',
-      'chat_joined': '#17A2B8',
-      'chat_left': '#6C757D',
-      'chat_message_sent': '#17A2B8',
-      'chat_archived': '#6C757D',
-      'chat_restored': '#28A745',
-      
       // События - зеленый
       'event_created': '#28A745',
       'event_joined': '#28A745',
@@ -313,19 +281,6 @@ class ActivityService {
       'marker_rated': '#FFC107',
       'marker_commented': '#17A2B8',
       'marker_visited': '#28A745',
-      
-      // Блоги - синий
-      'blog_created': '#007BFF',
-      'blog_published': '#007BFF',
-      'post_published': '#007BFF',
-      'blog_updated': '#007BFF',
-      'blog_deleted': '#DC3545',
-      'blog_favorited': '#E83E8C',
-      'blog_unfavorited': '#6C757D',
-      'blog_rated': '#FFC107',
-      'blog_commented': '#17A2B8',
-      'blog_liked': '#28A745',
-      'blog_unliked': '#6C757D',
       
       // Пользователи и социальные взаимодействия - синий
       'user_followed': '#007BFF',
@@ -393,14 +348,6 @@ class ActivityService {
   // Получить текст для типа активности
   getActivityText(activityType: string, _metadata: Record<string, any> = {}): string {
     const textMap: Record<string, string> = {
-      // Чаты
-      'chat_created': 'создал чат',
-      'chat_joined': 'присоединился к чату',
-      'chat_left': 'покинул чат',
-      'chat_message_sent': 'отправил сообщение',
-      'chat_archived': 'архивировал чат',
-      'chat_restored': 'восстановил чат',
-      
       // События
       'event_created': 'опубликовал событие',
       'event_joined': 'присоединился к событию',
@@ -428,19 +375,6 @@ class ActivityService {
       'marker_rated': 'оценил метку',
       'marker_commented': 'прокомментировал метку',
       'marker_visited': 'посетил метку',
-      
-      // Блоги
-      'blog_created': 'создал блог',
-      'blog_published': 'опубликовал блог',
-      'post_published': 'опубликовал пост',
-      'blog_updated': 'обновил блог',
-      'blog_deleted': 'удалил блог',
-      'blog_favorited': 'добавил блог в избранное',
-      'blog_unfavorited': 'убрал блог из избранного',
-      'blog_rated': 'оценил блог',
-      'blog_commented': 'прокомментировал блог',
-      'blog_liked': 'лайкнул блог',
-      'blog_unliked': 'убрал лайк с блога',
       
       // Пользователи и социальные взаимодействия
       'user_followed': 'подписался на пользователя',

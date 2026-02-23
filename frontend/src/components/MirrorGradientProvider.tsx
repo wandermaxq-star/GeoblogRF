@@ -60,18 +60,20 @@ export const useMirrorGradient = () => {
 interface MirrorGradientContainerProps {
   children: ReactNode;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 export const MirrorGradientContainer: React.FC<MirrorGradientContainerProps> = ({ 
   children, 
-  className = '' 
+  className = '',
+  style 
 }) => {
   const context = useMirrorGradient();
   
   if (!context) {
     // Если контекст не загружен, показываем обычный контейнер
     return (
-      <div className={`page-container ${className}`}>
+      <div className={`page-container ${className}`} style={style}>
         {children}
       </div>
     );
@@ -80,7 +82,7 @@ export const MirrorGradientContainer: React.FC<MirrorGradientContainerProps> = (
   const { getGradientClass } = context;
   
   return (
-    <div className={`page-container ${getGradientClass()} ${className}`}>
+    <div className={`page-container ${getGradientClass()} ${className}`} style={style}>
       {children}
     </div>
   );

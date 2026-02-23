@@ -1,27 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { RoomAccordion } from "../components/chat/RoomAccordion";
 import { ChatMain } from "../components/chat/ChatMain";
 import { ParticipantsPanel } from "../components/chat/ParticipantsPanel";
 import { Room, Message, User, RouteRoom, EventRoom, CreateRouteRoomData, CreateEventRoomData } from '../types/chat';
 import { FaBars, FaUsers, FaTimes, FaComments } from 'react-icons/fa';
 import { MirrorGradientContainer, usePanelRegistration } from '../components/MirrorGradientProvider';
+import { useAuth } from '../contexts/AuthContext';
 import '../styles/PageLayout.css';
 
 // API URL для загрузки комнат
 const API_BASE_URL = ''; // Используем относительный путь через Vite proxy
 
-// Демо-пользователь для временного использования
-const DEMO_USER: User = {
-  id: '1',
-  name: 'Тестовый пользователь',
-  avatar: null,
-  status: 'online',
-  role: 'member',
-  joinedAt: new Date()
-};
-
 const Chat = () => {
   const { registerPanel, unregisterPanel } = usePanelRegistration();
+  const auth = useAuth();
+
+  // Текущий пользователь из контекста авторизации
+  const currentUser: User = useMemo(() => ({
+    id: auth.user?.id || 'guest',
+    name: auth.user?.username || 'Гость',
+    avatar: auth.user?.avatar_url || null,
+    status: 'online' as const,
+    role: 'member' as const,
+    joinedAt: new Date()
+  }), [auth.user]);
   
   // Регистрируем панели при монтировании компонента
   useEffect(() => {
@@ -40,7 +42,6 @@ const Chat = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
   const [messages, setMessages] = useState<{ [roomId: string]: Message[] }>({});
-  const [currentUser] = useState<User>(DEMO_USER);
 
   // Функция загрузки комнат из API
   const loadRoomsFromAPI = async () => {
@@ -69,7 +70,7 @@ const Chat = () => {
         name: apiRoom.title,
         description: apiRoom.description || '',
         type: 'public' as const,
-        participants: [DEMO_USER],
+        participants: [currentUser],
         createdAt: new Date(apiRoom.created_at),
         createdBy: '1',
         isArchived: apiRoom.is_archived || false,

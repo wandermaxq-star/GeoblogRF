@@ -20,6 +20,7 @@ import { getRoutePolyline } from '../services/routingService';
 import { createRoute, deleteRoute } from '../api/routes';
 import { createMarker as apiCreateMarker } from '../services/markerService';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useFavorites } from '../contexts/FavoritesContext';
 import { useRoutePlanner } from '../contexts/RoutePlannerContext';
 import { getPendingContentCounts } from '../services/localModerationStorage';
@@ -60,6 +61,7 @@ type MapConfig = any;
 const Planner: React.FC<PlannerProps> = function Planner() {
   const { registerPanel, unregisterPanel } = usePanelRegistration();
   const { user, token } = useAuth();
+  const { isDarkMode } = useTheme();
   const isAdmin = user?.role === 'admin';
   const [showModerationModal, setShowModerationModal] = useState(false);
   const [moderationCount, setModerationCount] = useState(0);
@@ -1412,7 +1414,7 @@ const Planner: React.FC<PlannerProps> = function Planner() {
                   ВАЖНО: Вынесен на верхний уровень чтобы выпадающий список не обрезался
                   Стиль: тёмное матовое стекло */}
                 <div
-                  className="absolute flex items-center gap-3"
+                  className="absolute flex items-center gap-3 glass-l1"
                   style={{
                     // Отступ сверху: ниже topbar (64px) + отступ
                     top: isTwoPanelMode ? '80px' : '80px',
@@ -1420,14 +1422,8 @@ const Planner: React.FC<PlannerProps> = function Planner() {
                     // В одноэкранном режиме - по центру (50%)
                     left: isTwoPanelMode ? '25%' : '50%',
                     transform: 'translateX(-50%)',
-                    // Тёмное матовое стекло
-                    background: 'rgba(30, 30, 35, 0.6)',
-                    backdropFilter: 'blur(10px)',
-                    WebkitBackdropFilter: 'blur(10px)',
                     borderRadius: '16px',
                     padding: '8px 16px',
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
                     transition: 'left 0.3s ease-in-out, top 0.3s ease-in-out',
                     zIndex: 9999,
                     // Включаем события мыши для этого блока
@@ -1437,14 +1433,16 @@ const Planner: React.FC<PlannerProps> = function Planner() {
                   {/* Селектор регионов */}
                   <RegionSelector />
 
-                  {/* Переключатель запрещенных зон - тёмный стиль */}
+                  {/* Переключатель запрещенных зон — Layer 2 */}
                   <button
                     onClick={() => setShowZonesLayer(!showZonesLayer)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200"
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 glass-l2 ${showZonesLayer ? 'active' : ''}`}
                     style={{
-                      background: showZonesLayer ? 'rgba(76, 201, 240, 0.3)' : 'rgba(255, 255, 255, 0.1)',
-                      border: `1px solid ${showZonesLayer ? 'rgba(76, 201, 240, 0.5)' : 'rgba(255, 255, 255, 0.15)'}`,
-                      color: showZonesLayer ? '#4cc9f0' : 'rgba(255, 255, 255, 0.9)'
+                      ...(showZonesLayer ? {
+                        background: 'rgba(76, 201, 240, 0.3)',
+                        borderColor: 'rgba(76, 201, 240, 0.5)',
+                        color: '#4cc9f0',
+                      } : {}),
                     }}
                     title={showZonesLayer ? 'Скрыть запрещённые зоны' : 'Показать запрещённые зоны'}
                   >
@@ -1477,10 +1475,10 @@ const Planner: React.FC<PlannerProps> = function Planner() {
                     <div className="full-height-content relative w-full h-full" style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
                       {/* Индикатор загрузки карты */}
                       {!isMapReady && (
-                        <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10">
+                        <div className="absolute inset-0 flex items-center justify-center z-10 glass-l1">
                           <div className="text-center">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                            <p className="text-gray-600">Загрузка карты...</p>
+                            <p style={{ color: 'var(--glass-text-secondary)' }}>Загрузка карты...</p>
                           </div>
                         </div>
                       )}
@@ -1505,11 +1503,11 @@ const Planner: React.FC<PlannerProps> = function Planner() {
                       <div id="planner-map-container" style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
                       {routeStats && (
                         <div
-                          className="pointer-events-none"
+                          className="pointer-events-none glass-l2"
                           style={{
-                            position: 'absolute', top: 12, right: 12, background: 'rgba(255,255,255,0.85)',
-                            padding: '6px 10px', borderRadius: 8, boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-                            fontSize: 14, color: '#111827', zIndex: 1000
+                            position: 'absolute', top: 12, right: 12,
+                            padding: '6px 10px', borderRadius: 8,
+                            fontSize: 14, zIndex: 1000
                           }}
                         >
                           {`${routeStats.distanceText} • ${routeStats.durationText}`}
@@ -1528,13 +1526,14 @@ const Planner: React.FC<PlannerProps> = function Planner() {
                 width="400px"
                 closeOnOverlayClick={true}
                 showCloseButton={false}
-                className="planner-settings-panel"
+                className={`planner-settings-panel${isDarkMode ? ' dark' : ''}`}
                 constrainToMapArea={isTwoPanelMode}
               >
                 <GlassHeader
                   title="Настройки маршрута"
                   onClose={() => setSettingsOpen(false)}
                   showCloseButton={true}
+                  className={isDarkMode ? 'dark' : ''}
                 />
                 <div className="planner-accordion-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                   <PlannerAccordion
@@ -1629,8 +1628,8 @@ const Planner: React.FC<PlannerProps> = function Planner() {
 
               {/* Модальные окна */}
               {showCoordinateInput && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                  <div className="bg-white p-6 rounded-lg w-96">
+                <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'var(--glass-overlay)' }}>
+                  <div className="glass-l1-strong" style={{ borderRadius: 16, padding: 24, width: 384 }}>
                     <h3 className="text-lg font-semibold mb-4">Ввод координат</h3>
                     <div className="space-y-4">
                       <div>
@@ -1679,8 +1678,8 @@ const Planner: React.FC<PlannerProps> = function Planner() {
               )}
 
               {showSearchForm && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                  <div className="bg-white p-6 rounded-lg w-96">
+                <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'var(--glass-overlay)' }}>
+                  <div className="glass-l1-strong" style={{ borderRadius: 16, padding: 24, width: 384 }}>
                     <h3 className="text-lg font-semibold mb-4">Поиск адреса</h3>
                     <input
                       id="planner-address-input"
@@ -1719,10 +1718,10 @@ const Planner: React.FC<PlannerProps> = function Planner() {
               )}
 
               {showTitleModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                  <div className="bg-white p-6 rounded-lg w-[480px] max-w-[92vw]">
+                <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'var(--glass-overlay)' }}>
+                  <div className="glass-l1-strong" style={{ borderRadius: 16, padding: 24, width: 480, maxWidth: '92vw' }}>
                     <h3 className="text-lg font-semibold mb-3">Название маршрута</h3>
-                    <p className="text-sm text-gray-600 mb-3">Выберите предложенный вариант или введите свой.</p>
+                    <p className="text-sm mb-3" style={{ color: 'var(--glass-text-secondary)' }}>Выберите предложенный вариант или введите свой.</p>
                     {titleSuggestions.length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-3">
                         {titleSuggestions.map((s, idx) => (
@@ -1815,7 +1814,7 @@ const Planner: React.FC<PlannerProps> = function Planner() {
                         Сохранить
                       </button>
                     </div>
-                    <div className="mt-3 text-sm text-gray-600">
+                    <div className="mt-3 text-sm" style={{ color: 'var(--glass-text-secondary)' }}>
                       <p className="mb-2">Подсказка: выберите готовый вариант для быстрой публикации. Свой вариант может потребовать модерации.</p>
                       <div className="flex flex-wrap items-center gap-3 mt-2">
                         <label className="flex items-center gap-2">

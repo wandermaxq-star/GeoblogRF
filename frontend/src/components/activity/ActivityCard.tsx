@@ -2,14 +2,14 @@ import React, { useState, useMemo, useCallback } from 'react';
 import styled from 'styled-components';
 import { ActivityItem, activityService } from '../../services/activityService';
 import { 
-  FaUserPlus, FaEdit, FaBook, FaMapMarkerAlt, FaRoute, FaShare,
+  FaUserPlus, FaEdit, FaMapMarkerAlt, FaRoute, FaShare,
   FaCalendarPlus, FaCheckCircle, FaTrophy, FaArrowUp, FaBullseye, 
-  FaUserEdit, FaUserFriends, FaCog, FaBullhorn, FaBell, FaComments,
-  FaUserMinus, FaPaperPlane, FaArchive, FaUndo, FaTimesCircle, FaCheckDouble,
-  FaTrash, FaHeart, FaHeartBroken, FaStar, FaComment, FaThumbsUp, FaThumbsDown,
+  FaUserEdit, FaUserFriends, FaCog, FaBullhorn, FaBell,
+  FaUserMinus,
+  FaTrash, FaHeart, FaHeartBroken, FaStar, FaComment, FaTimesCircle, FaCheckDouble,
   FaBan, FaTimes, FaChartLine, FaPlay, FaMedal, FaFire, FaSnowflake,
   FaTools, FaDownload, FaPlus, FaMinus, FaShieldAlt, FaRocket, FaFlag,
-  FaExclamationTriangle, FaLink, FaUnlink, FaKey, FaUpload
+  FaExclamationTriangle, FaLink, FaUnlink, FaKey, FaUpload, FaGlobe, FaEyeSlash
 } from 'react-icons/fa';
 import { GeoBadgeList, GeoRef, GeoRefType } from '../Geo/GeoBadge';
 import { useGeoFocusStore } from '../../stores/geoFocusStore';
@@ -211,14 +211,6 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onMarkAsRead }) =
   const getActivityIcon = () => {
     const iconName = activityService.getActivityIcon(activity.activity_type);
     const iconMap: Record<string, React.ReactElement> = {
-      // Чаты
-      'FaComments': <FaComments />,
-      'FaUserPlus': <FaUserPlus />,
-      'FaUserMinus': <FaUserMinus />,
-      'FaPaperPlane': <FaPaperPlane />,
-      'FaArchive': <FaArchive />,
-      'FaUndo': <FaUndo />,
-      
       // События
       'FaCalendarPlus': <FaCalendarPlus />,
       'FaCheckCircle': <FaCheckCircle />,
@@ -237,11 +229,6 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onMarkAsRead }) =
       
       // Метки
       'FaMapMarkerAlt': <FaMapMarkerAlt />,
-      
-      // Блоги
-      'FaBook': <FaBook />,
-      'FaThumbsUp': <FaThumbsUp />,
-      'FaThumbsDown': <FaThumbsDown />,
       
       // Пользователи и социальные взаимодействия
       'FaUserFriends': <FaUserFriends />,

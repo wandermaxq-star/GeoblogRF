@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useRegionsStore, ALL_REGIONS, ALL_CAPITALS, getRegionIdByName } from '../../stores/regionsStore';
 import { useUserLocation } from '../../hooks/useUserLocation';
 import { getregioncity as getRegionCity, getregioncitycoordinates as getRegionCityCoordinates, getregionzoom as getRegionZoom } from '../../stores/regionCities';
@@ -274,8 +275,20 @@ const RegionSelector: React.FC = () => {
         )}
       </button>
 
-      {isOpen && (
-        <div ref={dropdownRef} className="region-selector-dropdown">
+      {isOpen && createPortal(
+        <div
+          ref={dropdownRef}
+          className="region-selector-dropdown"
+          style={{
+            position: 'fixed',
+            top: buttonRef.current
+              ? buttonRef.current.getBoundingClientRect().bottom + 8
+              : 0,
+            left: buttonRef.current
+              ? buttonRef.current.getBoundingClientRect().left
+              : 0,
+          }}
+        >
           <div className="region-selector-header">
             <h3 className="region-selector-title">Регионы и столицы для отображения</h3>
             <p className="region-selector-subtitle">
@@ -462,7 +475,8 @@ const RegionSelector: React.FC = () => {
               </div>
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Модальное окно скачивания региона */}

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import '../../utils/leafletInit';
-import L from 'leaflet';
+import { mapFacade } from '../../services/map_facade';
 import { OSMMapRenderer } from '../../services/map_facade/adapters/OSMMapRenderer';
 
 interface MiniEventMapProps {
@@ -61,12 +61,10 @@ const MiniEventMap: React.FC<MiniEventMapProps> = ({
             if (markerRef.current) {
               try { markerRef.current.setLatLng(e.latlng); } catch (err) { }
             } else {
-              // Создаем новый маркер локально
-              const marker = L.marker(e.latlng, { draggable: true });
-              if (map) {
-                marker.addTo(map);
-              } else {
-                console.warn('[MiniEventMap] map is not available to add marker to yet');
+              // Создаем новый маркер через фасад
+              const marker = mapFacade().createMarker([e.latlng.lat, e.latlng.lng], { draggable: true });
+              if (!marker) {
+                console.warn('[MiniEventMap] не удалось создать маркер через фасад');
               }
 
               marker.on('dragend', () => {
@@ -128,16 +126,14 @@ const MiniEventMap: React.FC<MiniEventMapProps> = ({
     if (!mapInstanceRef.current || !markerPosition) return;
 
     const [lat, lng] = markerPosition;
-    const latlng = L.latLng(lat, lng);
+    const latlng = mapFacade().latLng(lat, lng);
 
     if (markerRef.current) {
       markerRef.current.setLatLng(latlng);
     } else {
-      const marker = L.marker(latlng, { draggable: true });
-      if (mapInstanceRef.current) {
-        marker.addTo(mapInstanceRef.current);
-      } else {
-        console.warn('[MiniEventMap] mapInstance is not available to add marker to yet');
+      const marker = mapFacade().createMarker([lat, lng], { draggable: true });
+      if (!marker) {
+        console.warn('[MiniEventMap] не удалось создать маркер через фасад');
       }
 
       marker.on('dragend', () => {

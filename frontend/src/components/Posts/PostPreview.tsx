@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { X, Expand, Minimize2 } from 'lucide-react';
-import MiniMapMarker from './MiniMapMarker';
-import MiniMapRoute from './MiniMapRoute';
-import MiniEventCard from './MiniEventCard';
+import { MiniMapMarker, MiniMapRoute, MiniEventCard } from './LazyMiniComponents';
 import { GuideFormat } from './GuideFormatSelector';
 
 type PostType = 'simple' | 'guide';

@@ -8,10 +8,8 @@ import CircularProgressBar from '../ui/CircularProgressBar';
 
 // Leaflet и его стили инициализируются в `../../utils/leafletInit`.
 // Используем `mapFacade` и глобальный `window.L` вместо прямых импортов.
+// Все вызовы Leaflet API проходят через фасад MapContextFacade.
 // (импорты 'leaflet', 'leaflet/dist/leaflet.css' и 'leaflet.markercluster' удалены)
-
-// Объявляем L как глобальную переменную (устанавливается в leafletInit.ts)
-declare const L: any;
 
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -290,8 +288,18 @@ const Map: React.FC<MapProps> = ({
             setInternalIsAddingMarkerMode(enabled);
         }
         if (enabled) {
+            // При включении режима — очищаем предыдущую temp метку и форму
+            if (tempMarkerRef.current && mapRef.current) {
+                try { mapRef.current.removeLayer(tempMarkerRef.current); } catch (e) { }
+                tempMarkerRef.current = null;
+                setTempMarker(null);
+            }
+            setCoordsForNewMarker(null);
+            setDiscoveredPlace(null);
             setMapMessage('🎯 Кликните на карту, чтобы добавить метку');
-        } else {
+        } else if (!tempMarkerRef.current) {
+            // Очищаем сообщение только если нет временной метки
+            // (если метка есть, сообщение управляется обработчиком метки)
             setMapMessage(null);
         }
     }, [onAddMarkerModeChange]);
@@ -808,44 +816,98 @@ const Map: React.FC<MapProps> = ({
                     }
 
                     if (isAddingMarkerModeRef.current) {
+                        // --- ШАГ 1: Первый клик — ставим временную красную метку ---
                         if (tempMarkerRef.current) {
                             try { mapRef.current.removeLayer(tempMarkerRef.current); } catch (err) { }
                         }
+                        // Сбрасываем форму если была открыта
+                        setCoordsForNewMarker(null);
+                        setDiscoveredPlace(null);
 
                         const clickedLatLng = e.latlng;
+
+                        // Панорамируем карту: метка по центру экрана (учитываем двухоконный режим)
                         const zoom = mapRef.current.getZoom();
                         const mapSize = mapRef.current.getSize();
-                        const targetScreenY = mapSize.y * 0.25;
-                        const screenCenterY = mapSize.y / 2;
-                        const offsetY = targetScreenY - screenCenterY;
                         const projectedClick = mapRef.current.project(clickedLatLng, zoom);
-                        const targetCenterPoint = mapFacade().point(projectedClick.x, projectedClick.y - offsetY);
+
+                        // В двухоконном режиме смещаем фокус влево (центр левой половины карты)
+                        const isTwoPanel = rightContent !== null;
+                        let targetX = projectedClick.x;
+                        if (isTwoPanel) {
+                            // Смещаем вид так, чтобы метка оказалась в центре левой половины экрана
+                            const leftHalfCenterX = mapSize.x * 0.25;
+                            const screenCenterX = mapSize.x / 2;
+                            const offsetX = leftHalfCenterX - screenCenterX;
+                            targetX = projectedClick.x - offsetX;
+                        }
+
+                        const targetCenterPoint = mapFacade().point(targetX, projectedClick.y);
                         const targetCenterLatLng = mapRef.current.unproject(targetCenterPoint, zoom);
                         try { mapRef.current.setView(targetCenterLatLng, zoom, { animate: true }); } catch (err) { }
 
+                        // Создаём красную временную метку
                         const tempIcon = mapFacade().createDivIcon({
                             className: 'temp-marker-icon',
-                            html: '<div style="background-color: red; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 3000;"></div>',
-                            iconSize: [20, 20],
-                            iconAnchor: [10, 10],
+                            html: '<div style="background-color: red; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 12px rgba(255,0,0,0.5), 0 0 0 4px rgba(255,0,0,0.2); z-index: 3000; cursor: pointer; animation: pulse-temp-marker 1.5s ease-in-out infinite;"></div>',
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 12],
                         });
 
-                        let newTempMarker = mapFacade().createMarker([clickedLatLng.lat, clickedLatLng.lng], { icon: tempIcon });
-                        if (!newTempMarker && L && mapRef.current) {
-                            try { newTempMarker = L.marker([clickedLatLng.lat, clickedLatLng.lng], { icon: tempIcon }).addTo(mapRef.current); } catch (_) {}
-                        }
+                        let newTempMarker = mapFacade().createMarker([clickedLatLng.lat, clickedLatLng.lng], { icon: tempIcon, bubblingMouseEvents: false });
+                        if (!newTempMarker) return;
+
                         setTempMarker(newTempMarker);
 
-                        const placeFound = await handlePlaceDiscovery(clickedLatLng.lat, clickedLatLng.lng);
-                        setCoordsForNewMarker([clickedLatLng.lat, clickedLatLng.lng]);
-
-                        if (!placeFound) {
-                            setMapMessage('ℹ️ Место не найдено, можно добавить вручную');
-                            setTimeout(() => setMapMessage(null), 3000);
-                        }
-
+                        // Выключаем режим добавления (метка поставлена)
                         setIsAddingMarkerMode(false);
-                        setMapMessage(null);
+                        setMapMessage('📍 Нажмите на метку для подтверждения места');
+
+                        // --- ШАГ 2: Навешиваем обработчик клика на временную метку ---
+                        newTempMarker.on('click', async (markerEvent: any) => {
+                            // Предотвращаем всплытие клика на карту
+                            if (markerEvent.originalEvent) {
+                                markerEvent.originalEvent.stopPropagation();
+                            }
+
+                            setMapMessage('🔍 Ищем информацию об этом месте...');
+
+                            // Панорамируем карту: метка вверху, форма снизу
+                            const map = mapRef.current;
+                            if (map) {
+                                const currentZoom = map.getZoom();
+                                const currentMapSize = map.getSize();
+                                const markerProjected = map.project(clickedLatLng, currentZoom);
+
+                                // Метка на 30% сверху экрана, форма будет ниже
+                                const targetY = currentMapSize.y * 0.30;
+                                const centerY = currentMapSize.y / 2;
+                                const panOffsetY = targetY - centerY;
+
+                                // В двухоконном режиме — смещаем влево
+                                let panTargetX = markerProjected.x;
+                                if (isTwoPanel) {
+                                    const leftCenterX = currentMapSize.x * 0.25;
+                                    const centerX = currentMapSize.x / 2;
+                                    panTargetX = markerProjected.x - (leftCenterX - centerX);
+                                }
+
+                                const panTarget = mapFacade().point(panTargetX, markerProjected.y - panOffsetY);
+                                const panLatLng = map.unproject(panTarget, currentZoom);
+                                try { map.setView(panLatLng, currentZoom, { animate: true }); } catch (err) { }
+                            }
+
+                            // Запускаем геокодинг
+                            const placeFound = await handlePlaceDiscovery(clickedLatLng.lat, clickedLatLng.lng);
+                            setCoordsForNewMarker([clickedLatLng.lat, clickedLatLng.lng]);
+
+                            if (!placeFound) {
+                                setMapMessage('ℹ️ Место не найдено, можно добавить вручную');
+                                setTimeout(() => setMapMessage(null), 3000);
+                            } else {
+                                setMapMessage(null);
+                            }
+                        });
                     } else if (onMapClick) {
                         onMapClick([e.latlng.lat, e.latlng.lng]);
                     }
@@ -960,7 +1022,7 @@ const Map: React.FC<MapProps> = ({
 
         document.querySelectorAll('.layer-indicator').forEach(indicator => indicator.remove());
 
-        if (L) {
+        if (mapFacade().getMap()) {
             const additionalLayers = getAdditionalLayers(mapSettings.showTraffic, mapSettings.showBikeLanes);
             additionalLayers.forEach((layer) => {
                 if (!layer) return;
@@ -994,7 +1056,7 @@ const Map: React.FC<MapProps> = ({
 
     // --- MARKERS RENDER ---
     useEffect(() => {
-        if (!mapRef.current || !L) return;
+        if (!mapRef.current || !mapFacade().getMap()) return;
         if (!isMapReady) return; // Ждём пока карта полностью инициализирована
 
         // Если карта не является активным контентом (фон для posts/activity) — убираем маркеры
@@ -1466,7 +1528,7 @@ const Map: React.FC<MapProps> = ({
 
         return () => {
             if (mapRef.current) {
-                mapRef.current.eachLayer((layer: L.Layer) => {
+                mapRef.current.eachLayer((layer: any) => {
                     if ((layer as any).isRouteLayer) {
                         mapRef.current?.removeLayer(layer);
                     }
@@ -1815,9 +1877,9 @@ const Map: React.FC<MapProps> = ({
             }}
             ref={(el) => {
                 // Останавливаем перехват кликов Leaflet'ом на этом div'е
-                if (el && (window as any).L?.DomEvent) {
-                    (window as any).L.DomEvent.disableClickPropagation(el);
-                    (window as any).L.DomEvent.disableScrollPropagation(el);
+                if (el) {
+                    mapFacade().disableClickPropagation(el);
+                    mapFacade().disableScrollPropagation(el);
                 }
             }}
             onMouseLeave={() => {
@@ -1941,7 +2003,7 @@ const Map: React.FC<MapProps> = ({
                         style={{
                             position: 'absolute',
                             top: '50%',
-                            left: '50%',
+                            left: isTwoPanelMode ? '25%' : '50%',
                             transform: 'translate(-50%, calc(-50% - 20vh - 60px))',
                             zIndex: 2001,
                             maxWidth: '220px',
@@ -1987,6 +2049,7 @@ const Map: React.FC<MapProps> = ({
                             await handleAddMarker(markerDataWithCoords);
                             setCoordsForNewMarker(null);
                             setDiscoveredPlace(null);
+                            setMapMessage(null);
                         }}
                         onCancel={() => {
                             if (mapRef.current && tempMarkerRef.current) {
@@ -1996,6 +2059,7 @@ const Map: React.FC<MapProps> = ({
                             setCoordsForNewMarker(null);
                             setDiscoveredPlace(null);
                             setShowCultureMessage(true);
+                            setMapMessage(null);
                         }}
                         discoveredPlace={discoveredPlace}
                         onCultureMessageClose={() => setShowCultureMessage(false)}

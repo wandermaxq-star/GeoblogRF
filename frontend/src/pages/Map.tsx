@@ -12,7 +12,7 @@ import { useUserLocation } from '../hooks/useUserLocation';
 import { useMapStateStore, mapStateHelpers } from '../stores/mapStateStore';
 
 import {
-  FaStar, FaMap, FaCog, FaSearch, FaRoute, FaMapMarkerAlt, FaDownload
+  FaStar, FaMap, FaCog, FaSearch, FaRoute, FaDownload
 } from 'react-icons/fa';
 import FavoritesPanel from '../components/FavoritesPanel';
 import MapActionButtons from '../components/Map/MapActionButtons';
@@ -33,6 +33,7 @@ import { useContentStore, ContentType } from '../stores/contentStore';
 import { useGeoFocusStore } from '../stores/geoFocusStore';
 import { useGuest } from '../contexts/GuestContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { getAllZones, checkPoint } from '../services/zoneService';
 import { getDistanceFromLatLonInKm } from '../utils/russiaBounds';
 import '../styles/PageLayout.css';
@@ -40,7 +41,6 @@ import '../styles/PersistentMap.css';
 import AdminModerationModal from '../components/Moderation/AdminModerationModal';
 import { getPendingContentCounts } from '../services/localModerationStorage';
 import { offlineContentStorage, OfflineMarkerDraft } from '../services/offlineContentStorage';
-
 import MapComponent from '../components/Map/Map';
 import { MapContainer } from '../components/Map/Map.styles';
 import CategoryQuickFilter from '../components/Map/CategoryQuickFilter';
@@ -69,6 +69,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
   // Реф для контейнера карты
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const { registerPanel, unregisterPanel } = usePanelRegistration();
+  const { isDarkMode } = useTheme();
 
   // Portal root for facade map (ensures map renders at document.body and is not clipped by page layout)
   const [facadeMapRootEl] = useState<HTMLElement | null>(() => {
@@ -153,16 +154,15 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
 
   // Добавляем/удаляем офлайн тайловый слой на Leaflet-карту
   useEffect(() => {
-    const map = (() => { try { return mapFacade().getMap(); } catch { return null; } })();
-    if (!map) return;
+    try { mapFacade().getMap(); } catch { return; }
 
     // Удаляем предыдущий слой
     if (offlineTileLayerRef.current) {
-      try { map.removeLayer(offlineTileLayerRef.current); } catch {}
+      try { mapFacade().removeLayer(offlineTileLayerRef.current); } catch {}
       offlineTileLayerRef.current = null;
     }
     if (offlineBoundsLayerRef.current) {
-      try { map.removeLayer(offlineBoundsLayerRef.current); } catch {}
+      try { mapFacade().removeLayer(offlineBoundsLayerRef.current); } catch {}
       offlineBoundsLayerRef.current = null;
     }
 
@@ -176,44 +176,43 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
         setOfflineTilesMeta(meta);
 
         // Динамический импорт Leaflet (он уже загружен — берём из кэша)
-        import('leaflet').then(L => {
-          // Добавляем тайловый слой
-          const tileUrl = `/api/tiles/${activeOfflineTileset}/{z}/{x}/{y}.png`;
-          const tileLayer = L.tileLayer(tileUrl, {
-            minZoom: meta.minzoom ?? 1,
-            maxZoom: meta.maxzoom ?? 18,
-            opacity: 0.9,
-            attribution: `Offline: ${activeOfflineTileset}`,
-            zIndex: 500,
-          });
-          tileLayer.addTo(map);
-          offlineTileLayerRef.current = tileLayer;
+        // FACADE: используем mapFacade() вместо прямого обращения к L
+        const facade = mapFacade();
 
-          // Показываем границы тайлсета прямоугольником
-          if (meta.bounds && meta.bounds.length === 4) {
-            const [west, south, east, north] = meta.bounds;
-            const boundsRect = L.rectangle(
-              [[south, west], [north, east]],
-              { color: '#3b82f6', weight: 2, fill: true, fillOpacity: 0.05, dashArray: '8 4' }
-            );
-            boundsRect.addTo(map);
-            offlineBoundsLayerRef.current = boundsRect;
-
-            // Перемещаем карту в область тайлов
-            map.fitBounds([[south, west], [north, east]], { padding: [20, 20], maxZoom: meta.maxzoom ?? 12 });
-          }
+        // Добавляем тайловый слой через фасад
+        const tileUrl = `/api/tiles/${activeOfflineTileset}/{z}/{x}/{y}.png`;
+        const tileLayer = facade.addTileLayer(tileUrl, {
+          minZoom: meta.minzoom ?? 1,
+          maxZoom: meta.maxzoom ?? 18,
+          opacity: 0.9,
+          attribution: `Offline: ${activeOfflineTileset}`,
+          zIndex: 500,
         });
+        offlineTileLayerRef.current = tileLayer;
+
+        // Показываем границы тайлсета прямоугольником через фасад
+        if (meta.bounds && meta.bounds.length === 4) {
+          const [west, south, east, north] = meta.bounds;
+          const boundsRect = facade.createRectangle(
+            [[south, west], [north, east]],
+            { color: '#3b82f6', weight: 2, fill: true, fillOpacity: 0.05, dashArray: '8 4' }
+          );
+          offlineBoundsLayerRef.current = boundsRect;
+
+          // Перемещаем карту в область тайлов
+          facade.fitBounds({ south, west, north, east } as any, { padding: [20, 20], maxZoom: meta.maxzoom ?? 12 });
+        }
       })
       .catch(err => console.warn('[MapPage] Ошибка загрузки метаданных тайлсета:', err));
 
     return () => {
       // Cleanup при размонтировании или изменении зависимостей
       if (offlineTileLayerRef.current) {
-        try { map.removeLayer(offlineTileLayerRef.current); } catch {}
+        try { mapFacade().removeLayer(offlineTileLayerRef.current); } catch {}
         offlineTileLayerRef.current = null;
       }
       if (offlineBoundsLayerRef.current) {
-        try { map.removeLayer(offlineBoundsLayerRef.current); } catch {}
+        try { mapFacade().removeLayer(offlineBoundsLayerRef.current); } catch {}
         offlineBoundsLayerRef.current = null;
       }
     };
@@ -1102,22 +1101,16 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
                 ВАЖНО: Вынесен за пределы MapContainer чтобы выпадающий список не обрезался
                 Стиль: тёмное матовое стекло */}
             <div
-              className="absolute flex items-center gap-3"
+              className="absolute flex items-center gap-3 map-search-toolbar glass-l1"
               style={{
-                // Отступ сверху: ниже topbar (64px) + отступ
-                top: isTwoPanelMode ? '80px' : '80px',
+                // Отступ сверху: ниже topbar + отступ
+                top: isTwoPanelMode ? 'calc(var(--topbar-height, 64px) + 16px)' : 'calc(var(--topbar-height, 64px) + 16px)',
                 // В двухоконном режиме центр активной зоны карты = 25% от левого края
                 // В одноэкранном режиме - по центру (50%)
                 left: isTwoPanelMode ? '25%' : '50%',
                 transform: 'translateX(-50%)',
-                // Тёмное матовое стекло
-                background: 'rgba(30, 30, 35, 0.6)',
-                backdropFilter: 'blur(10px)',
-                WebkitBackdropFilter: 'blur(10px)',
                 borderRadius: '16px',
                 padding: '8px 16px',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
                 transition: 'left 0.3s ease-in-out, top 0.3s ease-in-out',
                 zIndex: 10,
                 // Включаем события мыши для этого блока
@@ -1136,18 +1129,16 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
                     setTimeout(() => setIsDropdownVisible(false), 200);
                   }}
                   ref={inputRef}
-                  className="dark-glass-input"
+                  className="dark-glass-input glass-l2"
                   style={{
                     padding: '8px 16px 8px 40px',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
                     outline: 'none',
                     fontSize: '14px',
                     width: '280px',
-                    background: 'rgba(255, 255, 255, 0.1)',
                     borderRadius: '12px',
                     transition: 'all 0.2s',
-                    color: '#ffffff',
-                    caretColor: '#ffffff'
+                    color: 'var(--glass-text)',
+                    caretColor: 'var(--glass-text)'
                   }}
                 />
                 <FaSearch
@@ -1156,7 +1147,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
                     left: '12px',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    color: 'rgba(255, 255, 255, 0.7)',
+                    color: 'var(--glass-card-text-secondary)',
                     fontSize: '14px'
                   }}
                 />
@@ -1205,14 +1196,16 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
               {/* Селектор регионов */}
               <RegionSelector />
 
-              {/* Переключатель запрещенных зон - тёмный стиль */}
+              {/* Переключатель запрещенных зон */}
               <button
                 onClick={() => setShowZonesLayer(!showZonesLayer)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 map-zone-btn glass-l2 ${showZonesLayer ? 'active' : ''}`}
                 style={{
-                  background: showZonesLayer ? 'rgba(76, 201, 240, 0.3)' : 'rgba(255, 255, 255, 0.1)',
-                  border: `1px solid ${showZonesLayer ? 'rgba(76, 201, 240, 0.5)' : 'rgba(255, 255, 255, 0.15)'}`,
-                  color: showZonesLayer ? '#4cc9f0' : 'rgba(255, 255, 255, 0.9)'
+                  ...(showZonesLayer ? {
+                    background: 'rgba(76, 201, 240, 0.25)',
+                    borderColor: 'rgba(76, 201, 240, 0.4)',
+                    color: '#4cc9f0',
+                  } : {}),
                 }}
                 title={showZonesLayer ? 'Скрыть запрещённые зоны' : 'Показать запрещённые зоны'}
               >
@@ -1222,33 +1215,20 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
                 </span>
               </button>
 
-              {/* Кнопка добавления метки — в одном ряду с поиском */}
-              <button
-                onClick={() => setIsAddingMarkerMode(!isAddingMarkerMode)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200"
-                style={{
-                  background: isAddingMarkerMode ? 'rgba(76, 201, 240, 0.3)' : 'rgba(255, 255, 255, 0.1)',
-                  border: `1px solid ${isAddingMarkerMode ? 'rgba(76, 201, 240, 0.5)' : 'rgba(255, 255, 255, 0.15)'}`,
-                  color: isAddingMarkerMode ? '#4cc9f0' : 'rgba(255, 255, 255, 0.9)'
-                }}
-                title={isAddingMarkerMode ? 'Отменить добавление метки' : 'Добавить метку на карту'}
-              >
-                <FaMapMarkerAlt className="w-4 h-4" />
-                <span className="text-sm font-medium whitespace-nowrap">
-                  {isAddingMarkerMode ? 'Отмена' : 'Метка'}
-                </span>
-              </button>
+              {/* Метка убрана — дубль кнопки в контроллере карты (MapActionButtons) */}
 
               {/* Переключатель офлайн-тайлов */}
               <button
                 onClick={() => setOfflineTilesActive(!offlineTilesActive)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 map-offline-btn glass-l2 ${offlineTilesActive ? 'active' : ''}`}
                 style={{
-                  background: offlineTilesActive ? 'rgba(34, 197, 94, 0.3)' : 'rgba(255, 255, 255, 0.1)',
-                  border: `1px solid ${offlineTilesActive ? 'rgba(34, 197, 94, 0.5)' : 'rgba(255, 255, 255, 0.15)'}`,
-                  color: offlineTilesActive ? '#22c55e' : 'rgba(255, 255, 255, 0.9)'
+                  ...(offlineTilesActive ? {
+                    background: 'rgba(34, 197, 94, 0.25)',
+                    borderColor: 'rgba(34, 197, 94, 0.4)',
+                    color: '#22c55e',
+                  } : {}),
                 }}
-                title={offlineTilesActive ? 'Выключить офлайн-тйлы' : 'Показать офлайн-тайлы'}
+                title={offlineTilesActive ? 'Выключить офлайн-тайлы' : 'Показать офлайн-тайлы'}
               >
                 <FaDownload className="w-4 h-4" />
                 <span className="text-sm font-medium whitespace-nowrap">
@@ -1260,17 +1240,13 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
             {/* Панель информации об офлайн-тайлах */}
             {offlineTilesActive && (
               <div
-                className="absolute flex flex-col gap-2"
+                className="absolute flex flex-col gap-2 glass-l1"
                 style={{
                   top: isTwoPanelMode ? '130px' : '130px',
                   left: isTwoPanelMode ? '25%' : '50%',
                   transform: 'translateX(-50%)',
-                  background: 'rgba(30, 30, 35, 0.85)',
-                  backdropFilter: 'blur(10px)',
-                  WebkitBackdropFilter: 'blur(10px)',
                   borderRadius: '12px',
                   padding: '8px 14px',
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
                   border: '1px solid rgba(34, 197, 94, 0.2)',
                   zIndex: 10,
                   pointerEvents: 'auto',
@@ -1280,17 +1256,22 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
                 {/* Выбор тайлсета */}
                 {offlineTilesets.length > 0 && (
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span style={{ color: '#94a3b8', fontSize: '12px' }}>Тайлсет:</span>
+                    <span style={{ color: 'var(--glass-card-text-secondary)', fontSize: '12px' }}>Тайлсет:</span>
                     {offlineTilesets.filter(ts => ts.format === 'png').map(ts => (
                       <button
                         key={ts.name}
                         onClick={() => setActiveOfflineTileset(ts.name)}
+                        className="glass-l2"
                         style={{
                           padding: '3px 10px',
                           borderRadius: '6px',
-                          border: activeOfflineTileset === ts.name ? '1px solid rgba(34, 197, 94, 0.5)' : '1px solid rgba(255,255,255,0.15)',
-                          background: activeOfflineTileset === ts.name ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255,255,255,0.05)',
-                          color: activeOfflineTileset === ts.name ? '#4ade80' : '#94a3b8',
+                          ...(activeOfflineTileset === ts.name ? {
+                            border: '1px solid rgba(34, 197, 94, 0.5)',
+                            background: 'rgba(34, 197, 94, 0.2)',
+                            color: '#4ade80',
+                          } : {
+                            color: 'var(--glass-text-secondary)',
+                          }),
                           cursor: 'pointer',
                           fontSize: '12px',
                           fontWeight: 500,
@@ -1308,11 +1289,11 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
                 )}
                 {/* Метаданные тайлсета */}
                 {offlineTilesMeta && (
-                  <div className="flex items-center gap-3 flex-wrap" style={{ fontSize: '11px', color: '#94a3b8' }}>
-                    <span>Формат: <b style={{ color: '#e2e8f0' }}>{offlineTilesMeta.format}</b></span>
-                    <span>Zoom: <b style={{ color: '#e2e8f0' }}>{offlineTilesMeta.minzoom}–{offlineTilesMeta.maxzoom}</b></span>
+                  <div className="flex items-center gap-3 flex-wrap" style={{ fontSize: '11px', color: 'var(--glass-card-text-secondary)' }}>
+                    <span>Формат: <b style={{ color: 'var(--glass-card-text)' }}>{offlineTilesMeta.format}</b></span>
+                    <span>Zoom: <b style={{ color: 'var(--glass-card-text)' }}>{offlineTilesMeta.minzoom}–{offlineTilesMeta.maxzoom}</b></span>
                     {offlineTilesMeta.description && (
-                      <span style={{ color: '#cbd5e1' }}>{offlineTilesMeta.description}</span>
+                      <span style={{ color: 'var(--glass-card-text-secondary)' }}>{offlineTilesMeta.description}</span>
                     )}
                   </div>
                 )}
@@ -1354,9 +1335,9 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
                 {/* Индикатор загрузки геолокации убран - геолокация работает в фоне, не блокирует карту */}
 
                 {useLazyLoading && lazyLoading && (
-                  <div className="absolute top-4 right-4 z-10 bg-white rounded-lg shadow-lg px-4 py-2 flex items-center space-x-2">
+                  <div className="absolute top-4 right-4 z-10 rounded-lg px-4 py-2 flex items-center space-x-2 glass-l2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                    <span className="text-sm text-gray-600">Загрузка маркеров...</span>
+                    <span className="text-sm" style={{ color: 'var(--glass-text-secondary)' }}>Загрузка маркеров...</span>
                   </div>
                 )}
 
@@ -1418,7 +1399,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
               width="400px"
               closeOnOverlayClick={true}
               showCloseButton={false}
-              className="map-settings-panel"
+              className={`map-settings-panel${isDarkMode ? ' dark' : ''}`}
               constrainToMapArea={isTwoPanelMode}
             >
               <MapFilters

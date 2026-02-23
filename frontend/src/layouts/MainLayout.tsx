@@ -42,13 +42,17 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     preloadRoute('/planner');
   }, [preloadRoute]);
 
-  // Устанавливаем CSS-переменную с высотой Topbar для корректного расчёта высоты карты
+  // Устанавливаем CSS-переменную с высотой Topbar
+  // Карта рендерится с top: 0 чтобы просвечивать за glass-топбаром
   useEffect(() => {
     const setTopVar = () => {
       try {
         const topbar = document.querySelector('.topbar-container');
         const h = topbar ? (topbar as HTMLElement).offsetHeight : 64;
-        document.documentElement.style.setProperty('--facade-map-top', `${h}px`);
+        // Карта начинается с top: 0 (за топбаром) для glass-эффекта
+        document.documentElement.style.setProperty('--facade-map-top', '0px');
+        // Сохраняем высоту топбара для отступов контролов
+        document.documentElement.style.setProperty('--topbar-height', `${h}px`);
       } catch (e) {
         // ignore
       }

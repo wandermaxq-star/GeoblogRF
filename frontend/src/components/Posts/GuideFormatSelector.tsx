@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FaMobile, FaDesktop, FaBook, FaBullseye, FaEye, FaTimes, FaMapMarkerAlt, FaRoute, FaMap } from 'react-icons/fa';
+import { Lightbulb, Check, CheckCircle, Target } from 'lucide-react';
 
 export type GuideFormat = 'mobile' | 'desktop' | 'article' | 'focus';
 
@@ -17,7 +18,7 @@ const formatOptions: GuideFormatOption[] = [
     id: 'mobile',
     title: 'Мобильный гид',
     description: 'Для использования в поездке',
-    hint: '💡 "Просматривайте в дороге"',
+    hint: '"Просматривайте в дороге"',
     icon: <FaMobile size={24} />,
     features: [
       'Компактный вид',
@@ -30,7 +31,7 @@ const formatOptions: GuideFormatOption[] = [
     id: 'desktop',
     title: 'Десктопный обзор',
     description: 'Для планирования дома',
-    hint: '💡 "Изучайте дома перед поездкой"',
+    hint: '"Изучайте дома перед поездкой"',
     icon: <FaDesktop size={24} />,
     features: [
       'Подробные описания',
@@ -43,7 +44,7 @@ const formatOptions: GuideFormatOption[] = [
     id: 'article',
     title: 'Статья-исследование',
     description: 'Глубокий формат',
-    hint: '💡 "Для ценителей деталей"',
+    hint: '"Для ценителей деталей"',
     icon: <FaBook size={24} />,
     features: [
       'Академический стиль',
@@ -56,7 +57,7 @@ const formatOptions: GuideFormatOption[] = [
     id: 'focus',
     title: 'Фокус-гайд',
     description: 'Экспресс формат',
-    hint: '💡 "Самое главное за 5 минут"',
+    hint: '"Самое главное за 5 минут"',
     icon: <FaBullseye size={24} />,
     features: [
       'Только ключевые точки',
@@ -117,12 +118,12 @@ const GuideFormatSelector: React.FC<GuideFormatSelectorProps> = ({
                     {format.title}
                   </h4>
                   <p className="text-xs text-gray-600 mb-1">{format.description}</p>
-                  <p className="text-xs text-blue-600 font-medium">{format.hint}</p>
+                  <p className="text-xs text-blue-600 font-medium flex items-center gap-1"><Lightbulb size={11} />{format.hint}</p>
                 </div>
                 {selectedFormat === format.id && (
                   <div className="absolute top-2 right-2">
-                    <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs">✓</span>
+                    <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white">
+                      <Check size={12} />
                     </div>
                   </div>
                 )}
@@ -156,7 +157,7 @@ const GuideFormatSelector: React.FC<GuideFormatSelectorProps> = ({
           className="w-full py-2 px-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition-all shadow-md flex items-center justify-center gap-2"
         >
           <FaEye size={14} />
-          👀 Посмотреть как будет выглядеть выбранный формат
+          Посмотреть как будет выглядеть выбранный формат
         </button>
       </div>
 
@@ -345,14 +346,14 @@ const FormatPreviewModal: React.FC<FormatPreviewModalProps> = ({
           {format === 'focus' && (
             <div className="space-y-4">
               <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-6 rounded-xl">
-                <h3 className="text-2xl font-bold mb-2">🎯 Пример фокус-гайда</h3>
+                <h3 className="text-2xl font-bold mb-2 flex items-center gap-2"><Target size={24} /> Пример фокус-гайда</h3>
                 <p className="text-orange-100">Только самое важное</p>
               </div>
               
               <div className="space-y-3">
                 <div className="bg-white border-2 border-orange-200 rounded-lg p-4">
                   <div className="flex items-start gap-3">
-                    <div className="text-2xl">✅</div>
+                    <CheckCircle size={24} className="text-orange-500 shrink-0 mt-0.5" />
                     <div>
                       <h4 className="font-bold mb-1">Ключевой пункт 1</h4>
                       <p className="text-sm text-gray-600">Краткое решение</p>
@@ -361,7 +362,7 @@ const FormatPreviewModal: React.FC<FormatPreviewModalProps> = ({
                 </div>
                 <div className="bg-white border-2 border-orange-200 rounded-lg p-4">
                   <div className="flex items-start gap-3">
-                    <div className="text-2xl">✅</div>
+                    <CheckCircle size={24} className="text-orange-500 shrink-0 mt-0.5" />
                     <div>
                       <h4 className="font-bold mb-1">Ключевой пункт 2</h4>
                       <p className="text-sm text-gray-600">Краткое решение</p>
@@ -369,7 +370,7 @@ const FormatPreviewModal: React.FC<FormatPreviewModalProps> = ({
                   </div>
                 </div>
                 <div className="bg-orange-50 border-2 border-orange-500 rounded-lg p-4">
-                  <h4 className="font-bold text-orange-900 mb-2">💡 Главный совет</h4>
+                  <h4 className="font-bold text-orange-900 mb-2 flex items-center gap-1.5"><Lightbulb size={16} /> Главный совет</h4>
                   <p className="text-sm text-orange-800">Важный вывод или рекомендация</p>
                 </div>
               </div>

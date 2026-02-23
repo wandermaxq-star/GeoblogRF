@@ -1,1126 +1,686 @@
 # ГеоБлог.рф — Frontend
 
-![React](https://img.shields.io/badge/React-18+-blue)
+![React](https://img.shields.io/badge/React-18.2-blue)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
 ![Vite](https://img.shields.io/badge/Vite-5.x-purple)
 ![Tailwind](https://img.shields.io/badge/Tailwind-3.x-cyan)
+![Zustand](https://img.shields.io/badge/Zustand-5.x-orange)
 
 **ГеоБлог.рф** — платформа для создания интерактивных постов с интеграцией карт и маршрутов по России.
 
-## 🚀 Концепция
+## Концепция
 
-**ГеоБлог.рф** — это платформа для создания интерактивных постов, в которых:
+Платформа для создания интерактивных постов, в которых:
 
-- 📝 **Текст** объединяется с **картами** и **маршрутами**
-- 🗺️ **Геолокация** становится частью истории
-- 📊 **Система реакций** вместо комментариев
-- 🎯 **Геймификация** и достижения
-- 🏆 **Система уровней** и прогресса
+- Текст объединяется с картами и маршрутами
+- Геолокация становится частью истории
+- Система реакций, комментариев и рейтингов
+- Геймификация, достижения и система уровней
+- Полноценный офлайн-режим с синхронизацией
 
-## 🎯 Основные функции
+---
 
-### 📝 Посты
-- **Создание постов** с интуитивно понятным интерфейсом
-- **Геолокационная привязка** контента к местам
-- **Интеграция с картами** — автоматическое создание меток
-- **Интерактивные элементы** — изображения, ссылки, маршруты
-- **Система черновиков** и публикации
-- **Офлайн режим** — создание постов без интернета с автоматической синхронизацией
-- **Статистика** просмотров и реакций
-- **Автоматическое начисление XP** за создание постов
+## Основные функции
 
-### 🗺️ Навигация и карты
-- **Интерактивная карта** с поддержкой нескольких провайдеров (Yandex Maps, Leaflet)
-- **Единый фасад карт** (`map_facade/MapContextFacade`) для работы с разными провайдерами
-- **projectManager** — singleton для инициализации и управления картой, предоставляет `getMapApi()`
-- **Планировщик маршрутов** (Yandex Maps) — 4 способа добавления точек:
-  - Клик по карте
-  - Поиск по адресу (Яндекс Geocoder)
-  - Ввод координат
-  - Чекбоксы избранного
-- **Автоматическое построение маршрута** при 2+ точках (ORS / ymaps.route() / fallback)
-- **Множественные маршруты** — сохранённые и авто-маршруты на одной карте
-- **Система меток** с категориями и избранным
-- **Кастомные каплевидные маркеры** для постов
-- **Маркеры событий** - круглые маркеры с иконкой календаря для событий из календаря
-- **Мини-попапы событий** - glassmorphism попапы с информацией о событии
-- **Слои карты** (стандартная, спутниковая, гибридная, OpenTopoMap)
-- **Автоматическое масштабирование** для маршрутов
-- **Геокодирование** через Яндекс Geocoder API
-- **Интеграция с календарем** - события из календаря отображаются на карте и в планировщике
+### Посты
+- Конструктор постов с интуитивным интерфейсом
+- Геолокационная привязка контента к местам
+- Интеграция с картами — автоматическое создание меток
+- Интерактивные элементы — изображения, ссылки, маршруты
+- Система черновиков и публикации
+- Офлайн-режим — создание постов без интернета
+- Автоматическое начисление XP за создание
 
-### 🎮 Система геймификации
-- **Система уровней и XP** - прогресс пользователя с формулой `XP = 100 * уровень^1.5`
-- **Ранги пользователей** - от Новичка 🌱 до ГеоБлоггера 👑
-- **Ежедневные цели** - задачи на день с наградами и стриком
-- **Достижения** - разблокируемые награды за активность
-- **Автоматическое начисление XP** - за создание постов и меток
-- **Бонусы за качество** - дополнительные XP за фото, описания, высокое качество
-- **Стрик активности** - бонусы за ежедневную активность
-- **Защита от накруток** - проверка уникальности, модерация, лимиты
-- **Исключены маршруты** - нет XP за создание маршрутов для предотвращения накруток
-- **Feature Flags** - поэтапное раскрытие функций по мере роста сообщества
+### Навигация и карты
+- Интерактивная карта с поддержкой нескольких провайдеров (Yandex Maps, Leaflet)
+- Единый фасад карт (`map_facade/MapContextFacade`) для работы с разными провайдерами
+- `projectManager` — singleton для инициализации и управления картой, предоставляет `getMapApi()`
+- Планировщик маршрутов (Yandex Maps) — 4 способа добавления точек: клик по карте, поиск по адресу, ввод координат, чекбоксы избранного
+- Автоматическое построение маршрута при 2+ точках (ORS / ymaps.route() / fallback)
+- Множественные маршруты — сохранённые и авто-маршруты на одной карте
+- Система меток с категориями и избранным
+- Кастомные каплевидные маркеры для постов
+- Маркеры событий — круглые маркеры с иконкой календаря
+- Слои карты (стандартная, спутниковая, гибридная, OpenTopoMap)
+- Геокодирование через Яндекс Geocoder API
+- Интеграция с календарём — события из календаря отображаются на карте
 
-### 🏆 Достижения
-- **Достижения за контент** - первые посты, метки, качество
-- **Достижения активности** - стрик, ежедневные цели
-- **Достижения качества** - высокое качество контента
-- **Прогрессивные награды** - разблокировка по мере прогресса
-- **Дашборд достижений** - визуализация прогресса
+### Геймификация
+- Система уровней и XP — `XP = 100 * уровень^1.5`
+- Ранги от Новичка 🌱 до ГеоБлоггера 👑
+- Ежедневные цели с наградами и стриком
+- Достижения за контент, активность, качество
+- Защита от накруток — проверка уникальности, лимиты
+- Feature Flags — поэтапное раскрытие функций
 
-### 📊 Система активности
-- **Типы активности** пользователей
-- **Цветовая кодировка** действий
-- **Статистика** и аналитика
-- **Лента активности** сообщества
+### Календарь событий
+- Режимы отображения: день, неделя, месяц, год, круговой вид
+- Конструктор событий с блоками (как добраться, где остановиться, где поесть, что посмотреть)
+- Интеграция с картой — маркеры событий, мини-попапы с glassmorphism
+- Интеграция с планировщиком маршрутов
+- Двухоконный режим (левый/правый компонент)
+- Офлайн-создание событий с автоматической синхронизацией
 
-### 📱 Офлайн режим
-- **Полностью офлайн создание** — посты, метки, маршруты, события
-- **Хранение в IndexedDB** — без ограничений localStorage
-- **Автоматическая синхронизация** при появлении интернета
-- **Надёжная очередь отправки** с ретраями и бэкоффом
-- **Универсальная панель черновиков** — для всех типов контента
-- **Доступ к черновикам** — в личном кабинете и на странице постов
-- **Интеграция с геймификацией** — достижения за офлайн контент
-- **Интеграция с активностью** — события офлайн-сессий в ленте
+### Офлайн-режим
+- Полностью офлайн создание — посты, метки, маршруты, события
+- Хранение в IndexedDB + `storageService` (единый фасад)
+- Автоматическая синхронизация при появлении интернета
+- Надёжная очередь отправки с ретраями и экспоненциальным бэкоффом
+- Универсальная панель черновиков для всех типов контента
 
-### 📊 Комплексная аналитика
-- **Продуктовая аналитика** — DAU, MAU, retention, conversion funnels
-- **Поведенческая аналитика** — паттерны путешествий, взаимодействия с картой
-- **Технический мониторинг** — производительность, ошибки, Core Web Vitals
-- **Дашборды для админов** — Executive, Product Team, Technical
-- **Отказ от аналитики** — система "Do Not Track" в настройках профиля
-- **Анонимизация данных** — защита персональных данных и геолокации
-- **Прозрачная политика** — полная информация о сборе данных
+### Социальные функции
+- Чат (WebSocket, порт 8080)
+- Друзья — добавление, управление
+- Лента активности сообщества
+- Комментарии и рейтинги
+- Q&A — система вопросов и ответов
+- Гостевой режим — работа без регистрации
 
-### 🛡️ Система модерации
-- **Автоматическая модерация** контента с AI-фильтрами
-- **Фильтры спама** - проверка на запрещенные слова и ссылки
-- **Обнаружение фейковых отзывов** - анализ паттернов
-- **Гео-валидация** - проверка координат на запрещенные зоны
-- **Панель администратора** - ручная проверка контента
-- **Уведомления о модерации** - система уведомлений о статусе контента (одобрено/отклонено)
-- **История уведомлений** - панель с историей всех уведомлений за 60 дней
+### Модерация
+- Автоматическая модерация контента с AI-фильтрами
+- Гео-валидация координат на запрещённые зоны
+- Панель администратора с очередью модерации
+- Уведомления о статусе контента (toast + история за 60 дней)
 
-## 🛠️ Технологии
+### Аналитика
+- Продуктовая аналитика — DAU, MAU, retention, funnels
+- Поведенческая аналитика — паттерны путешествий
+- Технический мониторинг — производительность, Core Web Vitals
+- Дашборды: Executive, Product Team, Technical
+- Система «Do Not Track» + анонимизация данных
+
+---
+
+## Технологии
 
 ### Frontend Stack
-- **React 18** + **TypeScript** - современная разработка
-- **Vite** - быстрая сборка и разработка
-- **Tailwind CSS** + **styled-components** - стилизация
-- **React Router** - навигация
-- **Framer Motion** - плавные анимации
-- **Lucide React** - современные иконки
-- **React Context** - управление состоянием
-- **Zustand** - легковесное управление состоянием (contentStore, eventsStore)
+| Технология | Назначение |
+|---|---|
+| **React 18.2** + **TypeScript** | Основной фреймворк |
+| **Vite 5** | Сборка и dev-сервер |
+| **Zustand 5** | Глобальное состояние (stores) |
+| **React Context** | Контексты (auth, layout, theme и др.) |
+| **Tailwind CSS** + **styled-components** | Стилизация |
+| **Framer Motion** | Анимации |
+| **Radix UI** + **MUI** | UI-компоненты |
+| **Recharts** + **react-big-calendar** | Графики и календарь |
+| **i18next** | Интернационализация (заготовка) |
+| **Vitest** | Тестирование |
 
 ### Карты и геолокация
-- **Yandex Maps API** — основная картографическая система
-- **Leaflet** — альтернативный провайдер карт
-- **Nominatim API** — обратный геокодинг
-- **OpenRouteService** — построение маршрутов
+| Технология | Назначение |
+|---|---|
+| **Yandex Maps API** | Основная картографическая система |
+| **Leaflet** | Альтернативный провайдер |
+| **OpenRouteService** | Построение маршрутов |
+| **Яндекс Geocoder** | Геокодирование |
 
-### UI/UX
-- **MirrorGradientProvider** - градиентные эффекты
-- **Адаптивный дизайн** - поддержка всех устройств
-- **Анимации и переходы** - плавный пользовательский опыт
-- **PWA** - работа офлайн
+---
 
-## 📁 Архитектура проекта
+## Архитектура проекта
 
 ```
 frontend/
-├── public/                 # Публичные статические файлы
-│   ├── images/            # Изображения
-│   ├── markers/           # Иконки маркеров
-│   └── manifest.json      # PWA манифест
+├── public/                    # Статические файлы, PWA манифест
 ├── src/
-│   ├── api/               # API клиент и утилиты
-│   │   ├── apiClient.ts   # Базовый API клиент
+│   ├── analytics/             # Система аналитики
+│   │   ├── services/          # analyticsOrchestrator, product/behavioral/performance/error
+│   │   ├── hooks/             # useComprehensiveAnalytics
+│   │   ├── types/             # analytics.types.ts
+│   │   ├── utils/             # consent, anonymization
+│   │   └── dashboard/         # MetricCard, Executive/Product/Technical дашборды
+│   ├── api/                   # API клиент и утилиты
+│   ├── assets/                # Статические ресурсы, Lottie-анимации
+│   ├── components/            # React компоненты (70+)
+│   │   ├── Achievements/      # Дашборд достижений
+│   │   ├── activity/          # Лента, карточки, статистика активности
+│   │   ├── Admin/             # Админ-панель, модерация
+│   │   ├── Calendar/          # Компоненты календаря
+│   │   ├── chat/              # Чат-компоненты
+│   │   ├── Common/            # Общие переиспользуемые компоненты
+│   │   ├── Events/            # Блоки событий, детальная страница
+│   │   ├── Gamification/      # LevelCard, DailyGoals, XPNotification, LevelUpAnimation
+│   │   ├── Geo/               # Гео-компоненты
+│   │   ├── Glass/             # Glass-эффекты
+│   │   ├── icons/             # Иконки
+│   │   ├── InfluenceCenter/   # Центр влияния, тренды
+│   │   ├── Layout/            # Компоненты макета
+│   │   ├── Map/               # Основная карта (Leaflet), фильтры, легенда, попапы
+│   │   ├── Maps/              # PostMap (карта в постах)
+│   │   ├── Markers/           # Компоненты маркеров
+│   │   ├── Mobile/            # Мобильные компоненты
+│   │   ├── Modals/            # Модальные окна
+│   │   ├── Moderation/        # Компоненты модерации
+│   │   ├── Notifications/     # Toast, панель, иконка уведомлений
+│   │   ├── Planner/           # Планировщик: RouteBuilder, RouteEditor, AIGuide
+│   │   ├── Posts/             # Конструктор, карточка, список, черновики
+│   │   ├── Premium/           # Премиум-компоненты
+│   │   ├── Profile/           # Компоненты профиля
+│   │   ├── QnA/               # Вопросы и ответы
+│   │   ├── Regions/           # Регионы
+│   │   ├── RoutePlanner/      # Планировщик маршрутов
+│   │   ├── RussiaContent/     # Контент по России
+│   │   ├── Search/            # Поиск
+│   │   ├── TravelCalendar/    # TravelCalendar, CircularCalendar
+│   │   ├── ui/                # Базовые UI-элементы
+│   │   ├── UserCabinet/       # Личный кабинет
+│   │   ├── YandexMap/         # Интеграция с Яндекс.Картами
+│   │   ├── FavoritesPanel.tsx # Панель избранного
+│   │   ├── Header.tsx         # Шапка
+│   │   ├── Sidebar.tsx        # Боковая панель навигации
+│   │   └── ...                # ErrorBoundary, MirrorGradientProvider и др.
+│   ├── config/                # Конфигурация
+│   │   ├── api.ts             # API ключи и настройки
+│   │   ├── features.ts        # Feature flags
+│   │   ├── gamificationFeatures.ts
+│   │   ├── xpSources.ts      # Источники XP
+│   │   └── russia.ts         # Настройки для России
+│   ├── constants/             # Константы (markerCategories и др.)
+│   ├── contexts/              # React контексты (9 шт.)
+│   │   ├── AuthContext.tsx
+│   │   ├── FavoritesContext.tsx
+│   │   ├── GamificationContext.tsx
+│   │   ├── GuestContext.tsx
+│   │   ├── LayoutContext.tsx    # Обёртка над contentStore
+│   │   ├── LoadingContext.tsx
+│   │   ├── RoutePlannerContext.tsx
+│   │   ├── SideContentContext.tsx
+│   │   └── ThemeContext.tsx
+│   ├── stores/                # Zustand stores (7 шт.)
+│   │   ├── contentStore.ts    # leftContent/rightContent (синхронный, без startTransition)
+│   │   ├── eventsStore.ts     # selectedEvent, openEvents
+│   │   ├── geoFocusStore.ts   # Фокус на гео-объекте
+│   │   ├── mapStateStore.ts   # center, zoom, provider (сохраняется при переключении страниц)
+│   │   ├── regionsStore.ts    # Выбранные регионы
+│   │   ├── regionCities.ts    # Города по регионам РФ
+│   │   └── themeStore.ts      # Тема приложения
+│   ├── hooks/                 # Пользовательские хуки (37+)
+│   │   ├── useAchievements.ts, useDailyGoals.ts, useLevelProgress.ts
+│   │   ├── useActivityStats.ts, useModeration.ts, useAnalyticsConsent.ts
+│   │   ├── useEnhancedRouting.ts, useFavoriteRoutes.ts, useRouteBuilder.ts
+│   │   ├── useUserLocation.ts, useRussiaRestrictions.ts
+│   │   ├── useAdaptiveClustering.ts, useMarkerClustering.ts
+│   │   ├── useFriends.ts, useRating.ts, useReporting.ts
+│   │   ├── useEventState.ts, useMapDisplayMode.ts, useMapStyle.ts
+│   │   ├── useServiceWorker.ts, useWelcomeModal.ts
+│   │   ├── useDebounce.ts, useIsVisible.ts, useLazyImage.ts, useLazyMarkers.ts
 │   │   └── ...
-│   ├── assets/            # Статические ресурсы
-│   │   └── animations/    # Lottie анимации
-│   ├── components/        # React компоненты
-│   │   ├── Achievements/  # Компоненты достижений
-│   │   │   └── AchievementsDashboard.tsx
-│   │   ├── Admin/         # Административные компоненты
-│   │   │   ├── ModerationPanel.tsx
-│   │   │   └── AdminDashboard.tsx        # Админ панель с аналитикой
-│   │   ├── activity/      # Компоненты активности
-│   │   │   ├── ActivityFeed.tsx
-│   │   │   ├── ActivityCard.tsx
-│   │   │   ├── ActivityStats.tsx
-│   │   │   └── ...
-│   │   ├── AnalyticsProvider.tsx          # Провайдер аналитики
-│   │   ├── Calendar/      # Компоненты календаря
-│   │   │   └── ...
-│   │   ├── Gamification/  # Компоненты геймификации
-│   │   │   ├── LevelCard.tsx            # Карточка уровня
-│   │   │   ├── DailyGoalsWidget.tsx     # Виджет ежедневных целей
-│   │   │   ├── XPNotification.tsx       # Уведомления о XP
-│   │   │   ├── LevelUpAnimation.tsx     # Анимация повышения уровня
-│   │   │   ├── WelcomeModal.tsx         # Приветственное окно
-│   │   │   └── WelcomeModalWrapper.tsx  # Обертка модального окна
-│   │   ├── Glass/         # Glass-эффекты
-│   │   │   └── ...
-│   │   ├── Notifications/ # Компоненты уведомлений
-│   │   │   ├── NotificationToast.tsx     # Toast уведомления
-│   │   │   ├── NotificationProvider.tsx  # Провайдер уведомлений
-│   │   │   ├── NotificationsPanel.tsx    # Панель истории уведомлений
-│   │   │   └── NotificationIcon.tsx      # Иконка уведомлений в шапке
-│   │   ├── Posts/         # Компоненты постов
-│   │   │   ├── PostConstructor.tsx      # Конструктор постов
-│   │   │   ├── PostCard.tsx             # Карточка поста
-│   │   │   ├── PostList.tsx             # Список постов
-│   │   │   ├── InteractivePostView.tsx  # Интерактивный просмотр
-│   │   │   ├── CreatePostModal.tsx      # Модальное окно создания
-│   │   │   ├── OfflineDraftsPanel.tsx   # Панель офлайн черновиков (универсальная)
-│   │   │   └── ...
-│   │   ├── Events/        # Компоненты событий
-│   │   │   ├── EventBlocksEditor.tsx
-│   │   │   ├── EventBlocksSelector.tsx
-│   │   │   └── EventDetailPage.tsx
-│   │   ├── Map/           # Компоненты карты
-│   │   │   ├── Map.tsx                  # Основная карта (Leaflet)
-│   │   │   ├── Map.styles.ts            # Styled-components стили карты
-│   │   │   ├── MapActionButtons.tsx     # Стеклянная колонка кнопок действий
-│   │   │   ├── MapFilters.tsx           # Фильтры карты
-│   │   │   ├── MapLegend.tsx            # Легенда карты
-│   │   │   ├── MarkerPopup.tsx          # Попап маркера
-│   │   │   ├── MiniMarkerPopup.tsx      # Мини попап
-│   │   │   ├── EventMiniPopup.tsx       # Мини-попап для событий из календаря
-│   │   │   ├── useMapMarkers.tsx        # Хук управления маркерами
-│   │   │   └── ...
-│   │   ├── Maps/          # Компоненты карт
-│   │   │   └── PostMap.tsx              # Карта в постах (Leaflet/Yandex)
-│   │   ├── Planner/       # Компоненты планировщика
-│   │   │   ├── AIGuidePanel.tsx         # AI помощник
-│   │   │   ├── FireMarker.tsx           # Маркеры
-│   │   │   ├── CoordinateInput.tsx      # Ввод координат
-│   │   │   ├── PlannerActionButtons.tsx # Кнопки действий планировщика
-│   │   │   ├── RouteBuilder.tsx         # Конструктор маршрута
-│   │   │   ├── RouteEditor.tsx          # Редактор маршрута
-│   │   │   ├── RouteOrderPanel.tsx      # Панель порядка точек
-│   │   │   ├── RouteCategorySelector.tsx # Выбор категории маршрута
-│   │   │   └── ...
-│   │   ├── FavoritesPanel.tsx           # Панель избранного (метки, маршруты, события)
-│   │   ├── TravelCalendar/ # Компоненты календаря
-│   │   │   ├── TravelCalendar.tsx      # Основной компонент календаря
-│   │   │   ├── CircularCalendar.tsx    # Круговой вид календаря
-│   │   │   └── CircularCalendar.css   # Стили кругового календаря
-│   │   ├── YandexMap/     # Интеграция с Яндекс.Картами
-│   │   │   └── YandexMap.tsx
-│   │   ├── InfluenceCenter/ # Центр влияния
-│   │   │   ├── TrendingPosts.tsx
-│   │   │   └── ...
-│   │   ├── Moderation/    # Компоненты модерации
-│   │   │   ├── ContentModerator.tsx
-│   │   │   └── ...
-│   │   ├── Profile/       # Компоненты профиля
-│   │   │   └── ...
-│   │   ├── MirrorGradientProvider.tsx   # Провайдер градиентов
-│   │   ├── Sidebar.tsx                  # Боковая панель навигации
-│   │   ├── Header.tsx                   # Шапка приложения
+│   ├── pages/                 # Страницы приложения (30+)
+│   │   ├── HomePage.tsx, Home.tsx
+│   │   ├── Map.tsx            # Карта (Leaflet + Map Facade)
+│   │   ├── Planner.tsx        # Планировщик маршрутов (Yandex Maps)
+│   │   ├── Posts.tsx, Posts/PostDetail.tsx
+│   │   ├── Calendar.tsx       # Календарь событий
+│   │   ├── Activity.tsx       # Лента активности
+│   │   ├── Chat.tsx, Friends.tsx
+│   │   ├── ProfilePage.tsx, ProfileRoutes.tsx
+│   │   ├── CentrePage.tsx     # Центр влияния
+│   │   ├── AdminDashboard.tsx, AdminSubscriptionsPage.tsx
+│   │   ├── ModerationPage.tsx
+│   │   ├── LoginPage.tsx, RegisterPage.tsx
+│   │   ├── PrivacyPolicy.tsx, UserAgreement.tsx
+│   │   ├── GalaxyPreview.tsx
+│   │   ├── PageLayer.tsx      # Рендерер левого/правого контента
+│   │   ├── PersistentMaps.tsx
+│   │   ├── admin/             # Админ-страницы
+│   │   └── Mobile/            # Мобильные страницы
+│   ├── services/              # Сервисы (40+)
+│   │   ├── projectManager.ts  # Инициализация карты (singleton)
+│   │   ├── postsService.ts, markerService.ts, routeService.ts, routesService.ts
+│   │   ├── activityService.ts, eventService.ts, externalEventsService.ts
+│   │   ├── gamificationFacade.ts, xpService.ts, globalGoalsService.ts
+│   │   ├── moderationService.ts, aiModerationService.ts
+│   │   ├── moderationNotificationsService.ts, moderationNotifications.ts
+│   │   ├── commentsService.ts, ratingsService.ts, qnaService.ts
+│   │   ├── routingService.ts  # ORS API
+│   │   ├── yandexMapsService.ts, geocodingService.ts
+│   │   ├── placeDiscoveryService.ts, locationService.ts, zoneService.ts
+│   │   ├── storageService.ts  # Единый фасад (localStorage + IndexedDB)
+│   │   ├── offlineContentStorage.ts, offlineContentQueue.ts
+│   │   ├── offlinePostsStorage.ts, offlinePostsQueue.ts, offlineService.ts
+│   │   ├── guestActionsService.ts, guestDrafts.ts
+│   │   ├── coordinateEnhancer.ts, routeGeometryUtil.ts, routeTitleService.ts
+│   │   ├── IntegrationService.ts, localModerationStorage.ts, mapProvider.ts
+│   │   ├── map_facade/        # Фасад карт (canonical)
+│   │   │   ├── IMapRenderer.ts
+│   │   │   ├── MapContextFacade.ts
+│   │   │   ├── types.ts       # GeoPoint, PersistedRoute, UnifiedMarker
+│   │   │   ├── index.ts
+│   │   │   └── adapters/      # YandexPlannerRenderer, OSMMapRenderer, OfflineOSMRenderer
+│   │   └── routeExporters/    # GPX/KML/GeoJSON сериализаторы + exportClient
+│   ├── types/                 # TypeScript типы (30+)
+│   │   ├── activity.ts, marker.ts, route.ts, post.ts, postTypes.ts
+│   │   ├── gamification.ts, user.ts, favorites.ts, event.ts, eventRef.ts
+│   │   ├── chat.ts, friends.ts, globalGoals.ts
+│   │   ├── routeBuilder.ts, routeCategories.ts, routePoint.ts
+│   │   ├── accessControl.ts, offlineDraft.ts, mapActionButton.ts
 │   │   └── ...
-│   ├── config/            # Конфигурация
-│   │   ├── api.ts         # API ключи и настройки (Yandex, ORS и др.)
-│   │   ├── features.ts    # Feature flags
-│   │   ├── gamificationFeatures.ts  # Флаги геймификации
-│   │   ├── xpSources.ts   # Источники XP
-│   │   └── russia.ts      # Настройки для России
-│   ├── constants/         # Константы
-│   │   └── markerCategories.ts  # Категории маркеров
-│   ├── contexts/          # React контексты
-│   │   ├── AuthContext.tsx              # Аутентификация
-│   │   ├── FavoritesContext.tsx         # Избранное (места, маршруты, события, чекбоксы)
-│   │   ├── LayoutContext.tsx            # Макет
-│   │   ├── GamificationContext.tsx      # Геймификация
-│   │   ├── GuestContext.tsx             # Гостевой режим
-│   │   ├── LoadingContext.tsx           # Состояние загрузки
-│   │   ├── RoutePlannerContext.tsx      # Планировщик (routePoints, addRoutePoint...)
-│   │   ├── SideContentContext.tsx       # Боковой контент
-│   │   └── ThemeContext.tsx             # Тема
-│   ├── stores/            # Zustand stores (глобальное состояние)
-│   │   ├── contentStore.ts              # Управление leftContent/rightContent (двухоконный режим)
-│   │   ├── eventsStore.ts               # Состояние событий (selectedEvent, openEvents)
-│   │   ├── mapStateStore.ts             # Состояние карты (center, zoom, provider)
-│   │   ├── regionsStore.ts              # Выбранные регионы
-│   │   └── regionCities.ts              # Города по регионам РФ
-│   ├── hooks/             # Пользовательские хуки
-│   │   ├── useActivityStats.ts          # Статистика активности
-│   │   ├── useModeration.ts             # Модерация
-│   │   ├── useAchievements.ts           # Достижения
-│   │   ├── useLevelProgress.ts          # Прогресс уровня
-│   │   ├── useDailyGoals.ts             # Ежедневные цели
-│   │   ├── usePreload.ts               # Предзагрузка
-│   │   ├── useAnalyticsConsent.ts       # Управление согласием на аналитику
-│   │   ├── useEnhancedRouting.ts        # Расширенная маршрутизация
-│   │   ├── useFavoriteRoutes.ts         # Избранные маршруты
-│   │   ├── useUserLocation.ts           # Геолокация пользователя
-│   │   ├── useRussiaRestrictions.ts     # Ограничения по РФ
+│   ├── utils/                 # Утилиты (20+)
+│   │   ├── auth.ts, dateUtils.ts, xpCalculator.ts
+│   │   ├── dailyGoalGenerator.ts, gamificationHelper.ts
+│   │   ├── russiaBounds.ts, coordinateConverter.ts
+│   │   ├── postUtils.ts, routePointUtils.ts
+│   │   ├── security.ts, debugLogger.ts
 │   │   └── ...
-│   ├── pages/             # Страницы приложения
-│   │   ├── HomePage.tsx                  # Главная страница
-│   │   ├── Home.tsx                      # Домашняя страница
-│   │   ├── Map.tsx                       # Страница карты (Leaflet + Map Facade)
-│   │   ├── Planner.tsx                   # Планировщик маршрутов (Yandex Maps)
-│   │   ├── Posts.tsx                      # Страница постов
-│   │   ├── Posts/                         # Подстраницы постов
-│   │   │   └── PostDetail.tsx            # Детали поста
-│   │   ├── Calendar.tsx                  # Календарь событий
-│   │   ├── Activity.tsx                  # Активность пользователей
-│   │   ├── ProfilePage.tsx               # Профиль пользователя
-│   │   ├── ProfileRoutes.tsx             # Маршруты в профиле
-│   │   ├── CentrePage.tsx                # Центр влияния
-│   │   ├── Chat.tsx                      # Чат
-│   │   ├── Friends.tsx                   # Друзья
-│   │   ├── LoginPage.tsx                 # Авторизация
-│   │   ├── RegisterPage.tsx              # Регистрация
-│   │   ├── AdminDashboard.tsx            # Административная панель
-│   │   ├── ModerationPage.tsx            # Модерация
-│   │   ├── PageLayer.tsx                 # Рендерер левого/правого контента
-│   │   ├── PersistentMaps.tsx            # Постоянные карты
-│   │   ├── admin/                        # Админ-страницы
-│   │   ├── Mobile/                       # Мобильные страницы
-│   │   └── ...
-│   ├── services/          # Сервисы
-│   │   ├── projectManager.ts             # Инициализация/управление картой (singleton)
-│   │   ├── postsService.ts               # Сервис постов
-│   │   ├── activityService.ts            # Сервис активности
-│   │   ├── moderationService.ts          # Сервис модерации
-│   │   ├── gamificationFacade.ts         # Фасад геймификации
-│   │   ├── markerService.ts              # Сервис меток
-│   │   ├── routeService.ts               # Сервис маршрутов
-│   │   ├── routingService.ts             # Построение маршрутов (ORS)
-│   │   ├── yandexMapsService.ts          # Загрузка Яндекс Карт SDK
-│   │   ├── geocodingService.ts           # Геокодирование (Яндекс Geocoder)
-│   │   ├── placeDiscoveryService.ts      # Обнаружение мест
-│   │   ├── moderationNotificationsService.ts # Уведомления о модерации
-│   │   ├── offlineContentStorage.ts      # Хранилище офлайн контента (IndexedDB)
-│   │   ├── offlineContentQueue.ts        # Очередь отправки офлайн контента
-│   │   ├── storageService.ts             # Единый фасад хранилища (localStorage + IndexedDB)
-│   │   ├── map_facade/                   # Фасад карт (canonical)
-│   │   │   ├── IMapRenderer.ts           # Интерфейс рендерера карт
-│   │   │   ├── MapContextFacade.ts       # Главный фасад (пул рендереров, переключение)
-│   │   │   ├── types.ts                  # Типы карт (GeoPoint, PersistedRoute...)
-│   │   │   ├── index.ts                  # Ре-экспорт
-│   │   │   └── adapters/                 # Адаптеры карт
-│   │   │       ├── YandexPlannerRenderer.ts  # Яндекс для планировщика
-│   │   │       ├── OSMMapRenderer.ts         # OSM адаптер
-│   │   │       └── OfflineOSMRenderer.ts     # Офлайн OSM адаптер
-│   │   ├── routeExporters/               # Экспорт маршрутов
-│   │   │   ├── serializers.ts            # GPX/KML/GeoJSON сериализаторы
-│   │   │   └── exportClient.ts           # Клиент экспорта
-│   │   └── ...
-│   ├── analytics/         # Система аналитики
-│   │   ├── services/                      # Сервисы аналитики
-│   │   │   ├── analyticsOrchestrator.ts   # Главный оркестратор (circuit breaker)
-│   │   │   ├── productAnalyticsService.ts # Продуктовая аналитика (circuit breaker)
-│   │   │   ├── behavioralAnalyticsService.ts # Поведенческая аналитика (circuit breaker)
-│   │   │   ├── performanceMonitoringService.ts # Мониторинг производительности
-│   │   │   └── errorTrackingService.ts   # Трекинг ошибок
-│   │   ├── hooks/                        # Хуки аналитики
-│   │   │   └── useComprehensiveAnalytics.ts # Комплексная аналитика
-│   │   ├── types/                        # Типы аналитики
-│   │   │   └── analytics.types.ts        # Типы для аналитики
-│   │   ├── utils/                        # Утилиты аналитики
-│   │   │   ├── analyticsConsent.ts       # Проверка согласия на аналитику
-│   │   │   └── anonymization.ts          # Анонимизация данных
-│   │   └── dashboard/                    # Дашборды аналитики
-│   │       ├── components/               # Компоненты дашбордов
-│   │       │   ├── MetricCard.tsx        # Карточка метрики
-│   │       │   ├── ExecutiveOverview.tsx # Обзор для руководителей
-│   │       │   ├── ProductTeamDashboard.tsx # Дашборд продукт-команды
-│   │       │   └── TechnicalDashboard.tsx # Технический дашборд
-│   │       └── pages/                    # Страницы дашбордов
-│   │           └── AnalyticsDashboard.tsx # Главный дашборд
-│   ├── types/             # TypeScript типы
-│   │   ├── activity.ts                   # Типы для активности
-│   │   ├── marker.ts                      # Типы для меток
-│   │   ├── route.ts                       # Типы для маршрутов
-│   │   ├── post.ts                        # Типы для постов
-│   │   ├── gamification.ts               # Типы для геймификации
-│   │   ├── user.ts                        # Типы для пользователей
-│   │   ├── favorites.ts                   # Типы для избранного
-│   │   ├── event.ts                       # Типы для событий
-│   │   ├── chat.ts                        # Типы для чата
-│   │   ├── friends.ts                     # Типы для друзей
-│   │   └── ...
-│   ├── utils/             # Утилиты
-│   │   ├── auth.ts                        # Аутентификация
-│   │   ├── dateUtils.ts                   # Работа с датами
-│   │   ├── xpCalculator.ts                # Расчёт XP и уровней
-│   │   ├── dailyGoalGenerator.ts         # Генератор ежедневных целей
-│   │   ├── gamificationHelper.ts         # Хелперы для геймификации
-│   │   ├── retroactiveGamification.ts     # Ретроактивная геймификация
-│   │   ├── russiaBounds.ts                # Проверка координат в границах РФ
-│   │   ├── coordinateConverter.ts         # Конвертация координат
-│   │   └── ...
-│   ├── styles/            # Глобальные стили
-│   │   ├── GlobalStyles.css
-│   │   ├── PageLayout.css
-│   │   ├── FireMarkers.css              # Стили маркеров
-│   │   └── ...
-│   ├── layouts/           # Макеты страниц
-│   │   ├── MainLayout.tsx               # Основной макет (навигация, sidebar, роутинг)
-│   │   └── MobileLayout.tsx             # Мобильный макет
-│   ├── i18n/              # Интернационализация (заготовка)
-│   ├── lib/               # Библиотечные утилиты
-│   ├── data/              # Статические данные
-│   ├── App.tsx            # Корневой компонент
-│   ├── main.tsx           # Точка входа
-│   └── routes.tsx         # Конфигурация маршрутов
-├── docs/                  # Документация
+│   ├── styles/                # Глобальные стили
+│   ├── layouts/               # MainLayout, MobileLayout
+│   ├── i18n/                  # Интернационализация (заготовка)
+│   ├── lib/                   # Библиотечные утилиты
+│   ├── data/                  # Статические данные
+│   ├── App.tsx                # Корневой компонент
+│   ├── main.tsx               # Точка входа
+│   └── routes.tsx             # Конфигурация маршрутов
+├── docs/                      # Документация (25+ файлов)
+│   ├── ARCHITECTURE.md
 │   ├── GAMIFICATION_DEVELOPER_GUIDE.md
-│   ├── GAMIFICATION_PLAN.md
-│   ├── GAMIFICATION_STATUS.md
+│   ├── GAMIFICATION_PLAN.md / STATUS.md / IMPLEMENTATION.md / ROLLOUT_STRATEGY.md
 │   ├── GPS_TRACKS_HANDOVER.md
 │   ├── GEO_ROUTES_API.md
-│   ├── ARCHITECTURE.md
-│   ├── COORDINATE_SYSTEM.md
+│   ├── COORDINATE_SYSTEM.md / COORDINATE_QUICK_START.md
+│   ├── MAP_FACADE_ANALYSIS.md / FACADE_CLEAN.md
+│   ├── MOBILE_ADAPTATION_GUIDE.md
+│   ├── DARK_THEME_IMPLEMENTATION.md
+│   ├── ROUTE_ARCHITECTURE.md
 │   └── ...
+├── tests/                     # Тесты (Vitest)
 ├── package.json
 ├── vite.config.ts
+├── vitest.config.cjs
 ├── tailwind.config.js
 └── tsconfig.json
 ```
 
-## 🚩 GPS Tracks (handover)
+---
 
-Кратко: реализация GPS‑треков включает запись в реальном времени, локальное хранение (IndexedDB), надежную очередь синхронизации, экспорт (GPX/KML/GeoJSON) и интеграцию с геймификацией/XP.
-
-Handover и подробное TODO: [frontend/docs/GPS_TRACKS_HANDOVER.md](frontend/docs/GPS_TRACKS_HANDOVER.md)
-
-Ключевые файлы и пути для продолжения работ:
-- Фасад трекинга и экспорт: [src/services/map_facade/MapContextFacade.ts](src/services/map_facade/MapContextFacade.ts)
-- Интерфейсы карт: [src/services/map_facade/IMapRenderer.ts](src/services/map_facade/IMapRenderer.ts)
-- UI страницы маршрутов: [src/pages/ProfileRoutes.tsx](src/pages/ProfileRoutes.tsx)
-- Офлайн-хранилище: [src/services/offlineContentStorage.ts](src/services/offlineContentStorage.ts)
-- Очередь отправки офлайн-контента: [src/services/offlineContentQueue.ts](src/services/offlineContentQueue.ts)
-- Экспорт и сериализаторы (GeoJSON/GPX/KML): [src/services/routeExporters/serializers.ts](src/services/routeExporters/serializers.ts) и [src/services/routeExporters/exportClient.ts](src/services/routeExporters/exportClient.ts)
-- Универсальный фасад для key/value и IndexedDB: [src/services/storageService.ts](src/services/storageService.ts)
-- Сервис XP (frontend): [src/services/xpService.ts](src/services/xpService.ts)
-- Фасад геймификации: [src/services/gamificationFacade.ts](src/services/gamificationFacade.ts)
-- Тесты и конфиги: `tests/` (unit/integration), [tests/setupTests.ts](tests/setupTests.ts), [vitest.config.cjs](vitest.config.cjs)
-- API контракт XP / маршрутов: [frontend/docs/GAMIFICATION_API.md](frontend/docs/GAMIFICATION_API.md) (см. /api/gamification/xp) и [frontend/docs/GEO_ROUTES_API.md](frontend/docs/GEO_ROUTES_API.md) для `/api/routes`.
-
-Подробное описание
-
-### 1. Функциональность
-- Запись GPS-трека в реальном времени: `start / pause / resume / stop` с configurable частотой (по времени/по расстоянию).
-- Ручное добавление и редактирование точек маршрута: вставка/удаление точек, перемещение, добавление waypoints и аннотаций (фото, заметки).
-- Предварительный просмотр трека на карте до сохранения и опции редактирования.
-- Фильтрация и сглаживание: удаление дублей, алгоритмы удаления шумов и агрегации точек.
-- Метрики трека: расстояние, средняя/максимальная скорость, длительность движения/паузы, bounding box, суммарный набор высот (если доступно).
-
-### 2. Офлайн‑поддержка
-- Локальная запись и временное хранение в памяти с периодическим дампом в IndexedDB.
-- Структура IndexedDB: таблица/объект‑хранилище `routes` с полями: `clientId`, `points[]`, `metadata`, `status` (draft|queued|published|failed), `uploadAttempts`, `lastError`.
-- Надёжная очередь отправки: атомарная отправка (mark->upload->confirm), retry с экспоненциальным backoff, manual retry в UI.
-- Дедупликация и конфликт‑менеджмент: временные `clientId`, серверные `serverId` и idempotency keys для предотвращения дубликатов.
-- Обработка ошибок: логирование, UI уведомления, флаги ошибок и инструкции для ручного вмешательства.
-- Permissons и background: проверка разрешений геолокации, fallback при ограничениях фоновой записи (iOS PWA, Android). 
-
-### 3. Форматы и экспорт
-- Поддержка форматов: GPX (trk + trkseg + trkpt), KML (LineString/Placemark), GeoJSON (Feature/LineString с properties).
-- Экспорт: кнопка экспорта в карточке трека и массовый экспорт в профиле; опции включения/исключения высоты/времени и down‑sampling (каждые N метров).
-- Импорт: поддержка импорта GPX/KML/GeoJSON с валидацией CRS и дедупликацией точек.
-- Совместимость: включать metadata (creator, timestamp, distance, device, source) для работы в сторонних навигаторах (Strava, OsmAnd, Komoot).
-
-### 4. Интеграции
-- Система XP: правила начисления через `xpService`/`gamificationFacade` (source='route'), поддержка cooldown, dailyLimit и бонусов за длину/высоту/качество.
-- Геймификация: достижения (первый трек, >X км, серия дней, длинные маршруты), триггеры событий для аудита активности.
-- Карта: слой треков с toggle видимости, стилизация (цвет по скорости/времени), popup по точке с контентом.
-- Посты: встраиваем трек в пост как интерактивный элемент (мини‑map + ссылка на полный маршрут).
-- Backend API: CRUD для маршрутов + экспортный endpoint (см. ниже, раздел API).
-
-### 5. Модерация и безопасность
-- Автоматические проверки: детект резких скачков (teleport), нереальная скорость, точки вне разрешённых зон.
-- ML/эвристики: пометить подозрительные треки для ручной модерации.
-- Ручная модерация: админ может отклонить/скрыть трек; хранится история действий и причина.
-- Защита от накруток: rate limits, дедуп по hash(координат+временной_окно), лимиты на XP за публикации.
-- Приватность: опция округления координат в публичной версии, срок хранения координат, согласие на публикацию геоданных.
-- Уведомления пользователю о статусе (queued/approved/rejected) с причиной отклонения.
-
-### 6. UX/UI
-- Управление: кнопки `Начать запись`, `Пауза`, `Возобновить`, `Остановить` на `Map` и в `Planner`.
-- Визуальные индикаторы: пульсация/красный индикатор при записи, live counter (distance, time), мини‑map внизу экрана при записи.
-- Preview и редактор: drag‑&‑drop точек, редактирование waypoints, добавление фото/заметок по точке.
-- Черновики: мини‑превью в `ProfileRoutes` с thumb, distance, date, статусом и действиями (export, edit, publish, delete, retry).
-- Ошибки: понятные сообщения при проблемах с разрешениями, GPS, upload; toast + inline подсказки.
-- Accessibility: A11y‑поддержка для управления записью и списка маршрутов.
-
-### 7. Data model (пример)
-```
-Route {
-  id: string;
-  clientId?: string; // временный локальный id
-  ownerId: string;
-  status: 'draft'|'queued'|'published'|'rejected'|'failed';
-  points: [{ lat:number, lon:number, alt?:number, ts?:string }];
-  distanceMeters: number;
-  durationMs: number;
-  bbox: [minLon,minLat,maxLon,maxLat];
-  metadata: { name?:string, description?:string, tags?:string[], privacy:'public'|'private', device?:string, source?:string };
-  xpAwarded?: boolean;
-  uploadAttempts?: number;
-  lastError?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-## 🔄 Recent updates (summary)
-
-- Добавлен `storageService` + `indexedDBService` — единая точка для key/value и IndexedDB, с in-memory fallback для тестов. См. [src/services/storageService.ts](src/services/storageService.ts).
-- Миграция: большинство прямых обращений к `localStorage`/`sessionStorage` заменены на `storageService` для устойчивости и тестируемости.
-- Очередь офлайн‑контента улучшена: ретраи с backoff, обработка 5xx как ретраибельных ошибок, поддержка идемпотентности через `client_id` для маршрутов. См. [src/services/offlineContentQueue.ts](src/services/offlineContentQueue.ts).
-- Экспорт маршрутов: серверный экспорт с клиентским fallback; сериализаторы GeoJSON/GPX/KML вынесены в [src/services/routeExporters/serializers.ts](src/services/routeExporters/serializers.ts).
-- Тесты: добавлены unit и integration тесты для очереди, сериализаторов и поведения (GPX/KML валидация, бэкофф, идемпотентность). Конфигурация `vitest` обновлена для совместимости (`vitest.config.cjs`) и добавлен `tests/setupTests.ts` для шима браузерных глобов.
-- Аналитика: оркестратор (`analyticsOrchestrator`) теперь вызывает сервисы неблокирующе (fire-and-forget) и локально обрабатывает ошибки; также мигрирован на `storageService` для session id / consent.
-
-Статус тестов локально: все тесты проходят (unit + integration), примерное количество — ~36 тестов (см. `npm test`).
-
-How to run tests locally:
-
-```bash
-cd frontend
-npm install
-npm test
-```
-
-
-
-
-## 📦 Изолированный `storageService`
-
-Кратко: `storageService` — это лёгкий изолированный фасад для операций с key/value (аналог `localStorage`) и отдельный экземпляр `indexedDBService` для операций с IndexedDB (favorites, routes и пр.). Он предназначен для единообразного доступа к хранилищу и безопасного использования в браузере и в тестах.
-
-- Файлы: `src/services/storageService.ts` (экспорт `storageService` и `indexedDBService`).
-- Синхронный API (localStorage-like): `getItem(key): string | null`, `setItem(key, value): void`, `removeItem(key): void`, `clear(): void`.
-- Асинхронный IndexedDB API: `indexedDBService` экспортирован как экземпляр класса с методами `init()`, `addFavorite()`, `getFavorites()`, `removeFavorite()`, `setFavorites()`, `getFavoritesStats()` и утилитными методами совместимости (`saveRoute`, `getRoutes`, `deleteRoute`, `migrateFromLocalStorage()`).
-- Поведение в окружениях:
-  - В браузере `storageService` использует `localStorage` (с защитой от ошибок). Для более крупных данных и структур используется `indexedDBService`.
-  - В Node / во время тестов используется in-memory fallback (Map), поэтому код, использующий `storageService`, остаётся тестируемым без браузерных глобов.
-
-Пример использования:
-
-```ts
-import storageService, { indexedDBService } from './src/services/storageService';
-
-// простые key/value
-storageService.setItem('draft-route', JSON.stringify(routeDraft));
-const raw = storageService.getItem('draft-route');
-
-// IndexedDB операции
-await indexedDBService.addFavorite({ id: 'p1', type: 'place', name: 'Тест' });
-const favs = await indexedDBService.getFavorites();
-```
-
-Тестирование и миграция:
-- Для тестов проект использует `tests/setupTests.ts`, который обеспечивает shim для отсутствующих браузерных глобов (включая `localStorage`). `storageService` автоматически работает в таком окружении благодаря in-memory fallback.
-- Для миграции старых данных есть метод `migrateFromLocalStorage()` в `indexedDBService`.
-
-Рекомендации:
-- Всегда импортируйте и используйте `storageService` вместо прямого доступа к `localStorage` — это улучшает устойчивость и упрощает тестирование.
-- Для сложных/объёмных данных и структур используйте `indexedDBService`.
-
-```
-
-### 8. API — краткий контракт
-- `POST /api/routes` — создать маршрут
-  payload: `{ metadata, points, clientId? }` → response `{ id, status }`.
-- `GET /api/users/:id/routes` — список маршрутов (фильтр по статусу, pagination).
-- `GET /api/routes/:id` — получить маршрут (geo + metadata).
-- `DELETE /api/routes/:id` — удалить маршрут (soft delete).
-- `POST /api/routes/:id/export?format=gpx|kml|geojson` — сгенерировать файл.
-- `POST /api/gamification/xp` — начисление XP (см. [frontend/docs/GAMIFICATION_API.md](frontend/docs/GAMIFICATION_API.md)).
-
-Рекомендуется создать `frontend/docs/GEO_ROUTES_API.md` с примерами payload/response и кодами ошибок.
-
-### 9. Тестирование и QA
-- Unit: сериализаторы GPX/KML/GeoJSON, distance calc, фильтры/сглаживание.
-- Integration: очередь offline→online, retry, дедупликация, idempotency.
-- UI: flows записи (start/pause/resume/stop), preview/edit, export, `ProfileRoutes` actions.
-- E2E: полный сценарий публикации + триггер XP, модерация отклонения.
-
-### 10. Метрики и мониторинг
-- События аналитики: `record_start`, `record_pause`, `record_stop`, `route_published`, `route_exported`.
-- Метрики: success rate uploads, avg upload attempts, avg route length, battery impact.
-- Логирование ошибок: permission denied, upload failure, parse errors.
-
-### 11. Документы handover
-- `frontend/docs/GPS_TRACKS_HANDOVER.md` — шаги продолжения (уже есть).
-- `frontend/docs/GEO_ROUTES_API.md` — создать API спецификацию для маршрутов.
-- `frontend/docs/GAMIFICATION_API.md` — уже содержит контракт для XP; связать с начислением за маршруты.
-
-Команды локально:
-```powershell
-cd frontend
-npm install
-npm run test
-npm run build
-```
-
-Если хотите — могу сразу создать `frontend/docs/GEO_ROUTES_API.md` с примером payload/response и добавить unit‑тесты для сериализаторов; скажите, что предпочитаете дальше.
-
-
-## 🎯 Ключевые особенности архитектуры
-
-### 1. **Посты**
-Система создания контента:
-- **Конструктор постов** - интуитивно понятный интерфейс
-- **Геолокационная привязка** - автоматическое создание меток
-- **Интерактивные элементы** - изображения, ссылки, маршруты
-- **Система черновиков** - сохранение и восстановление
-- **Офлайн режим** - создание постов без интернета
-- **Интеграция с картами** - визуализация мест
-- **Автоматическое начисление XP** за создание постов
-
-### 2. **Система геймификации**
-Полноценная система мотивации пользователей:
-- **Фасад геймификации** (`gamificationFacade.ts`) - единая точка входа для всех действий
-- **GamificationContext** - управление состоянием геймификации
-- **Защита от накруток** - проверка уникальности, модерация, лимиты
-- **Автоматическое начисление** - XP за создание контента
-- **Ежедневные цели** - динамическая генерация задач
-- **Достижения** - прогрессивные награды за активность
-- **Система уровней** - прогрессивная система с формулой `XP = 100 * уровень^1.5`
-- **Ранги** - от Новичка 🌱 до ГеоБлоггера 👑
-- **Feature Flags** - поэтапное раскрытие функций
-
-### 3. **Система карт (Map Facade)**
-Единый интерфейс для работы с разными провайдерами карт:
-- **MapContextFacade** (`map_facade/MapContextFacade.ts`) — singleton, пул рендереров, переключение контекстов
-- **projectManager** (`services/projectManager.ts`) — инициализация карты, проверка `isConnected`, `getMapApi()` → привязанные методы рендерера
-- **Адаптеры** — `YandexPlannerRenderer` (Яндекс Карты), `OSMMapRenderer`, `OfflineOSMRenderer`
-- **Интерфейс `IMapRenderer`** — `init`, `renderMarkers`, `renderRoute`, `removeRoute`, `clear`, `destroy`, `onClick`, `setView`
-- **Кастомные маркеры** — каплевидные маркеры для постов
-- **Маркеры событий** — круглые маркеры с иконкой календаря для событий из календаря
-- **Мини-попапы событий** — glassmorphism попапы с информацией о событии
-- **Множественные маршруты** — рендерер хранит маршруты по id, поддерживает одновременное отображение
-- **Автоматический выбор** — оптимальный провайдер для каждого случая
-- **Интеграция с календарем** — события из календаря автоматически отображаются на карте
-
-**Map Facade — API (полные функции и типы)**
-
-- **`init(containerId: string, config?: MapConfig): Promise<void>`**: инициализирует рендерер в указанном контейнере. `MapConfig` может содержать `center`, `zoom`, `markers` и дополнительные опции провайдера.
-- **`renderMarkers(markers: UnifiedMarker[]): void`**: отображает список меток. `UnifiedMarker` — единая форма метки с полями `id`, `coordinates: {lat, lon}`, `title`, `description`, `icon`, `color`, `size` и прочими вспомогательными полями.
-- **`renderRoute(route: PersistedRoute): Promise<void>`**: отображает маршрут. `PersistedRoute` содержит `id`, `waypoints: GeoPoint[]`, опциональную `geometry`, `color`, `distance`, `duration` и мета. Поддерживает множественные маршруты одновременно — каждый хранится по `id`.
-- **`removeRoute(routeId: string): void`**: удаляет конкретный маршрут с карты по `id`.
-- **`setView(center: GeoPoint, zoom: number): void`**: устанавливает центр и зум карты.
-- **`clear?(): void` (опционально)**: очищает текущие метки/слои — не обязателен для всех адаптеров.
-- **`destroy(): void`**: полностью уничтожает инстанс рендера и освобождает ресурсы.
-- **`planRoute?(waypoints: GeoPoint[]): Promise<PersistedRoute>` (опционально)**: построить маршрут по заданным точкам и вернуть объект маршрута, пригодный для `renderRoute`.
-- **`onClick?(handler: (latLng: [number, number]) => void): void` (опционально)**: подписка на клики по карте.
-- **`setMapMargin?(margin: number): void`**: установить отступ карты для двухоконного режима.
-- **`resetMapMargin?(): void`**: сбросить отступ карты.
-- **`onRouteGeometry?(handler: (coords: [number, number][]) => void): void`**: подписка на геометрию построенного маршрута.
-
-Ключевые типы (сокращённо):
-
-- `GeoPoint = { lat: number; lon: number }` — координата точки.
-- `MapConfig` — опции инициализации (center, zoom, markers и т.д.).
-- `UnifiedMarker` — единый формат метки, используемый всеми адаптерами.
-- `PersistedRoute` — формат маршрута, сохраняемый в БД и принимаемый фасадом.
-
-Расположение кода:
-
-- Каноничная реализация фасада и адаптеров: [src/services/map_facade](src/services/map_facade)
-- Менеджер инициализации карты: [src/services/projectManager.ts](src/services/projectManager.ts) — проверяет `container.isConnected`, предоставляет `getMapApi()` с привязанными методами
-- Построение маршрутов: [src/services/routingService.ts](src/services/routingService.ts) — ORS API с fallback
-- Геокодирование: [src/services/geocodingService.ts](src/services/geocodingService.ts) — Яндекс Geocoder
-- Загрузка SDK Яндекс Карт: [src/services/yandexMapsService.ts](src/services/yandexMapsService.ts)
-- Устаревшая папка `src/services/mapFacade/` (camelCase) — **удалена**. Весь код в `map_facade` (underscore).
-
-Рекомендация разработчикам: вносить изменения только в `src/services/map_facade` и добавлять новые методы в интерфейс `IMapRenderer` по мере необходимости.
-
-### 4. **Система активности**
-Отслеживание действий пользователей:
-- **Типы активности** - создание, редактирование, просмотр
-- **Цветовая кодировка** - визуальное различие действий
-- **Статистика** - аналитика поведения
-- **Лента активности** - социальные функции
-
-### 5. **Интеграция компонентов**
-Все компоненты логически связаны:
-- **Посты ↔ Карты** - автоматическое создание меток
-- **События ↔ Календарь** - планирование и отображение
-- **Календарь ↔ Карта** - события из календаря отображаются на карте с маркерами
-- **Календарь ↔ Планировщик** - события из календаря отображаются в планировщике маршрутов
-- **Активность ↔ Социальные функции** - лента активности
-- **Геймификация ↔ Контент** - автоматическое начисление XP за посты и метки
-- **Достижения ↔ Активность** - разблокировка достижений
-
-### 6. **Календарь событий**
-Полнофункциональная система управления событиями:
-- **Множественные режимы отображения** - день, неделя, месяц, год, круговой вид
-- **Круговой календарь** - уникальный визуальный режим с каруселью месяцев
-- **Создание событий** - конструктор с расширенными блоками (как добраться, где остановиться, где поесть, что посмотреть)
-- **Офлайн режим** - создание событий без интернета с автоматической синхронизацией
-- **Умный поиск событий** - фильтрация по категориям, датам, локациям
-- **Интеграция с картой** - события отображаются на карте с круглыми маркерами и иконкой календаря
-- **Интеграция с планировщиком** - события доступны в планировщике маршрутов
-- **Мини-попапы событий** - glassmorphism попапы с информацией о событии на карте
-- **Двухоконный режим** - календарь может работать как левый или правый компонент
-- **Комбинированные режимы** - календарь + карта, календарь + планировщик
-- **События с координатами** - все события имеют геолокацию для отображения на картах
-- **eventsStore** - централизованное управление состоянием событий через Zustand
-- **Glassmorphism панели** - выдвигающиеся панели с эффектом матового стекла
-
-### 7. **Офлайн режим**
-Полнофункциональная система работы без интернета:
-- **IndexedDB хранилище** - надежное хранение черновиков всех типов контента
-- **Универсальная система черновиков** - посты, метки, маршруты, события
-- **Автоматическая очередь отправки** - с ретраями и экспоненциальным бэкоффом
-- **Панель черновиков** - универсальная панель для всех типов контента с фильтрацией
-- **Доступ к черновикам** - в личном кабинете и на странице постов
-- **Интеграция с геймификацией** - достижения за офлайн контент
-- **Метаданные офлайн-сессий** - отслеживание времени и действий в офлайне
-
-## **Map Facade — принцип и структура**
-
-- **Единый источник правды**: canonical папка для фасада карт — `src/services/map_facade/`.
-- **Где лежат адаптеры**: реализации адаптеров находятся в `src/services/map_facade/adapters/` (`YandexPlannerRenderer.ts`, `OSMMapRenderer.ts`, `OfflineOSMRenderer.ts`).
-- **projectManager**: `src/services/projectManager.ts` — singleton-обёртка над `MapContextFacade`, обеспечивает `initializeMap(container, config)` с проверкой `isConnected` и `getMapApi()` с привязанными методами рендерера.
-- **Как добавить адаптер**: создать файл-адаптер в `src/services/map_facade/adapters/`, реализовать интерфейс `IMapRenderer` из `src/services/map_facade/IMapRenderer.ts`, затем экспортировать адаптер из каталога.
-- **Почему так**: один canonical каталог минимизирует дублирование, упрощает поиск и тестирование, и обеспечивает единый контракт (`IMapRenderer`) для всех провайдеров карт.
-- **Устаревшая папка**: `src/services/mapFacade/` (camelCase) с шимами — **удалена**. Все импорты ведут в `map_facade` (underscore).
-
-- **Интеграция с активностью** - события офлайн-сессий в ленте активности
-
-### 8. **Система уведомлений о модерации**
-Минималистичная и информативная система:
-- **Toast уведомления** - ненавязчивые уведомления в углу экрана
-- **История уведомлений** - панель с группировкой по датам (60 дней)
-- **Иконка в шапке** - с индикатором непрочитанных уведомлений
-- **Настройки** - возможность отключить уведомления в профиле
-- **Контекстность** - уведомления содержат тип контента, статус и причину (если отклонено)
-
-### 9. **Комплексная аналитика**
-Многоуровневая система аналитики:
-- **Продуктовая аналитика** - метрики здоровья продукта (DAU, MAU, retention)
-- **Поведенческая аналитика** - паттерны пользователей, географические тренды
-- **Технический мониторинг** - производительность, ошибки, Core Web Vitals
-- **Дашборды** - Executive, Product Team, Technical для разных ролей
-- **Отказ от аналитики** - система "Do Not Track" с переключателем в настройках
-- **Анонимизация** - автоматическое удаление персональных данных и округление координат
-- **Прозрачность** - полная информация о сборе данных в политике конфиденциальности
-
-## 🚀 Установка и запуск
-
-### Предварительные требования
-- **Node.js** 18+ 
-- **npm** или **yarn**
-- **PostgreSQL** (для бэкенда)
-
-### Установка
-
-1. **Клонируйте репозиторий:**
-   ```bash
-   git clone https://github.com/simamakis/bestsite.git
-   cd best_site/frontend
-   ```
-
-2. **Установите зависимости:**
-   ```bash
-   npm install
-   ```
-
-3. **Настройте переменные окружения:**
-   ```bash
-   cp .env.example .env
-   # Отредактируйте .env файл
-   ```
-
-4. **Запустите проект:**
-   ```bash
-   npm run dev
-   ```
-
-5. **Откройте в браузере:**
-   ```
-   http://localhost:5173
-   ```
-
-## 📋 Команды разработки
-
-```bash
-# Разработка
-npm run dev          # Запуск dev сервера
-npm run build        # Сборка для production
-npm run preview      # Предпросмотр сборки
-
-# Линтинг и проверка
-npm run lint         # ESLint проверка
-npm run type-check   # TypeScript проверка типов
-
-# Тестирование
-npm run test         # Запуск тестов
-npm run test:watch   # Тесты в режиме наблюдения
-```
-
-## 🔧 Конфигурация
-
-### Переменные окружения (.env)
-```env
-VITE_API_BASE_URL=http://localhost:3002
-VITE_YANDEX_MAPS_API_KEY=your_yandex_maps_key
-```
-
-### Yandex Maps API
-Для работы с картами необходимо получить API ключ в [Yandex Developer Console](https://developer.tech.yandex.ru/).
-
-### Система геймификации
-Подробное руководство по работе с геймификацией, добавлению новых функций, бустов и разделов:
-- 📖 **[Полное руководство разработчика](docs/GAMIFICATION_DEVELOPER_GUIDE.md)** - как работать с системой, добавлять новые функции, бусты, разделы
-- 📋 [План реализации](docs/GAMIFICATION_PLAN.md) - общий план системы
-- ✅ [Статус реализации](docs/GAMIFICATION_STATUS.md) - текущий статус
-- 🎯 [Описание реализации](docs/GAMIFICATION_IMPLEMENTATION.md) - детали реализации
-- 🚀 [Стратегия раскрытия](docs/GAMIFICATION_ROLLOUT_STRATEGY.md) - поэтапное раскрытие функций
-
-## 🎨 Особенности интерфейса
-
-### Адаптивный дизайн
-- **Мобильная версия** - оптимизирована для смартфонов
-- **Планшетная версия** - промежуточный размер
-- **Десктопная версия** - полный функционал
-
-### Компоненты
-- **Выдвигающиеся панели** - настройки, избранное, участники
-- **Glassmorphism панели** - эффект матового стекла для панелей календаря (создание событий, поиск)
-- **Модальные окна** - создание комнат, формы
-- **Аккордеоны** - компактное отображение форм
-- **Тултипы** - подсказки и информация
-- **Стеклянная колонка кнопок** (MapActionButtons) - стильная колонка с glassmorphism эффектом для действий на карте:
-  - Настройки карты
-  - Избранное (с badge количества)
-  - Легенда карты
-  - Добавить метку (с активным состоянием)
-  - Tooltip'ы при наведении
-  - Адаптивность под светлую/темную тему
-  - Fallback для старых браузеров
-  - Полная поддержка доступности (A11y)
-- **Мини-попапы событий** - glassmorphism попапы для событий на карте с информацией и кнопкой перехода
-- **Круговой календарь** - уникальный визуальный режим с каруселью месяцев и днями по кругу
-
-### Анимации
-- **Плавные переходы** между состояниями
-- **Градиентные эффекты** - современный дизайн
-- **Hover эффекты** - интерактивность
-- **Loading состояния** - обратная связь
-- **Framer Motion** - профессиональные анимации
-- **Анимации геймификации** - повышение уровня, получение XP
-- **Glassmorphism эффекты** - стеклянная колонка кнопок на карте с backdrop-filter
-- **Анимация появления** - плавное появление колонки справа
-- **Pulse анимация** - для активного состояния кнопки добавления метки
-- **Анимация маркеров событий** - пульсация выбранных событий на карте
-- **Анимация кругового календаря** - плавная карусель месяцев
-
-## 🔐 Аутентификация
-
-Система использует JWT токены для аутентификации:
-- **Автоматическое обновление** токенов
-- **Защищенные маршруты** - проверка авторизации
-- **Персистентная сессия** - сохранение входа
-- **Гостевой режим** - работа без регистрации
-
-## 🛡️ Система модерации
-
-### Автоматические проверки
-- **Фильтры контента** - проверка названий и описаний
-- **Обнаружение спама** - анализ текста на запрещенные слова
-- **Фейковые отзывы** - выявление подозрительных паттернов
-- **Гео-валидация** - проверка координат
-
-### Панель администратора
-- **Очередь модерации** - список контента для проверки
-- **Статистика** - количество проверенного контента
-- **Ручные действия** - одобрить, скрыть, заблокировать
-- **Фильтрация** по категориям проблем
-
-## 🎮 Система геймификации - Детали
-
-### Источники XP
-- **Создание поста**: 50 XP
-- **Пост с фото**: +25 XP (итого 75 XP)
-- **Пост с меткой**: +30 XP (итого 80 XP)
-- **Пост с фото и меткой**: +55 XP (итого 105 XP)
-- **Создание метки**: 30 XP
-- **Метка с фото**: +20 XP (итого 50 XP)
-- **Метка с описанием**: +15 XP (итого 45 XP)
-- **Высокое качество**: +20 XP
-- **Идеальное качество**: +30 XP
-- **Ежедневная цель**: 25 XP
-- **Все цели за день**: +50 XP бонус
-- **Стрик активности**: +10 XP за каждый день
-
-### Ранги пользователей
-- 🌱 **Новичок** (1-5 уровень)
-- 🌿 **Путешественник** (6-10 уровень)
-- 🌳 **Исследователь** (11-15 уровень)
-- 🏔️ **Географ** (16-20 уровень)
-- 👑 **ГеоБлоггер** (21+ уровень)
-
-### Ежедневные цели
-- **Динамическая генерация** - цели меняются каждый день
-- **Типы целей**: создать пост, создать метку, добавить фото
-- **Награды**: XP за выполнение, бонус за все цели
-- **Стрик** - отслеживание последовательных дней активности
-
-### Достижения
-- **Первые шаги** - первый пост, первая метка
-- **Качество контента** - высокое качество, идеальное качество
-- **Активность** - стрик, ежедневные цели
-- **Прогресс** - достижение уровней, накопление XP
-
-## 📊 Состояние проекта
-
-### ✅ Реализовано (MVP 1.0 - 100%)
-- [x] **Посты** - конструктор, геолокация, элементы
-- [x] **Офлайн режим** (100%) - полная система офлайн работы:
-  - [x] Создание постов офлайн
-  - [x] Создание меток офлайн
-  - [x] Создание маршрутов офлайн
-  - [x] Создание событий офлайн
-  - [x] Универсальная панель черновиков
-  - [x] Автоматическая синхронизация
-  - [x] Очередь отправки с ретраями
-  - [x] Интеграция с геймификацией
-  - [x] Интеграция с активностью
-- [x] **Система активности** - типы активности, статистика
-- [x] **Интерактивная карта** с поддержкой нескольких провайдеров
-- [x] **Map Facade** - единый интерфейс для работы с картами
-- [x] **Система меток** и избранного
-- [x] **Планировщик маршрутов** с сохранением в БД
-- [x] **Аутентификация** с JWT
-- [x] **Адаптивный дизайн** для всех устройств
-- [x] **Система модерации** (100%) - автоматическая и ручная модерация:
-  - [x] AI-фильтры контента
-  - [x] Панель администратора
-  - [x] Система уведомлений о модерации
-  - [x] История уведомлений
-- [x] **PWA** - работа офлайн
-- [x] **Календарь событий** (100%) - полная интеграция с картой и планировщиком:
-  - [x] Множественные режимы отображения (день, неделя, месяц, год, круговой)
-  - [x] Круговой календарь - уникальный визуальный режим
-  - [x] Создание событий с расширенными блоками
-  - [x] Умный поиск событий
-  - [x] Интеграция с картой - маркеры событий на карте
-  - [x] Интеграция с планировщиком - события в планировщике маршрутов
-  - [x] Мини-попапы событий на карте
-  - [x] Двухоконный режим (левый/правый компонент)
-  - [x] Комбинированные режимы (календарь + карта, календарь + планировщик)
-  - [x] eventsStore - централизованное управление событиями
-  - [x] Glassmorphism панели для календаря
-- [x] **Центр влияния** - статистика и достижения
-- [x] **Система геймификации** (100%) - уровни, XP, цели, достижения, защита от накруток
-- [x] **Достижения** - полная система с дашбордом, включая достижения за офлайн контент
-- [x] **Ежедневные цели** - динамическая генерация и отслеживание
-- [x] **Кастомные маркеры** - каплевидные маркеры для постов
-- [x] **Маркеры событий** - круглые маркеры с иконкой календаря для событий
-- [x] **Система уведомлений о модерации** (100%) - toast уведомления, история, настройки
-- [x] **Комплексная аналитика** (100%) - продуктовая, поведенческая, техническая:
-  - [x] Дашборды для админов (Executive, Product Team, Technical)
-  - [x] Система отказа от аналитики ("Do Not Track")
-  - [x] Анонимизация данных
-  - [x] Прозрачная политика конфиденциальности
-
-### 🚧 В разработке (MVP 2.0)
-- [ ] **Расширенная модерация** - гео-валидация, жалобы
-- [ ] **Система комментариев** к постам
-- [ ] **Лайки и рейтинги** постов
-- [ ] **Push-уведомления**
-- [ ] **Цели недели** - система задач и прогресса
-
-### 📋 Планируется
-- [x] **Мобильная адаптация** (responsive web) — реализовано через отдельные страницы и компоненты в src/pages/Mobile. Отдельного приложения на React Native не планируется.
-- [ ] **Интеграция с социальными сетями**
-- [ ] **Система рекомендаций** AI
-- [ ] **Мультиязычность**
-- [ ] **API для сторонних разработчиков**
-
-## 🎯 MVP 1.0 - Завершен! 🚀
-
-### Прогресс: 100% завершено ✅
-
-**Ключевые достижения:**
-- ✅ **Посты** (100%) - система создания контента
-- ✅ **Офлайн режим** (100%) - полная система работы без интернета:
-  - ✅ Создание всех типов контента офлайн (посты, метки, маршруты, события)
-  - ✅ Универсальная панель черновиков
-  - ✅ Автоматическая синхронизация при появлении интернета
-  - ✅ Очередь отправки с ретраями и бэкоффом
-  - ✅ Интеграция с геймификацией и активностью
-  - ✅ Доступ к черновикам в личном кабинете и на странице постов
-- ✅ **Система активности** (100%) - отслеживание действий
-- ✅ **Система аутентификации** (100%)
-- ✅ **Двухоконный интерфейс** (100%)
-- ✅ **Система избранного** (100%)
-- ✅ **Планировщик маршрутов** (100%)
-- ✅ **Личный кабинет** (100%)
-- ✅ **Система контекстов** (100%)
-- ✅ **Навигация и роутинг** (100%)
-- ✅ **Геопривязка и обнаружение мест** (100%)
-- ✅ **Интеграция меток и постов** (100%)
-- ✅ **Интеграция планировщика и карты** (100%)
-- ✅ **Производительность и оптимизация** (100%)
-- ✅ **Система модерации** (100%) - автоматическая и ручная модерация, уведомления
-- ✅ **Главная страница** (100%)
-- ✅ **PWA** (100%)
-- ✅ **Центр влияния** (100%) - статистика сообщества
-- ✅ **Система геймификации** (100%) - уровни, XP, ежедневные цели, достижения, защита от накруток
-- ✅ **Map Facade** (100%) - единый интерфейс для карт
-- ✅ **Кастомные маркеры** (100%) - каплевидные маркеры для постов
-- ✅ **Стеклянная колонка кнопок** (100%) - MapActionButtons с glassmorphism эффектом для действий на карте
-- ✅ **Интеграция календаря с картой и планировщиком** (100%) - события отображаются на картах, комбинированные режимы
-- ✅ **Круговой календарь** (100%) - уникальный визуальный режим отображения
-- ✅ **Маркеры событий** (100%) - круглые маркеры с иконкой календаря и мини-попапами
-- ✅ **Система уведомлений о модерации** (100%) - toast уведомления, история, настройки
-- ✅ **Комплексная аналитика** (100%) - продуктовая, поведенческая, техническая аналитика с дашбордами и системой отказа
-
-## 🌟 Уникальные возможности
-
-### Посты
-- **Геолокационная привязка** контента к местам
-- **Интеграция с картами** - автоматическое создание меток
-- **Интерактивные элементы** - изображения, ссылки, маршруты
-- **Система черновиков** - сохранение и восстановление
-- **Офлайн режим** - создание постов без интернета
-- **Конструктор** - интуитивно понятный интерфейс
-- **Автоматическое начисление XP** за создание
-
-### Система активности
-- **Типы активности** пользователей
-- **Цветовая кодировка** действий
-- **Статистика** и аналитика
-- **Лента активности** сообщества
-
-### Календарь событий
-- **Множественные режимы отображения** - день, неделя, месяц, год, круговой вид
-- **Круговой календарь** - уникальный визуальный режим с каруселью месяцев
-- **Создание событий** - конструктор с расширенными блоками:
-  - Как добраться (метро, машина, автобус)
-  - Где остановиться (отели, хостелы)
-  - Где поесть (рестораны, кафе)
-  - Что посмотреть (достопримечательности)
-- **Умный поиск событий** - фильтрация по категориям, датам, локациям, рейтингу
-- **Интеграция с картой** - события автоматически отображаются на карте:
-  - Круглые маркеры с иконкой календаря
-  - Цветовая индикация по категориям
-  - Пульсация выбранных событий
-  - Мини-попапы с информацией о событии
-- **Интеграция с планировщиком** - события доступны в планировщике маршрутов
-- **Двухоконный режим** - календарь может работать как левый или правый компонент
-- **Комбинированные режимы** - календарь + карта, календарь + планировщик через подкнопки в сайдбаре
-- **События с координатами** - все события имеют геолокацию для отображения на картах
-- **eventsStore** - централизованное управление состоянием событий через Zustand
-- **Glassmorphism панели** - выдвигающиеся панели с эффектом матового стекла
-
-### Центр влияния
-- **Статистика сообщества** - метрики активности
-- **Система достижений** - геймификация и награды
-- **Прогресс пользователя** - уровни и XP
-- **Тренды и популярный контент**
-
-### Офлайн режим
-- **Полностью офлайн создание** - посты, метки, маршруты, события
-- **IndexedDB хранилище** - надежное хранение без ограничений
-- **Автоматическая синхронизация** - при появлении интернета
-- **Универсальная панель черновиков** - для всех типов контента
-- **Очередь отправки** - с ретраями и экспоненциальным бэкоффом
-- **Доступ к черновикам** - в личном кабинете и на странице постов
-- **Интеграция с геймификацией** - достижения за офлайн контент
-- **Интеграция с активностью** - события офлайн-сессий в ленте
-
-### Система уведомлений о модерации
-- **Toast уведомления** - ненавязчивые уведомления в углу экрана
-- **История уведомлений** - панель с группировкой по датам (60 дней)
-- **Иконка в шапке** - с индикатором непрочитанных уведомлений
-- **Настройки** - возможность отключить уведомления в профиле
-- **Контекстность** - тип контента, статус, причина (если отклонено)
-
-### Комплексная аналитика
-- **Продуктовая аналитика** - DAU, MAU, retention, conversion funnels
-- **Поведенческая аналитика** - паттерны путешествий, взаимодействия с картой
-- **Технический мониторинг** - производительность, ошибки, Core Web Vitals
-- **Дашборды** - Executive, Product Team, Technical для разных ролей
-- **Отказ от аналитики** - система "Do Not Track" с переключателем в настройках
-- **Анонимизация** - автоматическое удаление персональных данных и округление координат
-- **Прозрачность** - полная информация о сборе данных в политике конфиденциальности
-
-### Система геймификации
-- **Уровни и XP** - прогрессивная система с формулой `XP = 100 * уровень^1.5`
-- **Ранги** - от Новичка 🌱 до ГеоБлоггера 👑
-- **Ежедневные цели** - задачи на день с наградами и стриком
-- **Достижения** - разблокируемые награды за активность
-- **Автоматическое начисление** - XP за посты, метки, качество контента
-- **Бонусы** - за фото, описания, высокое качество, стрик
-- **Защита от накруток** - проверка уникальности, модерация, лимиты
-- **Feature Flags** - поэтапное раскрытие функций
+## Ключевые архитектурные решения
 
 ### Map Facade
-- **Единый интерфейс** для работы с разными провайдерами карт
-- **MapContextFacade** — singleton с пулом рендереров и переключением контекстов
-- **projectManager** — инициализация карты, `getMapApi()` с привязанными методами
-- **Множественные маршруты** — рендерер хранит маршруты по id, поддерживает одновременное отображение
-- **Кастомные маркеры** — каплевидные маркеры для постов
-- **Маркеры событий** — круглые маркеры с иконкой календаря для событий из календаря
-- **Автоматическое построение маршрутов** — при 2+ точках (ORS / ymaps.route() / fallback)
-- **Мини-попапы событий** — glassmorphism попапы с информацией о событии и кнопкой перехода
 
-### Дополнительно: ссылки, демонстрации и примеры
+Единый интерфейс для работы с разными провайдерами карт.
 
-- **Ссылки на документацию** — добавлены относительные ссылки для удобного просмотра на GitHub:
-  - [Полное руководство разработчика](./docs/GAMIFICATION_DEVELOPER_GUIDE.md)
-  - [План реализации геймификации](./docs/GAMIFICATION_PLAN.md)
-  - [Статус реализации](./docs/GAMIFICATION_STATUS.md)
+- **Canonical папка**: `src/services/map_facade/` (устаревшая `mapFacade/` camelCase — удалена)
+- **MapContextFacade** — singleton, пул рендереров, переключение контекстов
+- **projectManager** — инициализация карты с проверкой `isConnected`, `getMapApi()` с привязанными методами
+- **Адаптеры**: `YandexPlannerRenderer`, `OSMMapRenderer`, `OfflineOSMRenderer`
+- **Интерфейс `IMapRenderer`**: `init`, `renderMarkers`, `renderRoute`, `removeRoute`, `clear`, `destroy`, `onClick`, `setView`, `planRoute`, `setMapMargin`, `resetMapMargin`, `onRouteGeometry`
+- **Ключевые типы**: `GeoPoint`, `MapConfig`, `UnifiedMarker`, `PersistedRoute`
 
-- **Скриншоты / Демо** — рекомендуем добавить 1–2 изображения или GIF для ключевых экранов (карта, календарь, glassmorphism). Пример разметки (поместите файлы в `public/images/screenshots/`):
+Подробнее: [docs/MAP_FACADE_ANALYSIS.md](docs/MAP_FACADE_ANALYSIS.md), [docs/FACADE_CLEAN.md](docs/FACADE_CLEAN.md)
 
-  ![Map example](public/images/screenshots/map-01.png)
-  ![Calendar example](public/images/screenshots/calendar-01.png)
+> Как добавить адаптер: создать файл в `src/services/map_facade/adapters/`, реализовать `IMapRenderer`, экспортировать из каталога.
 
-  (Если хотите — могу подготовить скриншоты или GIFs и добавить их в репозиторий.)
+### contentStore (двухоконный режим)
 
-- **Пример использования Map Facade** — минимальный пример:
+Zustand-store управляет `leftContent`/`rightContent` для двухоконного интерфейса. Все методы **синхронные** (без `startTransition` — удалён для устранения задержки 1-2 сек при навигации). `LayoutContext` — обёртка над `contentStore` (не дублирование).
 
-```ts
-// Инициализация и простая отрисовка маркера
-await mapFacade.init('map-container', { center: { lat: 55.75, lon: 37.62 }, zoom: 10 });
-mapFacade.renderMarkers([
-  { id: 'm1', coordinates: { lat: 55.75, lon: 37.62 }, title: 'Москва', icon: 'marker', color: '#FF5722' }
-]);
-```
+### mapStateStore
 
-- **Поддержка / FAQ (первичная заготовка)**
+Zustand-store сохраняет `center`, `zoom`, `provider` карты при переключении страниц Map ↔ Planner. Маркеры кэшируются глобально. Исправлена утечка памяти — добавлен `destroyMap()` в `projectManager`.
 
-  - Куда добавлять новый адаптер? — в `src/services/map_facade/adapters/`, реализуя `IMapRenderer`.
-  - Почему раньше было две папки `map_facade` и `mapFacade`? — сейчас canonical — `src/services/map_facade/`; `src/services/mapFacade/` **удалена**.
-  - Как собрать локально? — в папке `frontend` выполните:
+### storageService
 
-  ```bash
-  npm install
-  npm run build
-  ```
+Единый фасад для key/value (`localStorage` с fallback) + `indexedDBService` для IndexedDB. В тестах работает in-memory fallback. Подробнее: `src/services/storageService.ts`.
 
-## 🤝 Вклад в проект
+### GPS Tracks
 
-1. **Форкните** репозиторий
-2. **Создайте** ветку для новой функции
-3. **Внесите** изменения
-4. **Создайте** Pull Request
-
-## 📄 Лицензия
-
-MIT License - см. файл [LICENSE](LICENSE)
-## 📞 Контакты
-
-- **Автор:** Максим Иванов (Simakis)
-- **Email:** simakis@gmail.com
-- **GitHub:** [@simamakis](https://github.com/simamakis)
+Запись GPS-треков, локальное хранение (IndexedDB), экспорт (GPX/KML/GeoJSON), интеграция с геймификацией. Подробнее: [docs/GPS_TRACKS_HANDOVER.md](docs/GPS_TRACKS_HANDOVER.md), [docs/GEO_ROUTES_API.md](docs/GEO_ROUTES_API.md).
 
 ---
 
-**ГеоБлог.рф** — ваш гид по просторам России! 🗺️✨
+## Интеграция компонентов
 
-*Платформа для создания интерактивных постов с интеграцией карт и маршрутов по России*
+| Связь | Описание |
+|---|---|
+| Посты ↔ Карты | Автоматическое создание меток |
+| События ↔ Календарь ↔ Карта | События из календаря отображаются на карте с маркерами |
+| Календарь ↔ Планировщик | События доступны в планировщике маршрутов |
+| Геймификация ↔ Контент | Автоматическое начисление XP за посты и метки |
+| Достижения ↔ Активность | Разблокировка за действия пользователя |
+| Офлайн ↔ Все типы контента | Черновики и синхронизация |
+
+---
+
+## Геймификация — детали
+
+### Источники XP
+
+| Действие | XP |
+|---|---|
+| Создание поста | 50 |
+| Пост с фото | +25 (итого 75) |
+| Пост с меткой | +30 (итого 80) |
+| Пост с фото и меткой | +55 (итого 105) |
+| Создание метки | 30 |
+| Метка с фото | +20 (итого 50) |
+| Метка с описанием | +15 (итого 45) |
+| Высокое качество | +20 |
+| Идеальное качество | +30 |
+| Ежедневная цель | 25 |
+| Все цели за день | +50 бонус |
+| Стрик активности | +10 за каждый день |
+
+### Ранги
+| Ранг | Уровень |
+|---|---|
+| 🌱 Новичок | 1-5 |
+| 🌿 Путешественник | 6-10 |
+| 🌳 Исследователь | 11-15 |
+| 🏔️ Географ | 16-20 |
+| 👑 ГеоБлоггер | 21+ |
+
+Подробнее: [docs/GAMIFICATION_DEVELOPER_GUIDE.md](docs/GAMIFICATION_DEVELOPER_GUIDE.md)
+
+---
+
+## Установка и запуск
+
+### Предварительные требования
+- **Node.js** 18+
+- **npm**
+- **PostgreSQL** (для бэкенда, порт 5432)
+
+### Установка
+
+```bash
+git clone git@github.com:megatimur1000-jpg/NewGeoBlogRF.git
+cd NewGeoBlogRF/frontend
+npm install
+cp .env.example .env   # Отредактируйте .env
+npm run dev
+```
+
+Откройте в браузере: `http://localhost:5173`
+
+---
+
+## Команды разработки
+
+```bash
+# Разработка
+npm run dev              # Запуск dev-сервера (Vite)
+npm run build            # Сборка: tsc + vite build
+npm run build:prod       # Production-сборка (node build-production.js)
+npm run build:analyze    # Сборка + анализ бандла
+npm run preview          # Предпросмотр сборки
+
+# Линтинг
+npm run lint             # ESLint проверка
+npm run lint:fix         # ESLint с автоисправлением
+
+# Тестирование
+npm test                 # Vitest (vitest.config.cjs)
+
+# Утилиты
+npm run clean            # Очистка dist и кеша Vite
+npm run security:audit   # Аудит безопасности зависимостей
+npm run security:fix     # Автоисправление уязвимостей
+```
+
+---
+
+## Конфигурация
+
+### Переменные окружения (.env)
+
+```env
+# Backend API
+VITE_API_URL=http://localhost:3002
+VITE_API_BASE_URL=http://localhost:3002
+VITE_API_ORIGIN=http://localhost:3002
+
+# WebSocket
+VITE_WS_URL=ws://localhost:8080
+
+# Карты и геокодирование
+VITE_YANDEX_MAPS_API_KEY=your_yandex_maps_key
+VITE_STADIA_MAPS_API_KEY=your_stadia_maps_key          # опционально
+VITE_OPENROUTESERVICE_API_KEY=your_openrouteservice_key
+
+# Feature flags
+VITE_ENABLE_ANALYTICS=false
+VITE_ENABLE_ERROR_REPORTING=false
+VITE_ENABLE_PWA=false
+```
+
+### API-ключи
+
+- **Yandex Maps** — [developer.tech.yandex.ru](https://developer.tech.yandex.ru/)
+- **OpenRouteService** — [openrouteservice.org](https://openrouteservice.org/)
+
+---
+
+## Документация
+
+| Документ | Описание |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Общая архитектура |
+| [docs/GAMIFICATION_DEVELOPER_GUIDE.md](docs/GAMIFICATION_DEVELOPER_GUIDE.md) | Руководство по геймификации |
+| [docs/GAMIFICATION_PLAN.md](docs/GAMIFICATION_PLAN.md) | План геймификации |
+| [docs/GAMIFICATION_STATUS.md](docs/GAMIFICATION_STATUS.md) | Статус реализации |
+| [docs/GPS_TRACKS_HANDOVER.md](docs/GPS_TRACKS_HANDOVER.md) | GPS-треки — handover |
+| [docs/GEO_ROUTES_API.md](docs/GEO_ROUTES_API.md) | API маршрутов |
+| [docs/COORDINATE_SYSTEM.md](docs/COORDINATE_SYSTEM.md) | Система координат |
+| [docs/MAP_FACADE_ANALYSIS.md](docs/MAP_FACADE_ANALYSIS.md) | Анализ Map Facade |
+| [docs/MOBILE_ADAPTATION_GUIDE.md](docs/MOBILE_ADAPTATION_GUIDE.md) | Мобильная адаптация |
+| [docs/DARK_THEME_IMPLEMENTATION.md](docs/DARK_THEME_IMPLEMENTATION.md) | Тёмная тема |
+| [docs/ROUTE_ARCHITECTURE.md](docs/ROUTE_ARCHITECTURE.md) | Архитектура маршрутов |
+
+---
+
+## Glass Theme — Система стилей стекла
+
+Вся стилизация стеклянных элементов построена на **4 состояниях** через CSS-переменные.
+Автоматически переключается при смене `data-theme="light"|"dark"` — никаких отдельных dark-overrides.
+
+### Принцип: 2 слоя
+
+```
+┌────────────────────────────────────────┐
+│  Layer 1 (L1) — КОНТЕЙНЕР             │
+│  Тулбар, панель, попап, сайдбар       │
+│  gradient bg + backdrop-filter: blur   │
+│  ┌──────────────────────────────────┐  │
+│  │  Layer 2 (L2) — КОНТРОЛ         │  │
+│  │  Кнопка, инпут, чип, карточка   │  │
+│  │  flat bg, БЕЗ backdrop-filter   │  │
+│  └──────────────────────────────────┘  │
+└────────────────────────────────────────┘
+```
+
+- **L1** — единственный элемент с `backdrop-filter`. Контейнер размывает фон.
+- **L2** — плоский полупрозрачный фон внутри. Без собственного blur, чтобы не было двойного наложения.
+
+### CSS-переменные (файл `styles/_glass-theme.css`)
+
+| Переменная | Light | Dark | Назначение |
+|---|---|---|---|
+| `--glass-l1-bg` | `rgba(255,255,255, 0.1→0.05)` gradient | `rgba(0,0,0, 0.1→0.05)` gradient | Фон контейнера |
+| `--glass-l1-border` | `rgba(255,255,255, 0.2)` | `rgba(0,0,0, 0.12)` | Рамка контейнера |
+| `--glass-l1-shadow` | `0 8px 32px rgba(0,0,0,0.1)` | `0 8px 32px rgba(0,0,0,0.1)` | Тень контейнера |
+| `--glass-l2-bg` | `rgba(255,255,255, 0.1)` | `rgba(0,0,0, 0.06)` | Фон контрола |
+| `--glass-l2-border` | `rgba(255,255,255, 0.2)` | `rgba(0,0,0, 0.12)` | Рамка контрола |
+| `--glass-l2-bg-hover` | `rgba(255,255,255, 0.15)` | `rgba(0,0,0, 0.1)` | Hover |
+| `--glass-l2-bg-active` | `rgba(255,255,255, 0.2)` | `rgba(0,0,0, 0.14)` | Active / selected |
+| `--glass-l2-border-active` | `rgba(255,255,255, 0.4)` | `rgba(0,0,0, 0.2)` | Active border |
+| `--glass-l2-shadow` | `0 4px 12px rgba(0,0,0,0.15)` | `none` | Тень контрола |
+| `--glass-blur` | `blur(10px) saturate(180%)` | то же | Стандартный blur |
+| `--glass-blur-strong` | `blur(16px) saturate(180%)` | то же | Усиленный blur (модалки) |
+| `--glass-text` | `rgba(0,0,0, 0.8)` | `rgba(0,0,0, 0.85)` | Основной текст |
+| `--glass-text-secondary` | `rgba(0,0,0, 0.5)` | `rgba(0,0,0, 0.6)` | Вторичный текст |
+
+### Утилитарные классы
+
+```css
+/* Контейнер — тулбар, панель, попап */
+.glass-l1 {
+  background: var(--glass-l1-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-l1-border);
+  box-shadow: var(--glass-l1-shadow);
+}
+
+/* Контрол — кнопка, инпут, карточка */
+.glass-l2 {
+  background: var(--glass-l2-bg);
+  border: 1px solid var(--glass-l2-border);
+  /* hover/active состояния встроены */
+}
+
+/* Модальное окно — усиленный blur */
+.glass-l1-strong {
+  background: var(--glass-l1-bg);
+  backdrop-filter: var(--glass-blur-strong);
+  border: 1px solid var(--glass-l1-border);
+}
+```
+
+### Как использовать в новом компоненте
+
+```tsx
+// Контейнер с backdrop-filter
+<div className="glass-l1" style={{ borderRadius: 20, padding: 16 }}>
+  
+  {/* Кнопка внутри — БЕЗ собственного blur */}
+  <button className="glass-l2" style={{ borderRadius: 12, padding: '8px 16px' }}>
+    Действие
+  </button>
+
+  {/* Инпут */}
+  <input className="glass-l2" style={{ borderRadius: 12 }} />
+</div>
+
+// Модальное окно
+<div className="glass-l1-strong" style={{ borderRadius: 20 }}>
+  ...
+</div>
+```
+
+> **Важно:** inline-стили используй **только для layout** (позиция, padding, borderRadius, zIndex).
+> Все glass-свойства (background, border, shadow, backdrop-filter) — **только через классы/переменные**.
+
+### Где применено
+
+| Компонент | Класс / переменные | Файл |
+|---|---|---|
+| Map toolbar | `.glass-l1` (контейнер), `.glass-l2` (инпут, кнопки) | `pages/Map.tsx` |
+| Map action buttons | `--glass-l1-*` / `--glass-l2-*` в CSS | `styles/_components.css` |
+| Category filter | `.glass-l1` (панель), `.glass-l2` (чипсы) | `components/Map/CategoryQuickFilter.tsx` |
+| GlassPanel | `--glass-l1-*` / `--glass-l2-*` в CSS | `components/Glass/GlassPanel.css` |
+| Mini popups | `--glass-l1-*` в CSS | `components/Map/MiniMarkerPopup.css`, `EventMiniPopup.css` |
+| Planner toolbar | `.glass-l1`, `.glass-l2` | `pages/Planner.tsx` |
+| Planner modals | `.glass-l1-strong` | `pages/Planner.tsx` |
+| Posts container | `--glass-l1-*` в CSS | `styles/_content.css` |
+| Post cards | `--glass-l2-*` в styled-component | `components/Posts/PostCard.tsx` |
+| Filter buttons | `--glass-l2-*` в CSS | `styles/_content.css` |
+| Theme toggle | `--glass-l2-*` в CSS | `styles/_glass-theme.css` |
+
+### Переключение темы
+
+```
+themeStore.ts (Zustand) → document.documentElement.setAttribute('data-theme', theme)
+                        → localStorage.setItem('theme', theme)
+```
+
+При смене `data-theme` на `<html>`:
+1. Все `--glass-l1-*` / `--glass-l2-*` переменные мгновенно принимают новые значения
+2. Все элементы с классами `.glass-l1` / `.glass-l2` обновляются автоматически
+3. Все правила через `var(--glass-*)` в CSS-файлах обновляются автоматически
+
+### Правила при добавлении нового glass-элемента
+
+1. **Никогда** не добавляй `backdrop-filter` на элементы внутри glass-контейнера
+2. **Никогда** не пиши отдельные `[data-theme="dark"]` оверрайды — используй CSS vars
+3. **Один** `backdrop-filter` на иерархию — только на L1 контейнере
+4. Для styled-components используй `var(--glass-l2-bg)` и т.д. вместо хардкод rgba
+
+### Файловая структура стилей
+
+```
+styles/
+├── _glass-theme.css     ← ГЛАВНЫЙ: переменные + утилит-классы
+├── _content.css         ← Posts: .page-main-panel (L1), .post-item (L2), filter-btn
+├── _components.css      ← .btn-glass (L2), .map-action-buttons-container (L1)
+├── _dark-overrides.css  ← УСТАРЕЛ (пустой, импорт удалён)
+├── GlobalStyles.css     ← Общие layout-стили
+├── PageLayout.css       ← Fallback для .page-main-panel
+└── index.css            ← Импорт всех стилей
+```
+
+---
+
+## Состояние проекта
+
+### MVP 1.0 — завершён
+
+- [x] Посты — конструктор, геолокация, черновики, офлайн
+- [x] Интерактивная карта — Map Facade, множественные провайдеры
+- [x] Планировщик маршрутов с сохранением в БД
+- [x] Календарь событий — 5 режимов, интеграция с картой и планировщиком
+- [x] Система геймификации — уровни, XP, цели, достижения, защита от накруток
+- [x] Офлайн-режим — IndexedDB, очередь, синхронизация, черновики
+- [x] Модерация — AI-фильтры, панель администратора, уведомления
+- [x] Комплексная аналитика — продуктовая, поведенческая, техническая
+- [x] Аутентификация JWT + гостевой режим
+- [x] Двухоконный интерфейс
+- [x] Адаптивный дизайн + мобильные страницы
+- [x] PWA
+- [x] Социальные функции — чат, друзья, лента активности
+- [x] Map Facade — единый интерфейс, кастомные маркеры, маркеры событий
+
+### В разработке (MVP 2.0)
+
+- [ ] GPS-треки — запись в реальном времени, экспорт
+- [ ] Расширенная модерация — гео-валидация, жалобы
+- [ ] Push-уведомления
+- [ ] Цели недели
+
+### Планируется
+
+- [ ] Интеграция с социальными сетями
+- [ ] Система рекомендаций AI
+- [ ] Мультиязычность
+- [ ] API для сторонних разработчиков
+
+---
+
+## Аутентификация
+
+- JWT-токены с автоматическим обновлением
+- Защищённые маршруты с проверкой авторизации
+- Персистентная сессия
+- Гостевой режим (`GuestContext`, `guestActionsService`)
+
+---
+
+## Интерфейс
+
+### Адаптивный дизайн
+- Мобильная версия — отдельные страницы/компоненты в `src/pages/Mobile/` и `src/components/Mobile/`
+- Планшетная и десктопная версии
+
+### UI-компоненты
+- Glassmorphism панели — эффект матового стекла (календарь, кнопки карты, мини-попапы)
+- Стеклянная колонка кнопок (MapActionButtons) — A11y, тёмная/светлая тема
+- Круговой календарь — карусель месяцев
+- Framer Motion анимации — повышение уровня, XP, пульсация маркеров
+
+---
+
+## Вклад в проект
+
+1. Форкните репозиторий
+2. Создайте ветку для новой функции
+3. Внесите изменения
+4. Создайте Pull Request
+
+## Лицензия
+
+MIT License — см. файл [LICENSE](LICENSE)
+
+## Контакты
+
+- **GitHub:** [@megatimur1000-jpg](https://github.com/megatimur1000-jpg)
+
+---
+
+**ГеоБлог.рф** — платформа для создания интерактивных постов с интеграцией карт и маршрутов по России

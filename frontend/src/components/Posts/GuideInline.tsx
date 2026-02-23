@@ -2,9 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { PostDTO } from '../../types/post';
 import { useFavorites } from '../../contexts/FavoritesContext';
-import MiniMapRoute from './MiniMapRoute';
-import MiniMapMarker from './MiniMapMarker';
-import MiniEventCard from './MiniEventCard';
+import { MiniMapMarker, MiniMapRoute, MiniEventCard } from './LazyMiniComponents';
 import { isGuidePost, parseGuideData } from '../../utils/postUtils';
 
 const Container = styled.div`

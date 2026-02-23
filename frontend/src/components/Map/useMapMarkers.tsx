@@ -47,10 +47,11 @@ export function useMapMarkers(opts: UseMapMarkersOptions) {
         markerClusterGroupRef.current = null;
       }
 
-      if (!(window as any).L?.markerClusterGroup) return;
+      const clusterGroup = mapFacade().createMarkerClusterGroup();
+      if (!clusterGroup) return;
       
       // Создаём группу кластеров с настройками
-      const markerClusterGroup = (window as any).L.markerClusterGroup({
+      const markerClusterGroup = mapFacade().createMarkerClusterGroup({
         showCoverageOnHover: false,
         maxClusterRadius: 50,
         spiderfyOnMaxZoom: true,
@@ -73,10 +74,10 @@ export function useMapMarkers(opts: UseMapMarkersOptions) {
             clusterClass += ` marker-cluster-${category}`;
           } else if (categories.size > 1) {
             // Если в кластере разные категории - используем смешанный стиль
-            clusterClass += ' marker-cluster-mixed';
+          clusterClass += ' marker-cluster-mixed';
           }
           
-          return (window as any).L.divIcon({
+          return mapFacade().createDivIcon({
             className: clusterClass,
             html: `<div class="marker-cluster-content"><span class="marker-cluster-count">${count}</span></div>`,
             iconSize: [40, 40],

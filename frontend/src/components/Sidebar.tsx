@@ -294,20 +294,20 @@ const Sidebar: React.FC = () => {
       <nav
         className="sidebar-attack-map"
         style={{
-          position: 'fixed', // Фиксированная позиция - всегда видна
+          position: 'fixed',
           left: 0,
-          top: '64px', // Под Topbar (64px высота)
-          height: 'calc(100vh - 64px)', // На всю высоту экрана минус Topbar
-          width: isExpanded ? '280px' : '50px', // Свернутый: 50px, развернутый: 280px
+          top: '64px',
+          height: 'calc(100vh - 64px)',
+          width: isExpanded ? '280px' : '50px',
           zIndex: 1150,
-          background: 'rgba(255, 255, 255, 0.15)', // Более прозрачный
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          borderRight: 'none', // Убираем границу справа - нет разделения с Topbar
+          background: 'var(--glass-card-bg)',
+          backdropFilter: 'var(--glass-blur-strong)',
+          WebkitBackdropFilter: 'var(--glass-blur-strong)',
+          borderRight: 'none',
           transition: 'width 0.3s ease',
           overflow: 'visible',
-          color: 'var(--text-primary)',
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)'
+          color: 'var(--glass-text)',
+          boxShadow: 'var(--glass-shadow)'
         }}
         onClick={() => {
           // При клике на сайдбар - переключаем состояние
@@ -323,7 +323,7 @@ const Sidebar: React.FC = () => {
               {/* Заголовок группы - показывается только при раскрытии */}
               {isExpanded && (
                 <div className="px-4 mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#000000' }}>
+                  <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--glass-text-secondary)' }}>
                     {group.title}
                   </span>
                 </div>
@@ -372,19 +372,19 @@ const Sidebar: React.FC = () => {
                           }
                         }}
                       >
-                        {/* Иконка - всегда видна, черная */}
+                        {/* Иконка - всегда видна */}
                         <i
                           className={`fas ${item.icon}`}
                           style={{
                             fontSize: '20px',
                             width: '26px',
                             textAlign: 'center',
-                            color: active ? '#4cc9f0' : '#000000', // Черные иконки, активная - голубая
+                            color: active ? '#4cc9f0' : 'var(--glass-text)',
                             filter: active ? 'drop-shadow(0 0 4px rgba(76, 201, 240, 0.6))' : 'none'
                           }}
                         />
 
-                        {/* Название - показывается только при раскрытии, черное */}
+                        {/* Название - показывается только при раскрытии */}
                         {isExpanded && (
                           <span
                             className="ml-3 whitespace-nowrap"
@@ -393,7 +393,7 @@ const Sidebar: React.FC = () => {
                               fontWeight: active ? 600 : 400,
                               opacity: 1,
                               transition: 'opacity 0.2s ease',
-                              color: '#000000' // Черный текст
+                              color: 'var(--glass-text)'
                             }}
                           >
                             {item.label}

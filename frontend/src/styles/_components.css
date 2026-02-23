@@ -710,25 +710,28 @@
   gap: 0.5rem;
 }
 
-/* Кнопка "Создать пост" */
+/* Кнопка "Создать пост" — glass-стиль как контролы карты */
 .btn-create-post {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.625rem 1.25rem; /* py-2.5 px-5 */
-  background: linear-gradient(to right, #2563eb, #1d4ed8); /* blue-600 to blue-700 */
-  color: white;
+  padding: 0.625rem 1.25rem;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(12px) saturate(170%);
+  -webkit-backdrop-filter: blur(12px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: rgba(0, 0, 0, 0.8);
   font-weight: 600;
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: all 0.2s;
-  border: none;
   cursor: pointer;
 }
 
 .btn-create-post:hover {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  background: linear-gradient(to right, #1d4ed8, #1e40af); /* blue-700 to blue-800 */
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
   transform: scale(1.02);
 }
 
@@ -740,19 +743,24 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.625rem 1rem; /* py-2.5 px-4 */
-  background-color: #4b5563; /* gray-600 */
-  color: white;
+  padding: 0.625rem 1rem;
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(12px) saturate(170%);
+  -webkit-backdrop-filter: blur(12px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: rgba(0, 0, 0, 0.8);
   font-weight: 600;
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: all 0.2s;
   position: relative;
+  cursor: pointer;
 }
 
 .btn-drafts:hover {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  background-color: #374151; /* gray-700 */
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
 .drafts-badge {
@@ -828,14 +836,14 @@
   gap: 8px;
 }
 
-/* --- Base Style: Glass Effect --- */
+/* --- Base Style: Glass Effect (Layer 2 — использует CSS vars) --- */
 .btn-glass {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px) saturate(180%);
-  -webkit-backdrop-filter: blur(10px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: rgba(0, 0, 0, 0.8);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background: var(--glass-l2-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-l2-border);
+  color: var(--glass-text);
+  box-shadow: var(--glass-l2-shadow);
 }
 
 /* Fallback для старых браузеров */
@@ -843,14 +851,17 @@
   .btn-glass {
     background: rgba(255, 255, 255, 0.85);
   }
+  [data-theme="dark"] .btn-glass {
+    background: rgba(0, 0, 0, 0.85);
+    color: #fff;
+  }
 }
 
 /* Hover эффект (общий) */
 .btn-glass:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: var(--glass-l2-bg-hover);
+  border-color: var(--glass-l2-border-hover);
   transform: scale(1.05);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }
 
 /* --- Shapes (Формы) --- */
@@ -925,15 +936,10 @@
 
 /* --- Dark Theme & Light Variants --- */
 
-/* Темная тема (для Map/Calendar на темном фоне) */
+/* .btn-dark — legacy, теперь .btn-glass автоматически
+   переключается через CSS vars (--glass-l2-*) */
 .btn-dark {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
-}
-.btn-dark:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  /* Пустой — наследует всё из .btn-glass через CSS vars */
 }
 
 /* Светлая тема (для кнопок на темном фоне, как в Calendar horizontal) */
@@ -999,7 +1005,7 @@
 .map-action-buttons-container {
   position: fixed;
   right: 17px;
-  top: calc(64px + (100vh - 64px) / 2);
+  top: calc(var(--topbar-height, 64px) + (100vh - var(--topbar-height, 64px)) / 2);
   transform: translateY(-50%);
   z-index: 1100;
   display: flex;
@@ -1009,18 +1015,19 @@
   border-radius: 20px;
   /* ИСПРАВЛЕНО: Контейнер не перехватывает клики */
   pointer-events: none;
-  /* Фон и стекло */
-  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
-  backdrop-filter: blur(10px) saturate(180%);
-  -webkit-backdrop-filter: blur(10px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  /* Фон и стекло — Layer 1 через CSS vars */
+  background: var(--glass-l1-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-l1-border);
+  box-shadow: var(--glass-l1-shadow);
+  color: var(--glass-text);
   animation: slideInFromRight 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .map-action-buttons-container.two-panel-mode {
   position: fixed;
-  top: calc(64px + (100vh - 64px) / 2);
+  top: calc(var(--topbar-height, 64px) + (100vh - var(--topbar-height, 64px)) / 2);
   transform: translateY(-50%);
   right: calc(50% + 12px);
   z-index: 1100;
@@ -1029,11 +1036,12 @@
 
 @supports not (backdrop-filter: blur(10px)) {
   .map-action-buttons-container { background: rgba(255,255,255,0.85); }
+  [data-theme="dark"] .map-action-buttons-container { background: rgba(0,0,0,0.85); }
 }
 
+/* .dark class — legacy, теперь автоматически через CSS vars */
 .map-action-buttons-container.dark {
-  background: linear-gradient(135deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.1) 100%);
-  border: 1px solid rgba(255,255,255,0.1);
+  /* Пустой — наследует всё через CSS vars */
 }
 
 /* Кнопки внутри MapActionButtons остаются интерактивными */

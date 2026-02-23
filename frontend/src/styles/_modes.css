@@ -134,4 +134,9 @@
   overflow: visible;
 }
 
+/* Leaflet контролы (zoom и др.) — смещаем ниже topbar */
+.facade-map-root .leaflet-control-container .leaflet-top {
+  top: var(--topbar-height, 64px);
+}
+
 /* Hover-эффект отключён — карта не должна сдвигаться при наведении */

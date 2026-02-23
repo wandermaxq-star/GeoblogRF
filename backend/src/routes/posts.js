@@ -1,6 +1,7 @@
 // backend/routes/posts.js
 import express from 'express';
 import { optionalAuthenticateToken } from '../middleware/optionalAuth.js';
+import { authenticateToken } from '../middleware/auth.js';
 import pool from '../../db.js';
 import logger from '../../logger.js';
 
@@ -502,6 +503,194 @@ router.post('/posts', optionalAuthenticateToken, async (req, res) => {
   } catch (err) {
     logger.error('❌ Ошибка при создании поста:', err);
     res.status(500).json({ message: 'Ошибка при создании поста', error: err.message });
+  }
+});
+
+// ==============================
+// REPLIES (ответы к постам)
+// ==============================
+
+// GET /api/posts/:id/replies — получить ответы к посту
+router.get('/posts/:id/replies', optionalAuthenticateToken, async (req, res) => {
+  try {
+    const postId = parseInt(req.params.id, 10);
+    if (isNaN(postId)) {
+      return res.status(400).json({ message: 'Некорректный ID поста' });
+    }
+
+    const result = await pool.query(
+      `SELECT r.*, u.username AS author_name, u.avatar_url AS author_avatar
+       FROM post_replies r
+       LEFT JOIN users u ON u.id::text = r.author_id
+       WHERE r.post_id = $1
+       ORDER BY r.created_at ASC`,
+      [postId]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    logger.error('❌ Ошибка получения ответов:', err);
+    res.status(500).json({ message: 'Ошибка получения ответов', error: err.message });
+  }
+});
+
+// POST /api/posts/:id/replies — создать ответ к посту
+router.post('/posts/:id/replies', authenticateToken, async (req, res) => {
+  try {
+    const postId = parseInt(req.params.id, 10);
+    if (isNaN(postId)) {
+      return res.status(400).json({ message: 'Некорректный ID поста' });
+    }
+
+    const { body } = req.body;
+    if (!body || !body.trim()) {
+      return res.status(400).json({ message: 'Текст ответа обязателен' });
+    }
+
+    const authorId = String(req.user.id);
+
+    const result = await pool.query(
+      `INSERT INTO post_replies (post_id, author_id, body, created_at)
+       VALUES ($1, $2, $3, NOW())
+       RETURNING *`,
+      [postId, authorId, body.trim()]
+    );
+
+    // Подгружаем данные автора
+    const reply = result.rows[0];
+    const userResult = await pool.query(
+      'SELECT username, avatar_url FROM users WHERE id::text = $1',
+      [authorId]
+    );
+    if (userResult.rows.length > 0) {
+      reply.author_name = userResult.rows[0].username;
+      reply.author_avatar = userResult.rows[0].avatar_url;
+    }
+
+    // Обновляем счётчик комментариев в posts (если колонка есть)
+    try {
+      await pool.query(
+        'UPDATE posts SET comments_count = COALESCE(comments_count, 0) + 1 WHERE id = $1',
+        [postId]
+      );
+    } catch (_) { /* колонка может отсутствовать */ }
+
+    res.status(201).json(reply);
+  } catch (err) {
+    logger.error('❌ Ошибка создания ответа:', err);
+    res.status(500).json({ message: 'Ошибка создания ответа', error: err.message });
+  }
+});
+
+// ==============================
+// REACTIONS (лайки)
+// ==============================
+
+// POST /api/posts/:id/reactions — переключить лайк (toggle)
+router.post('/posts/:id/reactions', authenticateToken, async (req, res) => {
+  try {
+    const postId = req.params.id;
+    const userId = String(req.user.id);
+
+    // Проверяем существующий лайк
+    const existing = await pool.query(
+      'SELECT id FROM post_likes WHERE post_id::text = $1 AND user_id::text = $2',
+      [postId, userId]
+    );
+
+    let liked;
+    if (existing.rows.length > 0) {
+      // Убираем лайк
+      await pool.query('DELETE FROM post_likes WHERE id = $1', [existing.rows[0].id]);
+      liked = false;
+      // Уменьшаем счётчик
+      try {
+        await pool.query(
+          'UPDATE posts SET likes_count = GREATEST(COALESCE(likes_count, 0) - 1, 0) WHERE id::text = $1',
+          [postId]
+        );
+      } catch (_) { /* колонка может отсутствовать */ }
+    } else {
+      // Ставим лайк
+      await pool.query(
+        'INSERT INTO post_likes (post_id, user_id, created_at) VALUES ($1::uuid, $2::uuid, NOW())',
+        [postId, userId]
+      );
+      liked = true;
+      // Увеличиваем счётчик
+      try {
+        await pool.query(
+          'UPDATE posts SET likes_count = COALESCE(likes_count, 0) + 1 WHERE id::text = $1',
+          [postId]
+        );
+      } catch (_) { /* колонка может отсутствовать */ }
+    }
+
+    // Возвращаем актуальное кол-во лайков
+    const countResult = await pool.query(
+      'SELECT COUNT(*) as count FROM post_likes WHERE post_id::text = $1',
+      [postId]
+    );
+
+    res.json({
+      liked,
+      likes_count: parseInt(countResult.rows[0].count, 10)
+    });
+  } catch (err) {
+    logger.error('❌ Ошибка переключения лайка:', err);
+    res.status(500).json({ message: 'Ошибка при обработке реакции', error: err.message });
+  }
+});
+
+// ==============================
+// USER POSTS (посты пользователя)
+// ==============================
+
+// GET /api/users/:id/posts — посты конкретного пользователя
+router.get('/users/:id/posts', optionalAuthenticateToken, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { limit = 20, offset = 0 } = req.query;
+
+    // Проверяем наличие колонок
+    const checkCols = await pool.query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'posts'
+        AND column_name IN ('likes_count','comments_count','photo_urls','status')
+    `);
+    const hasCols = col => checkCols.rows.some(r => r.column_name === col);
+
+    const likesExpr = hasCols('likes_count') ? 'COALESCE(p.likes_count, 0)' : '0';
+    const commentsExpr = hasCols('comments_count') ? 'COALESCE(p.comments_count, 0)' : '0';
+    const photoExpr = hasCols('photo_urls') ? 'p.photo_urls' : 'NULL';
+    const statusFilter = hasCols('status') ? "AND p.status = 'active'" : '';
+
+    const result = await pool.query(
+      `SELECT p.id, p.title, p.body, p.author_id, p.marker_id, p.route_id, p.event_id,
+              ${likesExpr} AS likes_count, ${commentsExpr} AS comments_count,
+              ${photoExpr} AS photo_urls,
+              p.created_at, p.updated_at,
+              u.username AS author_name, u.avatar_url AS author_avatar
+       FROM posts p
+       LEFT JOIN users u ON u.id = p.author_id
+       WHERE p.author_id::text = $1 ${statusFilter}
+       ORDER BY p.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [userId, parseInt(limit, 10), parseInt(offset, 10)]
+    );
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*) FROM posts p WHERE p.author_id::text = $1 ${statusFilter}`,
+      [userId]
+    );
+
+    res.json({
+      data: result.rows,
+      total: parseInt(countResult.rows[0].count, 10)
+    });
+  } catch (err) {
+    logger.error('❌ Ошибка получения постов пользователя:', err);
+    res.status(500).json({ message: 'Ошибка получения постов', error: err.message });
   }
 });
 

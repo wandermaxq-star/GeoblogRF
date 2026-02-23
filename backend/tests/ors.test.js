@@ -25,7 +25,7 @@ describe('ORS proxy', () => {
       .reply(200, mockResponse);
 
     const res = await request(app)
-      .post(`/ors/v2/directions/${profile}/geojson`)
+      .post(`/api/ors/v2/directions/${profile}/geojson`)
       .send({ coordinates })
       .set('Content-Type', 'application/json')
       .expect(200);
@@ -36,7 +36,7 @@ describe('ORS proxy', () => {
   test('returns 400 when coordinates are invalid', async () => {
     const profile = 'driving-car';
     const res = await request(app)
-      .post(`/ors/v2/directions/${profile}/geojson`)
+      .post(`/api/ors/v2/directions/${profile}/geojson`)
       .send({ coordinates: [ [1,2] ] })
       .set('Content-Type', 'application/json')
       .expect(400);

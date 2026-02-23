@@ -293,10 +293,10 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
   return (
     <>
       {/* Затемнение */}
-      <div className="fixed inset-0 bg-black/50 z-50" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/50" style={{ zIndex: 9998 }} onClick={onClose} />
       {/* Модальное окно */}
-      <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[85vh] overflow-hidden">
+      <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[85vh] overflow-hidden" onClick={e => e.stopPropagation()}>
       {/* Заголовок */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
                  <div className="flex justify-between items-center mb-4">

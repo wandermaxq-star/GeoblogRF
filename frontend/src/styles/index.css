@@ -3,6 +3,9 @@
    Импортируйте этот файл в main.tsx
 */
 
+/* 0. Glass Theme — единые CSS-переменные light/dark */
+@import './_glass-theme.css';
+
 /* 1. Переменные и сброс стилей */
 @import './_base.css';
 
@@ -15,3 +18,5 @@
 
 /* 4. Content-specific styles (posts/blogs) — подключаем последним, чтобы гарантировать переопределение */
 @import './_content.css';
+
+/* Dark-overrides больше не нужны — всё через CSS vars (--glass-l1-*, --glass-l2-*) в _glass-theme.css */

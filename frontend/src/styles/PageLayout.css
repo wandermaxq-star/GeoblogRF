@@ -346,13 +346,13 @@
 }
 
 .page-slide-panel.dark-glass {
-  /* Тёмное матовое стекло (осветлён на 4 оттенка для лучшей прозрачности, как у блока кнопок) */
-  background: linear-gradient(135deg, rgba(34, 38, 48, 0.85), rgba(46, 52, 68, 0.82));
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 25px 50px rgba(5, 8, 15, 0.5), 0 8px 20px rgba(10, 14, 25, 0.35);
-  color: #f1f5f9;
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  /* Лёгкая тёмная дымка (аналог light но с тёмным оттенком) */
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.05) 100%);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  color: var(--glass-text);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
 }
 
 .page-slide-panel.dark-glass .page-slide-panel-content {
@@ -361,8 +361,8 @@
 }
 
 .page-slide-panel.dark-glass .page-slide-panel-header {
-  background: rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.04);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   color: inherit;
 }
 
@@ -371,14 +371,14 @@
 }
 
 .page-slide-panel.dark-glass .page-slide-panel-close {
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--glass-text-secondary);
   border-radius: 8px;
   transition: background 0.2s ease, color 0.2s ease;
 }
 
 .page-slide-panel.dark-glass .page-slide-panel-close:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--glass-text);
 }
 
 /* Стили для панелей календаря с GlassPanel - ПРОЗРАЧНОЕ стекло как в map.tsx и planner.tsx */
@@ -1370,65 +1370,10 @@
   padding-bottom: 20px !important;
 }
 
-/* ===== СТИЛИ ДЛЯ ЭЛЕМЕНТОВ ПОСТОВ ===== */
-/* Чистый белый фон без синеватого оттенка */
-.post-item,
-.posts-scroll-area .space-y-4>div {
-  margin-bottom: 16px !important;
-  padding: 16px !important;
-  border-radius: 12px !important;
-  /* Чистый белый фон без blur эффекта */
-  background: rgba(255, 255, 255, 0.95) !important;
-  border: 1px solid rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
-  transition: all 0.2s ease !important;
-}
-
-.post-item:hover,
-.posts-scroll-area .space-y-4>div:hover {
-  background: rgba(255, 255, 255, 1) !important;
-  border-color: rgba(0, 0, 0, 0.12) !important;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
-}
-
-/* ===== УЛУЧШЕННАЯ КОНТРАСТНОСТЬ ТЕКСТА ===== */
-/* Заголовки постов */
-.posts-scroll-area h2,
-.posts-scroll-area h3,
-.posts-scroll-area .text-xl,
-.posts-scroll-area .text-lg,
-.posts-scroll-area .font-bold,
-.posts-scroll-area .font-semibold {
-  color: #1a1a2e !important;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
-}
-
-/* Основной текст постов */
-.posts-scroll-area p,
-.posts-scroll-area .text-gray-600,
-.posts-scroll-area .text-gray-700,
-.posts-scroll-area .text-sm {
-  color: #2d2d44 !important;
-  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.3);
-}
-
-/* Мета-информация (дата, автор) */
-.posts-scroll-area .text-gray-500,
-.posts-scroll-area .text-xs {
-  color: #4a4a6a !important;
-}
-
-/* Статичный заголовок - улучшенная контрастность */
-.posts-static-header h1 {
-  color: #1a1a2e !important;
-  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.6);
-}
-
-.posts-static-header button,
-.posts-static-header .btn {
-  text-shadow: none !important;
-}
+/* ===== POSTS (legacy overrides disabled) ===== */
+/* Карточки и типографика в posts-mode управляются в src/styles/_content.css
+   и в styled-components компонента PostCard. Здесь не переопределяем визуал. */
+/* Ничего не задаём — всё управляется через .glass-light / .glass-dark в _content.css */
 
 
 /* Также скрываем скролл на уровне контейнера */
