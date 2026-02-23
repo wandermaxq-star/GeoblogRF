@@ -5,7 +5,7 @@ import { MirrorGradientContainer, usePanelRegistration } from '../components/Mir
 import { FaStar, FaRoute, FaHeart, FaCog } from 'react-icons/fa';
 import FivePointStar from '../components/Map/FivePointStar';
 import PlannerActionButtons from '../components/Planner/PlannerActionButtons';
-import { getAllZones, checkRoute } from '../services/zoneService';
+import { getAllZones, checkRoute, canCreateMarker, canCreateRoute } from '../services/zoneService';
 import PlannerAccordion from '../components/Planner/PlannerAccordion';
 import FavoritesPanel from '../components/FavoritesPanel';
 import { GlassPanel, GlassHeader } from '../components/Glass';
@@ -405,7 +405,21 @@ const Planner: React.FC<PlannerProps> = function Planner() {
   }, []);
 
   // === Единая функция добавления точки на карту и в состояние ===
-  const addPointAndRender = useCallback((point: { id: string; latitude: number; longitude: number; title: string; description?: string }) => {
+  // ОБЯЗАТЕЛЬНАЯ проверка запретных зон перед добавлением любой точки
+  const addPointAndRender = useCallback(async (point: { id: string; latitude: number; longitude: number; title: string; description?: string }): Promise<boolean> => {
+    // 0. Проверка запретных зон — ОБЯЗАТЕЛЬНА, не опция!
+    try {
+      const zoneCheck = await canCreateMarker(point.latitude, point.longitude);
+      if (!zoneCheck.allowed) {
+        alert(`🚫 Точка заблокирована: ${zoneCheck.reason || 'Запретная зона'}`);
+        return false;
+      }
+    } catch (err) {
+      console.error('[Planner] Zone check error:', err);
+      alert('🚫 Не удалось проверить запретные зоны. Точка не добавлена для безопасности.');
+      return false;
+    }
+
     // 1. Добавляем в контекст RoutePlanner
     addRoutePoint(point);
     // 2. Обновляем facadeMarkers и рендерим на карте немедленно
@@ -423,6 +437,7 @@ const Planner: React.FC<PlannerProps> = function Planner() {
       setTimeout(() => renderMarkersOnMap(updated), 0);
       return updated;
     });
+    return true;
   }, [addRoutePoint, renderMarkersOnMap]);
 
   // Автоматическое управление событиями в маршруте при смене selectedEvent
@@ -448,8 +463,8 @@ const Planner: React.FC<PlannerProps> = function Planner() {
       selectedEvent.latitude != null &&
       selectedEvent.longitude != null &&
       !isNaN(selectedEvent.latitude) && !isNaN(selectedEvent.longitude)) {
-      // Автоматически добавляем событие в маршрут
-      addPointAndRender({
+      // Автоматически добавляем событие в маршрут (с проверкой зон)
+      void addPointAndRender({
         id: currentEventId,
         latitude: selectedEvent.latitude,
         longitude: selectedEvent.longitude,
@@ -496,15 +511,15 @@ const Planner: React.FC<PlannerProps> = function Planner() {
   }, [selectedEvent, isMapReady]);
 
   // Обработчик добавления события в маршрут
-  const handleAddEventToRoute = useCallback((event: MockEvent) => {
+  const handleAddEventToRoute = useCallback(async (event: MockEvent) => {
     // Проверяем на null/undefined, а не на falsy значения (0 - валидная координата)
     if (event.latitude == null || event.longitude == null || isNaN(event.latitude) || isNaN(event.longitude)) {
       alert('❌ У события нет координат для добавления в маршрут');
       return;
     }
 
-    // Добавляем событие как точку маршрута + рендерим на карте
-    addPointAndRender({
+    // Добавляем событие как точку маршрута + рендерим на карте (с проверкой зон)
+    const added = await addPointAndRender({
       id: `event-${event.id}`,
       latitude: event.latitude,
       longitude: event.longitude,
@@ -512,10 +527,11 @@ const Planner: React.FC<PlannerProps> = function Planner() {
       description: event.description || undefined
     });
 
-    // Открываем настройки маршрута, чтобы пользователь увидел добавленную точку
-    setSettingsOpen(true);
-
-    alert(`✅ Событие "${event.title}" добавлено в маршрут!`);
+    if (added) {
+      // Открываем настройки маршрута, чтобы пользователь увидел добавленную точку
+      setSettingsOpen(true);
+      alert(`✅ Событие "${event.title}" добавлено в маршрут!`);
+    }
   }, [addPointAndRender]);
 
   // УБРАНО: Маркеры событий теперь добавляются через синхронизацию routePointsFromContext с facadeMarkers
@@ -524,9 +540,9 @@ const Planner: React.FC<PlannerProps> = function Planner() {
   // Очистка при смене провайдера - убрано, так как только Яндекс
 
   // Стабильный обработчик клика по карте
-  const handleMapClick = useCallback((coordinates: [number, number]) => {
+  const handleMapClick = useCallback(async (coordinates: [number, number]) => {
     const pointId = `marker-${Date.now()}`;
-    addPointAndRender({
+    await addPointAndRender({
       id: pointId,
       latitude: coordinates[0],
       longitude: coordinates[1],
@@ -888,6 +904,19 @@ const Planner: React.FC<PlannerProps> = function Planner() {
         return null;
       }
 
+      // ОБЯЗАТЕЛЬНАЯ проверка запретных зон для маршрута
+      try {
+        const routeZoneCheck = await canCreateRoute(normalized);
+        if (!routeZoneCheck.allowed) {
+          alert(`🚫 Маршрут заблокирован: ${routeZoneCheck.reason || 'Маршрут проходит через запретную зону'}`);
+          return null;
+        }
+      } catch (err) {
+        console.error('[Planner] Route zone check error:', err);
+        alert('🚫 Не удалось проверить запретные зоны маршрута. Построение отменено.');
+        return null;
+      }
+
       // getRoutePolyline принимает [lat, lon] и сам конвертирует в [lon, lat] для ORS внутри
       // НЕ делаем двойной swap — передаём normalized напрямую!
       let builtPolyline: [number, number][] | null = null;
@@ -1054,6 +1083,24 @@ const Planner: React.FC<PlannerProps> = function Planner() {
     if (!user || !token) {
       alert('❌ Необходимо войти в систему');
       return;
+    }
+
+    // ОБЯЗАТЕЛЬНАЯ финальная проверка запретных зон перед сохранением
+    const routeCoords: [number, number][] = facadeMarkers
+      .filter(m => m.lat !== undefined && m.lon !== undefined)
+      .map(m => [m.lat!, m.lon!]);
+    if (routeCoords.length >= 1) {
+      try {
+        const finalZoneCheck = await canCreateRoute(routeCoords);
+        if (!finalZoneCheck.allowed) {
+          alert(`🚫 Сохранение заблокировано: ${finalZoneCheck.reason || 'Маршрут проходит через запретную зону'}`);
+          return;
+        }
+      } catch (err) {
+        console.error('[Planner] Final zone check error:', err);
+        alert('🚫 Не удалось проверить запретные зоны. Сохранение отменено для безопасности.');
+        return;
+      }
     }
 
     try {
@@ -1295,13 +1342,15 @@ const Planner: React.FC<PlannerProps> = function Planner() {
     }
 
     // Добавляем метки в routePointsFromContext, корректируя возможную путаницу lat/lon по границам РФ
-    selectedMarkers.forEach(marker => {
+    let addedCount = 0;
+    let blockedCount = 0;
+    for (const marker of selectedMarkers) {
       let lat = Number(marker.latitude);
       let lon = Number(marker.longitude);
 
       if (isNaN(lat) || isNaN(lon)) {
         console.warn('[Planner] Marker has invalid coordinates:', marker.id, lat, lon);
-        return;
+        continue;
       }
 
       // Если пара (lat, lon) вне РФ, а (lon, lat) внутри РФ — считаем, что была путаница местами
@@ -1309,19 +1358,28 @@ const Planner: React.FC<PlannerProps> = function Planner() {
         const tmp = lat; lat = lon; lon = tmp;
       }
 
-      // Добавляем точку + рендерим на карте немедленно
-      addPointAndRender({
+      // Добавляем точку + рендерим на карте (с проверкой зон)
+      const added = await addPointAndRender({
         id: marker.id,
         latitude: lat,
         longitude: lon,
         title: marker.title || 'Место из избранного',
         description: undefined
       });
-    });
+      if (added) {
+        addedCount++;
+      } else {
+        blockedCount++;
+      }
+    }
 
     // Открываем настройки и показываем добавленные точки
     setSettingsOpen(true);
-    alert(`✅ ${selectedMarkers.length} меток добавлено в маршрут`);
+    if (blockedCount > 0) {
+      alert(`⚠️ Добавлено ${addedCount} из ${selectedMarkers.length} меток. ${blockedCount} заблокировано (запретные зоны).`);
+    } else {
+      alert(`✅ ${addedCount} меток добавлено в маршрут`);
+    }
   };
 
   const handleFavoriteToggle = useCallback((markerId: string) => {
@@ -1332,16 +1390,18 @@ const Planner: React.FC<PlannerProps> = function Planner() {
     // TODO: Реализовать загрузку маршрута из избранного
   }, []);
 
-  const handleCoordinateSubmit = useCallback((lat: number, lon: number) => {
+  const handleCoordinateSubmit = useCallback(async (lat: number, lon: number) => {
     const pointId = `marker-${Date.now()}`;
-    addPointAndRender({
+    const added = await addPointAndRender({
       id: pointId,
       latitude: lat,
       longitude: lon,
       title: `Точка ${lat.toFixed(4)}, ${lon.toFixed(4)}`,
       description: undefined
     });
-    setShowCoordinateInput(false);
+    if (added) {
+      setShowCoordinateInput(false);
+    }
   }, [addPointAndRender]);
 
   const handleSearchSubmit = useCallback(async (address: string, coordinates?: [number, number]) => {
@@ -1369,14 +1429,16 @@ const Planner: React.FC<PlannerProps> = function Planner() {
       }
     }
 
-    addPointAndRender({
+    const added = await addPointAndRender({
       id: pointId,
       latitude: lat,
       longitude: lon,
       title: address,
       description: undefined
     });
-    setShowSearchForm(false);
+    if (added) {
+      setShowSearchForm(false);
+    }
   }, [addPointAndRender]);
 
   // Перестановка точек маршрута из списка в настройках

@@ -48,14 +48,12 @@ export const RUSSIA_MAJOR_CITIES = [
  * @returns true, если точка находится в пределах РФ
  */
 export const isWithinRussiaBounds = (latitude: number, longitude: number): boolean => {
-  // ВНИМАНИЕ: Карта России повернута на 90 градусов!
-  // Поэтому проверяем координаты в перевернутом виде
-  return (
-    latitude >= RUSSIA_BOUNDS.south &&  // широта >= южная граница
-    latitude <= RUSSIA_BOUNDS.north &&    // широта <= северная граница  
-    longitude >= RUSSIA_BOUNDS.west &&    // долгота >= западная граница
-    longitude <= RUSSIA_BOUNDS.east        // долгота <= восточная граница
-  );
+  // Широта: стандартная проверка [south .. north]
+  if (latitude < RUSSIA_BOUNDS.south || latitude > RUSSIA_BOUNDS.north) return false;
+
+  // Долгота: Россия пересекает 180-й меридиан (Калининград 19.6° → Чукотка -169°)
+  // Поэтому точка внутри, если lon >= west ИЛИ lon <= east
+  return longitude >= RUSSIA_BOUNDS.west || longitude <= RUSSIA_BOUNDS.east;
 };
 
 /**
@@ -68,19 +66,15 @@ export const isWithinRussiaStrict = (latitude: number, longitude: number): boole
   // Более строгие границы без буферной зоны
   const STRICT_BOUNDS = {
     north: 77.65,
-    south: 41.0,  // Исправлено: правильная южная граница РФ
-    east: -169.15,  // Чукотка находится на -169° долготы
+    south: 41.0,
+    east: -169.15,  // Чукотка за 180-м меридианом
     west: 19.73
   };
 
-  // ВНИМАНИЕ: Карта России повернута на 90 градусов!
-  // Поэтому проверяем координаты в перевернутом виде
-  return (
-    latitude >= STRICT_BOUNDS.south &&  // широта >= южная граница
-    latitude <= STRICT_BOUNDS.north &&    // широта <= северная граница  
-    longitude >= STRICT_BOUNDS.west &&    // долгота >= западная граница
-    longitude <= STRICT_BOUNDS.east        // долгота <= восточная граница
-  );
+  if (latitude < STRICT_BOUNDS.south || latitude > STRICT_BOUNDS.north) return false;
+
+  // Россия пересекает 180-й меридиан: lon >= west ИЛИ lon <= east
+  return longitude >= STRICT_BOUNDS.west || longitude <= STRICT_BOUNDS.east;
 };
 
 /**
@@ -227,11 +221,10 @@ export const getRussiaBoundsErrorMessage = (latitude: number, longitude: number)
   if (latitude < RUSSIA_BOUNDS.south) {
     return 'Указанная точка находится южнее границ РФ';
   }
-  if (longitude > RUSSIA_BOUNDS.east) {
-    return 'Указанная точка находится восточнее границ РФ';
-  }
-  if (longitude < RUSSIA_BOUNDS.west) {
-    return 'Указанная точка находится западнее границ РФ';
+  // Долгота вне диапазона: между east и west (gap в Тихом океане / Атлантике)
+  // Gap: от -169.05 до 19.6389 — всё, что > east И < west
+  if (longitude > RUSSIA_BOUNDS.east && longitude < RUSSIA_BOUNDS.west) {
+    return 'Указанная точка находится за пределами долготных границ РФ';
   }
   
   return `Указанная точка находится за пределами РФ. Ближайший город: ${nearestCity.name} (${Math.round(nearestCity.distance)}км)`;

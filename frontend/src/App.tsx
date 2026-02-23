@@ -45,6 +45,7 @@ const MobileProfilePage = lazy(() => import('./pages/Mobile/ProfilePage'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const ModerationPage = lazy(() => import('./pages/ModerationPage'));
 const OfflineMapTest = lazy(() => import('./pages/OfflineMapTest'));
+const OfflinePage = lazy(() => import('./pages/OfflinePage'));
 
 // Компонент загрузки
 const LoadingSpinner = () => (
@@ -116,6 +117,13 @@ export default function App() {
               <Route path="/offline-map-test" element={
                 <Suspense fallback={<LoadingSpinner />}>
                   <OfflineMapTest />
+                </Suspense>
+              } />
+
+              {/* Офлайн карты регионов — интерактивная SVG-карта */}
+              <Route path="/offline" element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <OfflinePage />
                 </Suspense>
               } />
               

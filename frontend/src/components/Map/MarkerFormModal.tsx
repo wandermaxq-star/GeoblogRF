@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { checkPoint } from '../../services/zoneService';
+import { canCreateMarker } from '../../services/zoneService';
 import { MarkerData } from '../../types/marker';
 import { useIncompleteMarkers } from '../../hooks/useMarkerCompleteness';
 import { offlineContentStorage } from '../../services/offlineContentStorage';
@@ -191,12 +191,11 @@ const MarkerFormModal: React.FC<MarkerFormModalProps> = ({ mode, initialData = {
         }
       }
       if (typeof formData.longitude === 'number' && typeof formData.latitude === 'number') {
-        const res = await checkPoint(formData.latitude, formData.longitude);
-        const hasRestrictions = Array.isArray(res) && res.length > 0;
-        if (hasRestrictions) {
-          const zoneNames = res.flatMap((r: any) => r.zones?.map((z: any) => z.name)).filter(Boolean).join(', ');
-          const proceed = window.confirm(`Вы пытаетесь сохранить объект в зоне с ограничениями: ${zoneNames || 'неизвестно'}. Продолжить?`);
-          if (!proceed) return;
+        // ОБЯЗАТЕЛЬНАЯ проверка запретных зон — блокирует, не спрашивает
+        const zoneCheck = await canCreateMarker(formData.latitude, formData.longitude);
+        if (!zoneCheck.allowed) {
+          alert(`🚫 Создание метки заблокировано: ${zoneCheck.reason || 'Запретная зона'}`);
+          return;
         }
       }
     } catch (_) {

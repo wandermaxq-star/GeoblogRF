@@ -1746,13 +1746,14 @@ const Map: React.FC<MapProps> = ({
                     setTimeout(() => setMapMessage(null), 5000);
                     return;
                 }
+            }
 
-                const zoneCheck = await canCreateMarker(data.latitude, data.longitude);
-                if (!zoneCheck.allowed) {
-                    setMapMessage(`Ошибка: ${zoneCheck.reason}`);
-                    setTimeout(() => setMapMessage(null), 5000);
-                    return;
-                }
+            // ОБЯЗАТЕЛЬНАЯ проверка запретных зон — всегда активна, не зависит от флага
+            const zoneCheck = await canCreateMarker(data.latitude, data.longitude);
+            if (!zoneCheck.allowed) {
+                setMapMessage(`🚫 ${zoneCheck.reason}`);
+                setTimeout(() => setMapMessage(null), 5000);
+                return;
             }
 
             const markerData = {

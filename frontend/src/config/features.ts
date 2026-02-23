@@ -4,7 +4,7 @@ export const FEATURES = {
   CHAT_ENABLED: false, // Отключено для РФ
   REALTIME_ENABLED: false, // Отключено для РФ
   USER_INTERACTION_ENABLED: false, // Отключено для РФ
-  GEOGRAPHIC_RESTRICTIONS_ENABLED: false, // Временно отключено для тестирования
+  GEOGRAPHIC_RESTRICTIONS_ENABLED: true, // Обязательная проверка запретных зон
   RUSSIA_COMPLIANCE_MODE: true, // Режим соответствия РФ
 };
 

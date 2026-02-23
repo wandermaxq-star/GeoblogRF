@@ -121,6 +121,8 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
 
   // === Офлайн-тайлы: оверлей поверх основной карты ===
   const [offlineTilesActive, setOfflineTilesActive] = useState(false);
+  const [offlineMenuOpen, setOfflineMenuOpen] = useState(false);
+  const offlineMenuRef = useRef<HTMLDivElement>(null);
   const [offlineTilesets, setOfflineTilesets] = useState<Array<{
     name: string; format: string; sizeMB: number;
     bounds: number[] | null; center: number[] | null;
@@ -131,6 +133,18 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
   const [offlineTilesMeta, setOfflineTilesMeta] = useState<any>(null);
   const offlineTileLayerRef = useRef<any>(null);
   const offlineBoundsLayerRef = useRef<any>(null);
+
+  // Закрытие выпадающего офлайн-меню при клике вне
+  useEffect(() => {
+    if (!offlineMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (offlineMenuRef.current && !offlineMenuRef.current.contains(e.target as Node)) {
+        setOfflineMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [offlineMenuOpen]);
 
   // Загружаем список тайлсетов при активации офлайн-режима
   useEffect(() => {
@@ -1217,24 +1231,76 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
 
               {/* Метка убрана — дубль кнопки в контроллере карты (MapActionButtons) */}
 
-              {/* Переключатель офлайн-тайлов */}
-              <button
-                onClick={() => setOfflineTilesActive(!offlineTilesActive)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 map-offline-btn glass-l2 ${offlineTilesActive ? 'active' : ''}`}
-                style={{
-                  ...(offlineTilesActive ? {
-                    background: 'rgba(34, 197, 94, 0.25)',
-                    borderColor: 'rgba(34, 197, 94, 0.4)',
-                    color: '#22c55e',
-                  } : {}),
-                }}
-                title={offlineTilesActive ? 'Выключить офлайн-тайлы' : 'Показать офлайн-тайлы'}
-              >
-                <FaDownload className="w-4 h-4" />
-                <span className="text-sm font-medium whitespace-nowrap">
-                  {offlineTilesActive ? 'Офлайн ✓' : 'Офлайн'}
-                </span>
-              </button>
+              {/* Кнопка «Офлайн» с выпадающим меню */}
+              <div ref={offlineMenuRef} style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setOfflineMenuOpen(!offlineMenuOpen)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 map-offline-btn glass-l2 ${offlineTilesActive ? 'active' : ''}`}
+                  style={{
+                    ...(offlineTilesActive ? {
+                      background: 'rgba(34, 197, 94, 0.25)',
+                      borderColor: 'rgba(34, 197, 94, 0.4)',
+                      color: '#22c55e',
+                    } : {}),
+                  }}
+                  title="Офлайн-карты"
+                >
+                  <FaDownload className="w-4 h-4" />
+                  <span className="text-sm font-medium whitespace-nowrap">
+                    {offlineTilesActive ? 'Офлайн ✓' : 'Офлайн'}
+                  </span>
+                </button>
+
+                {/* Выпадающее меню */}
+                {offlineMenuOpen && (
+                  <div
+                    className="glass-l1"
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 6px)',
+                      right: 0,
+                      minWidth: '220px',
+                      borderRadius: '12px',
+                      padding: '6px',
+                      zIndex: 100,
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+                    }}
+                  >
+                    {/* Переключатель оверлея */}
+                    <button
+                      onClick={() => {
+                        setOfflineTilesActive(!offlineTilesActive);
+                        setOfflineMenuOpen(false);
+                      }}
+                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-white/10"
+                      style={{ color: offlineTilesActive ? '#22c55e' : 'var(--glass-card-text)', cursor: 'pointer', border: 'none', background: 'transparent', textAlign: 'left' }}
+                    >
+                      <span style={{ fontSize: '16px' }}>{offlineTilesActive ? '✅' : '🗺️'}</span>
+                      <span style={{ fontSize: '13px', fontWeight: 500 }}>
+                        {offlineTilesActive ? 'Выключить офлайн-слой' : 'Показать офлайн-слой'}
+                      </span>
+                    </button>
+                    {/* Разделитель */}
+                    <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '2px 8px' }} />
+                    {/* Перейти к загрузке */}
+                    <button
+                      onClick={() => {
+                        setOfflineMenuOpen(false);
+                        window.location.href = '/offline';
+                      }}
+                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-white/10"
+                      style={{ color: 'var(--glass-card-text)', cursor: 'pointer', border: 'none', background: 'transparent', textAlign: 'left' }}
+                    >
+                      <span style={{ fontSize: '16px' }}>📥</span>
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: 500 }}>Загрузить карты регионов</div>
+                        <div style={{ fontSize: '11px', opacity: 0.6 }}>Выбрать и скачать тайлы</div>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Панель информации об офлайн-тайлах */}
