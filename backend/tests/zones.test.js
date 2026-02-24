@@ -15,7 +15,7 @@ beforeAll(async () => {
 });
 
 afterEach(() => {
-  clearZones();
+  clearZones(/* persistAfterClear= */ false);
 });
 
 const testGeoJSON = {
@@ -62,7 +62,7 @@ describe('Zones API routes', () => {
     test('check point inside imported zone returns hit', async () => {
       // Сначала добавим зону напрямую (без auth, через утилиту)
       const { addZonesFromGeoJSON } = await import('../src/utils/zoneGuard.js');
-      addZonesFromGeoJSON(testGeoJSON);
+      addZonesFromGeoJSON(testGeoJSON, /* persist= */ false);
 
       const res = await request(app)
         .post('/api/zones/check')
@@ -78,7 +78,7 @@ describe('Zones API routes', () => {
 
     test('check point outside zone returns no hits', async () => {
       const { addZonesFromGeoJSON } = await import('../src/utils/zoneGuard.js');
-      addZonesFromGeoJSON(testGeoJSON);
+      addZonesFromGeoJSON(testGeoJSON, /* persist= */ false);
 
       const res = await request(app)
         .post('/api/zones/check')
@@ -91,7 +91,7 @@ describe('Zones API routes', () => {
 
     test('check lineString through zone returns zone hit', async () => {
       const { addZonesFromGeoJSON } = await import('../src/utils/zoneGuard.js');
-      addZonesFromGeoJSON(testGeoJSON);
+      addZonesFromGeoJSON(testGeoJSON, /* persist= */ false);
 
       const res = await request(app)
         .post('/api/zones/check')

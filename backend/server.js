@@ -127,6 +127,20 @@ app.get('/api/test', (req, res) => {
 // API маршруты — регистрируем динамически (в тестах пропускаем тяжёлые роуты)
 (async function registerRoutes() {
   try {
+    // ── Автозагрузка запрещённых зон из файла на диск ──
+    try {
+      const { loadZonesFromDisk, getZonesStats } = await import('./src/utils/zoneGuard.js');
+      const loaded = loadZonesFromDisk();
+      if (loaded > 0) {
+        const stats = getZonesStats();
+        logger.info(`Запрещённые зоны загружены: ${loaded} зон`, { stats });
+      } else {
+        logger.warn('Запрещённые зоны НЕ загружены (файл пуст или не найден). Запустите: node backend/scripts/fetch_zones_rf.cjs');
+      }
+    } catch (zoneErr) {
+      logger.error('Ошибка автозагрузки запрещённых зон', { error: zoneErr?.message });
+    }
+
     if (process.env.NODE_ENV === 'test') {
       logger.info('Test environment detected — skipping dynamic registration of heavy routes');
       return;
@@ -157,7 +171,8 @@ app.get('/api/test', (req, res) => {
       analyticsRoutesModule,
       offlinePostsRoutesModule,
       tileRoutesModule,
-      commentRoutesModule
+      commentRoutesModule,
+      notificationRoutesModule
     ] = await Promise.all([
       import('./src/routes/userRoutes.js'),
       import('./src/routes/eventRoutes.js'),
@@ -183,7 +198,8 @@ app.get('/api/test', (req, res) => {
       import('./src/routes/analyticsRoutes.js'),
       import('./src/routes/offlinePostsRoutes.js'),
       import('./src/routes/tileRoutes.js'),
-      import('./src/routes/commentRoutes.js')
+      import('./src/routes/commentRoutes.js'),
+      import('./src/routes/notificationRoutes.js')
     ]);
 
     app.use('/api/users', userRoutesModule.default || userRoutesModule);
@@ -211,6 +227,7 @@ app.get('/api/test', (req, res) => {
     app.use('/api/offline-posts', offlinePostsRoutesModule.default || offlinePostsRoutesModule);
     app.use('/api/tiles', tileRoutesModule.default || tileRoutesModule);
     app.use('/api', commentRoutesModule.default || commentRoutesModule);
+    app.use('/api/notifications', notificationRoutesModule.default || notificationRoutesModule);
 
     logger.info('Dynamic routes registered');
   } catch (err) {

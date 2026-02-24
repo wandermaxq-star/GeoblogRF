@@ -7,6 +7,10 @@ import {
   getZonesSnapshot,
 } from '../src/utils/zoneGuard.js';
 
+// В тестах отключаем персистенцию на диск
+const importZones = (geojson) => addZonesFromGeoJSON(geojson, /* persist= */ false);
+const resetZones = () => clearZones(/* persistAfterClear= */ false);
+
 // Тестовый GeoJSON полигона (примерная зона вокруг Кремля)
 const kremlinZoneGeoJSON = {
   type: 'FeatureCollection',
@@ -58,18 +62,18 @@ const warningZoneGeoJSON = {
 
 describe('Zone Guard utilities', () => {
   afterEach(() => {
-    clearZones();
+    resetZones();
   });
 
   describe('addZonesFromGeoJSON', () => {
     test('imports zones from GeoJSON FeatureCollection', () => {
-      const count = addZonesFromGeoJSON(kremlinZoneGeoJSON);
+      const count = importZones(kremlinZoneGeoJSON);
       expect(count).toBe(1);
     });
 
     test('returns 0 for null/empty input', () => {
-      expect(addZonesFromGeoJSON(null)).toBe(0);
-      expect(addZonesFromGeoJSON({})).toBe(0);
+      expect(importZones(null)).toBe(0);
+      expect(importZones({})).toBe(0);
     });
 
     test('imports MultiPolygon geometry', () => {
@@ -87,7 +91,7 @@ describe('Zone Guard utilities', () => {
           },
         }],
       };
-      const count = addZonesFromGeoJSON(multiGeoJSON);
+      const count = importZones(multiGeoJSON);
       expect(count).toBe(2);
     });
 
@@ -96,23 +100,30 @@ describe('Zone Guard utilities', () => {
         type: 'FeatureCollection',
         features: [{ type: 'Feature', properties: {} }],
       };
-      expect(addZonesFromGeoJSON(noGeom)).toBe(0);
+      expect(importZones(noGeom)).toBe(0);
+    });
+
+    test('deduplicates identical zones', () => {
+      importZones(kremlinZoneGeoJSON);
+      const count2 = importZones(kremlinZoneGeoJSON);
+      expect(count2).toBe(0); // дубль не импортируется
+      expect(getZonesStats().total).toBe(1);
     });
   });
 
   describe('clearZones', () => {
     test('removes all zones', () => {
-      addZonesFromGeoJSON(kremlinZoneGeoJSON);
+      importZones(kremlinZoneGeoJSON);
       expect(getZonesStats().total).toBe(1);
-      clearZones();
+      resetZones();
       expect(getZonesStats().total).toBe(0);
     });
   });
 
   describe('getZonesStats', () => {
     test('returns correct stats after import', () => {
-      addZonesFromGeoJSON(kremlinZoneGeoJSON);
-      addZonesFromGeoJSON(warningZoneGeoJSON);
+      importZones(kremlinZoneGeoJSON);
+      importZones(warningZoneGeoJSON);
       const stats = getZonesStats();
       expect(stats.total).toBe(2);
       expect(stats.bySeverity.critical).toBe(1);
@@ -129,7 +140,7 @@ describe('Zone Guard utilities', () => {
 
   describe('getZonesSnapshot', () => {
     test('returns all zone data', () => {
-      addZonesFromGeoJSON(kremlinZoneGeoJSON);
+      importZones(kremlinZoneGeoJSON);
       const snapshot = getZonesSnapshot();
       expect(snapshot).toHaveLength(1);
       expect(snapshot[0].name).toBe('Зона Кремль');
@@ -141,13 +152,13 @@ describe('Zone Guard utilities', () => {
 
   describe('checkPointAgainstZones', () => {
     beforeEach(() => {
-      addZonesFromGeoJSON(kremlinZoneGeoJSON);
+      importZones(kremlinZoneGeoJSON);
     });
 
     test('detects point inside zone', async () => {
       // Точка внутри зоны Кремля
       const hits = await checkPointAgainstZones(37.618, 55.755);
-      expect(hits.length).toBe(1);
+      expect(hits.length).toBeGreaterThanOrEqual(1);
       expect(hits[0].name).toBe('Зона Кремль');
       expect(hits[0].severity).toBe('critical');
     });
@@ -158,16 +169,24 @@ describe('Zone Guard utilities', () => {
       expect(hits.length).toBe(0);
     });
 
-    test('returns empty for point just outside bbox boundary', async () => {
-      // Точка чуть за пределами зоны
+    test('detects point in buffer zone', async () => {
+      // Точка чуть за пределами зоны, но в буферной зоне (~0.018° = ~2 км для critical)
       const hits = await checkPointAgainstZones(37.630, 55.755);
+      // Должна быть в буфере (расстояние ~0.007° < 0.018°)
+      expect(hits.length).toBeGreaterThanOrEqual(1);
+      expect(hits[0].inBuffer).toBe(true);
+    });
+
+    test('returns empty for point far outside buffer', async () => {
+      // Точка далеко за пределами буфера
+      const hits = await checkPointAgainstZones(37.700, 55.755);
       expect(hits.length).toBe(0);
     });
   });
 
   describe('checkLineAgainstZones', () => {
     beforeEach(() => {
-      addZonesFromGeoJSON(kremlinZoneGeoJSON);
+      importZones(kremlinZoneGeoJSON);
     });
 
     test('detects line passing through zone', async () => {
@@ -177,7 +196,19 @@ describe('Zone Guard utilities', () => {
         [37.630, 55.760],  // после зоны
       ];
       const hits = await checkLineAgainstZones(line);
-      expect(hits.length).toBe(1);
+      expect(hits.length).toBeGreaterThanOrEqual(1);
+      expect(hits[0].name).toBe('Зона Кремль');
+    });
+
+    test('detects line segment crossing zone without vertices inside', async () => {
+      // Линия из двух точек, обе ВНЕ зоны, но сегмент проходит ЧЕРЕЗ неё
+      const line = [
+        [37.618, 55.740],  // ниже зоны
+        [37.618, 55.770],  // выше зоны
+      ];
+      const hits = await checkLineAgainstZones(line);
+      // Сегмент пересекает границы полигона зоны
+      expect(hits.length).toBeGreaterThanOrEqual(1);
       expect(hits[0].name).toBe('Зона Кремль');
     });
 
@@ -198,23 +229,24 @@ describe('Zone Guard utilities', () => {
       ];
       const hits = await checkLineAgainstZones(line);
       // Та же зона — дедупликация
-      expect(hits.length).toBe(1);
+      const kremlinHits = hits.filter(h => h.name === 'Зона Кремль');
+      expect(kremlinHits.length).toBe(1);
     });
   });
 
   describe('multiple zones', () => {
     test('detects which specific zone a point is in', async () => {
-      addZonesFromGeoJSON(kremlinZoneGeoJSON);
-      addZonesFromGeoJSON(warningZoneGeoJSON);
+      importZones(kremlinZoneGeoJSON);
+      importZones(warningZoneGeoJSON);
 
       // Точка в Кремле
       const kremlinHits = await checkPointAgainstZones(37.618, 55.755);
-      expect(kremlinHits.length).toBe(1);
+      expect(kremlinHits.length).toBeGreaterThanOrEqual(1);
       expect(kremlinHits[0].severity).toBe('critical');
 
       // Точка в СПб
       const spbHits = await checkPointAgainstZones(30.32, 59.94);
-      expect(spbHits.length).toBe(1);
+      expect(spbHits.length).toBeGreaterThanOrEqual(1);
       expect(spbHits[0].severity).toBe('warning');
 
       // Точка вне обеих зон

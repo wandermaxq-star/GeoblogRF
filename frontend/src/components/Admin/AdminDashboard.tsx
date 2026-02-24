@@ -92,11 +92,8 @@ const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* История модерации */}
-          <div className="mt-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">История модерации</h2>
-            <ModerationHistoryPanel />
-          </div>
+          {/* Панель модерации */}
+          <ModerationHistoryPanel />
         </>
       )}
 

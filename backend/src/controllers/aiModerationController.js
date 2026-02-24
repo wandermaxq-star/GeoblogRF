@@ -154,14 +154,16 @@ export const analyzeContent = async (req, res) => {
         contentData = content;
         break;
 
-      case 'blogs':
-        // Legacy: treat blogs as posts
-        const blogResult = await pool.query('SELECT * FROM posts WHERE id::text = $1', [contentId]);
-        if (blogResult.rows.length === 0) {
-          return res.status(404).json({ message: 'Пост не найден.' });
+      case 'comments':
+        const commentResult = await pool.query(
+          `SELECT c.*, p.title as post_title FROM comments c LEFT JOIN posts p ON c.post_id = p.id WHERE c.id::text = $1`,
+          [contentId]
+        );
+        if (commentResult.rows.length === 0) {
+          return res.status(404).json({ message: 'Комментарий не найден.' });
         }
-        content = blogResult.rows[0];
-        contentText = `${content.title || ''} ${content.body || content.content || ''}`.trim();
+        content = commentResult.rows[0];
+        contentText = content.content || '';
         contentData = content;
         break;
 
@@ -172,7 +174,7 @@ export const analyzeContent = async (req, res) => {
     // Используем ModerationService для анализа
     const moderationResult = await ModerationService.moderateContent({
       text: contentText,
-      type: (contentType === 'posts' || contentType === 'blogs') ? 'post' : 'review',
+      type: (contentType === 'posts' || contentType === 'comments') ? 'post' : 'review',
       userId: content.creator_id || content.author_id || 'unknown',
       location: content.location || content.address,
       timestamp: new Date(content.created_at || Date.now())
@@ -393,8 +395,8 @@ async function applyAIDecision(contentType, contentId, suggestion) {
     case 'markers':
       tableName = 'map_markers';
       break;
-    case 'blogs':
-      tableName = 'blog_posts';
+    case 'comments':
+      tableName = 'comments';
       break;
     default:
       logger.warn(`⚠️ Неизвестный тип контента для applyAIDecision: ${contentType}`);
@@ -452,8 +454,8 @@ async function getContentText(contentType, contentId) {
     case 'markers':
       query = 'SELECT title, description FROM map_markers WHERE id::text = $1';
       break;
-    case 'blogs':
-      query = 'SELECT title, content FROM blog_posts WHERE id::text = $1';
+    case 'comments':
+      query = 'SELECT content FROM comments WHERE id::text = $1';
       break;
     default:
       return '';
@@ -531,27 +533,27 @@ export const getModerationCounts = async (req, res) => {
     }
 
     // Упрощённый запрос - считаем по admin_verdict и статусу контента
+    const cteUnions = [
+      `SELECT 'posts' as content_type, id::text as content_id, status FROM posts`,
+      `SELECT 'events' as content_type, id::text as content_id, status FROM events`,
+      `SELECT 'routes' as content_type, id::text as content_id, status FROM travel_routes`,
+      `SELECT 'markers' as content_type, id::text as content_id, status FROM map_markers`,
+      `SELECT 'comments' as content_type, id::text as content_id, status FROM comments`,
+    ];
+
     const simplifiedCounts = await pool.query(`
       WITH content_status AS (
-        SELECT 'posts' as content_type, id::text as content_id, status FROM posts
-        UNION ALL
-        SELECT 'events' as content_type, id::text as content_id, status FROM events
-        UNION ALL
-        SELECT 'routes' as content_type, id::text as content_id, status FROM travel_routes
-        UNION ALL
-        SELECT 'markers' as content_type, id::text as content_id, status FROM map_markers
-        UNION ALL
-        SELECT 'comments' as content_type, id::text as content_id, status FROM comments
+        ${cteUnions.join('\n        UNION ALL\n        ')}
       )
       SELECT 
         amd.content_type,
-        COUNT(*) FILTER (WHERE amd.admin_verdict = 'pending' AND cs.status = 'pending') as pending,
-        COUNT(*) FILTER (WHERE amd.admin_verdict = 'correct' AND cs.status = 'active') as approved,
-        COUNT(*) FILTER (WHERE amd.admin_verdict = 'incorrect' AND cs.status = 'rejected') as rejected,
-        COUNT(*) FILTER (WHERE cs.status = 'revision' OR cs.status = 'pending_revision') as revision
+        COUNT(*) FILTER (WHERE cs.status = 'pending') as pending,
+        COUNT(*) FILTER (WHERE cs.status = 'active') as approved,
+        COUNT(*) FILTER (WHERE cs.status = 'rejected') as rejected,
+        COUNT(*) FILTER (WHERE cs.status IN ('revision', 'pending_revision')) as revision
       FROM ai_moderation_decisions amd
       LEFT JOIN content_status cs ON cs.content_type = amd.content_type AND cs.content_id = amd.content_id
-      WHERE amd.content_type IN ('posts', 'events', 'routes', 'markers', 'comments', 'complaints', 'suggestions')
+      WHERE amd.content_type IN ('posts', 'events', 'routes', 'markers', 'comments')
       GROUP BY amd.content_type
     `);
 
@@ -562,8 +564,6 @@ export const getModerationCounts = async (req, res) => {
       routes: { pending: 0, approved: 0, rejected: 0, revision: 0 },
       markers: { pending: 0, approved: 0, rejected: 0, revision: 0 },
       comments: { pending: 0, approved: 0, rejected: 0, revision: 0 },
-      complaints: { pending: 0, approved: 0, rejected: 0, revision: 0 },
-      suggestions: { pending: 0, approved: 0, rejected: 0, revision: 0 }
     };
 
     simplifiedCounts.rows.forEach(row => {

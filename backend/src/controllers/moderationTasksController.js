@@ -213,23 +213,10 @@ export const getModerationTasksCount = async (req, res) => {
     }
 
     const counts = await pool.query(`
-      WITH marker_tasks AS (
-        SELECT COUNT(*) as count FROM map_markers WHERE status = 'pending'
-        UNION ALL
-        SELECT COUNT(*) FROM complaints WHERE content_type = 'markers' AND status = 'pending'
-        UNION ALL
-        SELECT COUNT(*) FROM suggestions WHERE content_type = 'markers' AND status = 'pending'
-      ),
-      event_tasks AS (
-        SELECT COUNT(*) FROM events WHERE status = 'pending'
-      ),
-      post_tasks AS (
-        SELECT COUNT(*) FROM posts WHERE status = 'pending'
-      )
-      SELECT 
-        (SELECT SUM(count) FROM marker_tasks) as markers,
-        (SELECT COUNT(*) FROM event_tasks) as events,
-        (SELECT COUNT(*) FROM post_tasks) as posts
+      SELECT
+        (SELECT COUNT(*) FROM map_markers WHERE status = 'pending') as markers,
+        (SELECT COUNT(*) FROM events WHERE status = 'pending') as events,
+        (SELECT COUNT(*) FROM posts WHERE status = 'pending') as posts
     `);
 
     const result = counts.rows[0] || { markers: 0, events: 0, posts: 0 };

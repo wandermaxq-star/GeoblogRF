@@ -8,6 +8,8 @@ export interface ZoneCheckResult {
   severity: 'critical' | 'restricted' | 'warning';
   message: string;
   coordinates: [number, number];
+  inBuffer?: boolean;
+  bufferMessage?: string;
 }
 
 export interface ZoneValidationResult {
@@ -17,6 +19,30 @@ export interface ZoneValidationResult {
   criticalZones: ZoneCheckResult[];
   restrictedZones: ZoneCheckResult[];
   message?: string;
+}
+
+// ── Retry-логика для устойчивости к временным сбоям сети ──
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1000;
+
+async function withRetry<T>(fn: () => Promise<T>, retries = MAX_RETRIES): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err: unknown) {
+      lastError = err;
+      // Не ретраим 4xx ошибки (клиентские)
+      if (err && typeof err === 'object' && 'response' in err) {
+        const status = (err as { response?: { status?: number } }).response?.status;
+        if (status && status >= 400 && status < 500) throw err;
+      }
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, RETRY_DELAY_MS * (attempt + 1)));
+      }
+    }
+  }
+  throw lastError;
 }
 
 /**
@@ -39,20 +65,31 @@ export async function checkPoint(lat: number, lon: number): Promise<ZoneValidati
   }
 
   try {
-  const { data } = await api.post('/zones/check', { points: [[lon, lat]] });
+    const { data } = await withRetry(() => api.post('/zones/check', { points: [[lon, lat]] }));
     const results: ZoneCheckResult[] = data?.results || [];
     
     return processZoneResults(results);
   } catch (error) {
-    console.error('Ошибка проверки зон:', error);
-    // В случае ошибки API, блокируем для безопасности
+    console.error('Ошибка проверки зон (после повторных попыток):', error);
+    // В случае ошибки API — блокируем только в compliance-режиме
+    if (FEATURES.RUSSIA_COMPLIANCE_MODE) {
+      return {
+        isValid: false,
+        blocked: true,
+        warnings: [],
+        criticalZones: [],
+        restrictedZones: [],
+        message: 'Ошибка проверки запретных зон. Операция заблокирована для безопасности.'
+      };
+    }
+    // Вне compliance-режима разрешаем с предупреждением
     return {
-      isValid: false,
-      blocked: true,
+      isValid: true,
+      blocked: false,
       warnings: [],
       criticalZones: [],
       restrictedZones: [],
-      message: 'Ошибка проверки запретных зон. Операция заблокирована для безопасности.'
+      message: 'Не удалось проверить запретные зоны. Будьте осторожны.'
     };
   }
 }
@@ -79,21 +116,31 @@ export async function checkRoute(coords: [number, number][]): Promise<ZoneValida
   }
 
   try {
-  // Преобразуем координаты из [lat, lon] в [lon, lat] для backend
-  const backendCoords = coords.map(([lat, lon]) => [lon, lat]);
-  const { data } = await api.post('/zones/check', { lineString: backendCoords });
+    // Преобразуем координаты из [lat, lon] в [lon, lat] для backend
+    const backendCoords = coords.map(([lat, lon]) => [lon, lat]);
+    const { data } = await withRetry(() => api.post('/zones/check', { lineString: backendCoords }));
     const results: ZoneCheckResult[] = data?.results || [];
     
     return processZoneResults(results);
   } catch (error) {
-    console.error('Ошибка проверки зон маршрута:', error);
+    console.error('Ошибка проверки зон маршрута (после повторных попыток):', error);
+    if (FEATURES.RUSSIA_COMPLIANCE_MODE) {
+      return {
+        isValid: false,
+        blocked: true,
+        warnings: [],
+        criticalZones: [],
+        restrictedZones: [],
+        message: 'Ошибка проверки запретных зон маршрута. Операция заблокирована для безопасности.'
+      };
+    }
     return {
-      isValid: false,
-      blocked: true,
+      isValid: true,
+      blocked: false,
       warnings: [],
       criticalZones: [],
       restrictedZones: [],
-      message: 'Ошибка проверки запретных зон маршрута. Операция заблокирована для безопасности.'
+      message: 'Не удалось проверить запретные зоны маршрута. Будьте осторожны.'
     };
   }
 }

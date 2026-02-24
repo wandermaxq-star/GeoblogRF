@@ -34,9 +34,8 @@ export async function autoAnalyzeContent(contentType, contentId, contentData) {
         contentText = `${contentData.title || ''} ${contentData.description || ''}`.trim();
         location = contentData.address;
         break;
-      case 'blogs':
-        // Legacy blogs: treat as posts (body may be in `content` or `body`)
-        contentText = `${contentData.title || ''} ${contentData.body || contentData.content || ''}`.trim();
+      case 'comments':
+        contentText = `${contentData.content || ''}`.trim();
         break;
       default:
         return; // Не анализируем неизвестные типы
@@ -49,7 +48,7 @@ export async function autoAnalyzeContent(contentType, contentId, contentData) {
     // Анализируем контент через ModerationService
     const moderationResult = await moderationService.moderateContent({
       text: contentText,
-      type: (contentType === 'posts' || contentType === 'blogs') ? 'post' : 'review',
+      type: (contentType === 'posts' || contentType === 'comments') ? 'post' : 'review',
       userId: contentData.creator_id || contentData.author_id || 'unknown',
       location: location,
       timestamp: new Date()

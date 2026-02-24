@@ -22,7 +22,6 @@ const CONTENT_XP_SOURCES = {
   'routes': 'route_created',
   'markers': 'marker_created',
   'comments': 'comment_created',
-  'chats': 'chat_created'
 };
 
 /**
@@ -34,7 +33,6 @@ const BASE_XP_VALUES = {
   'routes': 100,
   'markers': 30,
   'comments': 10,
-  'chats': 5
 };
 
 /**

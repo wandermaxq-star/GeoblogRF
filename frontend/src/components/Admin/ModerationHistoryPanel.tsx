@@ -1,8 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../../api/apiClient';
 
-type ContentType = 'events' | 'posts' | 'routes' | 'markers' | 'blogs' | 'comments' | 'chats';
-type StatusFilter = 'all' | 'pending' | 'active' | 'rejected' | 'hidden';
+type ContentType = 'events' | 'posts' | 'routes' | 'markers' | 'comments';
+type StatusFilter = 'all' | 'pending' | 'active' | 'rejected' | 'hidden' | 'revision';
+
+interface StatusCounts {
+  all: number;
+  pending: number;
+  active: number;
+  rejected: number;
+  hidden: number;
+  revision: number;
+}
 
 interface HistoryItem {
   id: string;
@@ -32,7 +41,7 @@ interface HistoryItem {
 
 const ModerationHistoryPanel: React.FC = () => {
   const [contentType, setContentType] = useState<ContentType>('posts');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -41,7 +50,40 @@ const ModerationHistoryPanel: React.FC = () => {
   const [details, setDetails] = useState<any>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [statusCounts, setStatusCounts] = useState<StatusCounts>({
+    all: 0, pending: 0, active: 0, rejected: 0, hidden: 0, revision: 0,
+  });
   const limit = 20;
+
+  // Загрузка счётчиков по статусам для текущего типа контента
+  const loadStatusCounts = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const statuses: (keyof Omit<StatusCounts, 'all'>)[] = ['pending', 'active', 'rejected', 'hidden', 'revision'];
+      const promises = statuses.map(s =>
+        apiClient.get(`/moderation/history/${contentType}`, {
+          params: { status: s, limit: 1, offset: 0 },
+          headers: { Authorization: `Bearer ${token}` },
+        }).then(r => ({ status: s, count: r.data?.total ?? 0 }))
+          .catch(() => ({ status: s, count: 0 }))
+      );
+      const results = await Promise.all(promises);
+      const counts: StatusCounts = { all: 0, pending: 0, active: 0, rejected: 0, hidden: 0, revision: 0 };
+      for (const r of results) {
+        counts[r.status] = r.count;
+        counts.all += r.count;
+      }
+      setStatusCounts(counts);
+    } catch {
+      // не критично
+    }
+  }, [contentType]);
+
+  useEffect(() => {
+    loadStatusCounts();
+  }, [loadStatusCounts]);
 
   useEffect(() => {
     loadHistory();
@@ -106,15 +148,27 @@ const ModerationHistoryPanel: React.FC = () => {
       if (!item) return;
 
       let endpoint = '';
+      let body: Record<string, string> = {};
+
       if (action === 'approve') {
         endpoint = `/moderation/${contentType}/${itemId}/approve`;
       } else if (action === 'reject') {
+        const reason = prompt('Укажите причину отклонения:');
+        if (!reason || reason.trim().length === 0) {
+          alert('Необходимо указать причину отклонения');
+          return;
+        }
         endpoint = `/moderation/${contentType}/${itemId}/reject`;
+        body = { reason: reason.trim() };
       } else if (action === 'revision') {
+        const reason = prompt('Укажите причину доработки:');
         endpoint = `/moderation/${contentType}/${itemId}/revision`;
+        if (reason && reason.trim().length > 0) {
+          body = { reason: reason.trim() };
+        }
       }
 
-      await apiClient.post(endpoint, {}, {
+      await apiClient.post(endpoint, body, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -126,8 +180,9 @@ const ModerationHistoryPanel: React.FC = () => {
         setTotal(prev => Math.max(0, prev - 1));
       }
       
-      // Перезагружаем историю для обновления статусов
+      // Перезагружаем историю и счётчики для обновления статусов
       loadHistory();
+      loadStatusCounts();
     } catch (err: any) {
       console.error('Ошибка модерации:', err);
       alert(err.response?.data?.message || 'Ошибка модерации');
@@ -159,6 +214,7 @@ const ModerationHistoryPanel: React.FC = () => {
       case 'active': return 'Одобрено';
       case 'rejected': return 'Отклонено';
       case 'hidden': return 'Скрыто';
+      case 'revision': return 'На доработке';
       default: return status;
     }
   };
@@ -169,6 +225,7 @@ const ModerationHistoryPanel: React.FC = () => {
       case 'active': return 'bg-green-100 text-green-800';
       case 'rejected': return 'bg-red-100 text-red-800';
       case 'hidden': return 'bg-yellow-100 text-yellow-800';
+      case 'revision': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -202,9 +259,7 @@ const ModerationHistoryPanel: React.FC = () => {
     posts: 'Посты',
     routes: 'Маршруты',
     markers: 'Метки',
-    blogs: 'Блоги',
     comments: 'Комментарии',
-    chats: 'Чаты'
   };
 
   const totalPages = Math.ceil(total / limit);
@@ -212,67 +267,69 @@ const ModerationHistoryPanel: React.FC = () => {
   return (
     <div className="w-full">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">История модерации</h2>
-        <p className="text-gray-600">Просмотр всех постов с любым статусом, включая рекомендации ИИ</p>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Панель модерации</h2>
+        <p className="text-gray-600">Управление контентом по статусам</p>
       </div>
 
-      {/* Фильтры */}
-      <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Тип контента:
-            </label>
-            <select
-              value={contentType}
-              onChange={(e) => {
-                setContentType(e.target.value as ContentType);
-                setPage(1);
-              }}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+      {/* Тип контента */}
+      <div className="mb-4 bg-white rounded-lg border border-gray-200 p-3">
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(contentTypeLabels).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => { setContentType(key as ContentType); setPage(1); }}
+              className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                contentType === key
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
             >
-              {Object.entries(contentTypeLabels).map(([key, label]) => (
-                <option key={key} value={key}>{label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Статус:
-            </label>
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value as StatusFilter);
-                setPage(1);
-              }}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">Все</option>
-              <option value="pending">На модерации</option>
-              <option value="active">Одобрено</option>
-              <option value="rejected">Отклонено</option>
-              <option value="hidden">Скрыто</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Поиск:
-            </label>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Поиск по тексту..."
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
+              {label}
+            </button>
+          ))}
         </div>
+      </div>
+
+      {/* Вкладки по статусам */}
+      <div className="mb-4 bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="flex border-b border-gray-200">
+          {([
+            { key: 'pending' as const, label: '📋 На модерации', color: 'orange' },
+            { key: 'active' as const, label: '✅ Одобрено', color: 'green' },
+            { key: 'rejected' as const, label: '❌ Отклонено', color: 'red' },
+            { key: 'revision' as const, label: '🔄 На доработке', color: 'purple' },
+            { key: 'hidden' as const, label: '👁 Скрыто', color: 'yellow' },
+            { key: 'all' as const, label: '📁 Все', color: 'gray' },
+          ]).map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => { setStatusFilter(tab.key); setPage(1); }}
+              className={`flex-1 px-3 py-3 text-sm font-medium transition-colors relative ${
+                statusFilter === tab.key
+                  ? `text-${tab.color}-700 bg-${tab.color}-50 border-b-2 border-${tab.color}-500`
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <div>{tab.label}</div>
+              <div className={`text-lg font-bold mt-1 ${
+                statusFilter === tab.key ? `text-${tab.color}-600` : 'text-gray-400'
+              }`}>
+                {statusCounts[tab.key]}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Поиск */}
+      <div className="mb-4">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+          placeholder="🔍 Поиск по тексту контента..."
+          className="block w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
       </div>
 
       {/* Список истории */}
@@ -322,6 +379,13 @@ const ModerationHistoryPanel: React.FC = () => {
                       
                       <div className="text-sm text-gray-600 space-y-1 mb-3">
                         <div>Автор: {item.author_name || item.author_id || 'Гость'}</div>
+                        {/* Источник комментария */}
+                        {contentType === 'comments' && item.source_title && (
+                          <div className="flex items-center gap-1">
+                            <span>💬 К посту:</span>
+                            <span className="font-medium text-blue-700">«{item.source_title}»</span>
+                          </div>
+                        )}
                         <div>Создано: {formatDate(item.created_at)}</div>
                         {item.ai_analyzed_at && (
                           <div>ИИ проанализировал: {formatDate(item.ai_analyzed_at)}</div>
@@ -331,7 +395,15 @@ const ModerationHistoryPanel: React.FC = () => {
                         )}
                       </div>
 
-                      {/* Рекомендации ИИ */}
+                    {/* Модерация причина (если есть) */}
+                    {item.moderation_reason && (
+                      <div className="mb-3 p-3 bg-red-50 rounded-md border border-red-200">
+                        <div className="text-sm font-semibold text-red-900 mb-1">Причина модерации:</div>
+                        <div className="text-sm text-red-700">{item.moderation_reason}</div>
+                      </div>
+                    )}
+
+                    {/* Рекомендации ИИ */}
                       {item.ai_suggestion && (
                         <div className="mb-3 p-3 bg-blue-50 rounded-md border border-blue-200">
                           <div className="text-sm font-semibold text-blue-900 mb-1">

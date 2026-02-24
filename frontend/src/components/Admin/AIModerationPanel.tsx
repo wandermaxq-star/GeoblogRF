@@ -141,6 +141,20 @@ const AIModerationPanel: React.FC = () => {
       const decision = decisions.find(d => d.id === decisionId);
       if (!decision) return;
 
+      // Для отклонения запрашиваем причину
+      let reason: string | null = null;
+      if (action === 'reject') {
+        reason = prompt('Укажите причину отклонения:');
+        if (!reason || reason.trim().length === 0) {
+          alert('Необходимо указать причину отклонения.');
+          return;
+        }
+      }
+      if (action === 'revision') {
+        reason = prompt('Укажите, что нужно доработать:', 'Требуется доработка контента');
+        if (!reason) return;
+      }
+
       let endpoint = '';
       if (action === 'approve') {
         endpoint = `/moderation/${activeContentType}/${decision.content_id}/approve`;
@@ -150,18 +164,34 @@ const AIModerationPanel: React.FC = () => {
         endpoint = `/moderation/${activeContentType}/${decision.content_id}/revision`;
       }
 
-      await apiClient.post(endpoint, {}, {
+      const body: Record<string, string> = {};
+      if (reason) body.reason = reason;
+
+      const response = await apiClient.post(endpoint, body, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      alert(action === 'approve' ? 'Контент одобрен' : action === 'reject' ? 'Контент отклонён' : 'Контент отправлен на доработку');
+      // Проверяем, что ответ реально успешный
+      if (!response.data || response.status >= 400) {
+        alert(response.data?.message || 'Ошибка выполнения операции');
+        return;
+      }
+
+      // Оптимистичное удаление из списка (не ждём перезагрузки)
+      setDecisions(prev => prev.filter(d => d.id !== decisionId));
+
+      const messages: Record<string, string> = {
+        approve: 'Контент одобрен и опубликован ✅',
+        reject: 'Контент отклонён ❌',
+        revision: 'Контент отправлен на доработку 🔄',
+      };
+      alert(messages[action]);
       
-      // Перезагружаем данные
-      loadDecisions();
+      // Обновляем счётчики
       loadCounts();
     } catch (err: any) {
       console.error('Ошибка модерации:', err);
-      alert(err.response?.data?.message || 'Ошибка модерации');
+      alert(err.response?.data?.message || err.message || 'Ошибка модерации');
     }
   };
 

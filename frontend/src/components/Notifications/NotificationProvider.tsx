@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import NotificationToast from './NotificationToast';
+import apiClient from '../../api/apiClient';
 import {
   moderationNotificationsService,
   ModerationNotification
@@ -39,8 +40,58 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     setCurrentNotification(null);
   }, []);
 
-  const refreshUnreadCount = useCallback(() => {
-    setUnreadCount(moderationNotificationsService.getUnreadCount());
+  // Загружаем счётчик с сервера + localStorage
+  const refreshUnreadCount = useCallback(async () => {
+    const localCount = moderationNotificationsService.getUnreadCount();
+    setUnreadCount(localCount);
+
+    // Параллельно запрашиваем серверные уведомления
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await apiClient.get('/notifications/unread-count', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const serverCount = response.data?.count || 0;
+
+      // Если на сервере есть непрочитанные — загружаем и показываем
+      if (serverCount > 0) {
+        const listResponse = await apiClient.get('/notifications', {
+          params: { unreadOnly: 'true', limit: 10 },
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const serverNotifs = listResponse.data?.notifications || [];
+        
+        // Синхронизируем серверные уведомления в localStorage
+        for (const sn of serverNotifs) {
+          const contentTypeMap: Record<string, any> = {
+            posts: 'post', events: 'event', routes: 'route', markers: 'marker',
+          };
+          moderationNotificationsService.notify({
+            contentType: contentTypeMap[sn.content_type] || 'post',
+            contentId: sn.content_id || '',
+            contentTitle: sn.title,
+            status: sn.metadata?.action === 'approved' ? 'approved'
+              : sn.metadata?.action === 'rejected' ? 'rejected'
+              : sn.metadata?.action === 'revision' ? 'revision' : 'pending',
+            message: sn.message,
+            reason: sn.metadata?.reason,
+          });
+
+          // Отмечаем как прочитанное на сервере (уже перенесли в localStorage)
+          try {
+            await apiClient.post(`/notifications/${sn.id}/read`, {}, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+          } catch { /* ignore */ }
+        }
+      }
+
+      setUnreadCount(moderationNotificationsService.getUnreadCount());
+    } catch {
+      // Сервер недоступен — используем только localStorage
+    }
   }, []);
 
   const handleNotificationClick = useCallback(() => {

@@ -57,10 +57,10 @@ export const getModerationHistory = async (req, res) => {
         titleColumn = 'title';
         contentColumn = 'description';
         break;
-      case 'blogs':
-        tableName = 'blog_posts';
+      case 'comments':
+        tableName = 'comments';
         authorColumn = 'author_id';
-        titleColumn = 'title';
+        titleColumn = 'content';
         contentColumn = 'content';
         break;
       default:
@@ -83,10 +83,12 @@ export const getModerationHistory = async (req, res) => {
         amd.admin_feedback,
         amd.reviewed_at,
         amd.created_at as ai_analyzed_at
+        ${contentType === 'comments' ? ", p.title as source_title, 'posts' as source_type, c.post_id as source_id" : ''}
       FROM ${tableName} c
       LEFT JOIN users u ON u.id::text = c.${authorColumn}::text
       LEFT JOIN ai_moderation_decisions amd ON amd.content_type = $1 
         AND amd.content_id::text = c.${idColumn}::text
+      ${contentType === 'comments' ? 'LEFT JOIN posts p ON c.post_id = p.id' : ''}
       WHERE 1=1
     `;
 
@@ -189,8 +191,8 @@ export const getContentDetails = async (req, res) => {
         tableName = 'map_markers';
         authorColumn = 'creator_id';
         break;
-      case 'blogs':
-        tableName = 'blog_posts';
+      case 'comments':
+        tableName = 'comments';
         authorColumn = 'author_id';
         break;
       default:
@@ -200,8 +202,10 @@ export const getContentDetails = async (req, res) => {
     // Получаем контент
     const contentResult = await pool.query(
       `SELECT c.*, u.username as author_name, u.email as author_email, u.role as author_role
+       ${contentType === 'comments' ? ", p.title as source_title, 'posts' as source_type, c.post_id as source_id" : ''}
        FROM ${tableName} c
        LEFT JOIN users u ON u.id::text = c.${authorColumn}::text
+       ${contentType === 'comments' ? 'LEFT JOIN posts p ON c.post_id = p.id' : ''}
        WHERE c.${idColumn}::text = $1`,
       [contentId]
     );

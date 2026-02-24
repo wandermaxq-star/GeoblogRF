@@ -29,18 +29,45 @@ function bboxToQuery([minLon, minLat, maxLon, maxLat]) {
 function overpassQuery(bbox) {
   const box = bboxToQuery(bbox);
   return `
-  [out:json][timeout:120];
+  [out:json][timeout:180];
   (
+    // ── Военные объекты (critical) ──
     way["landuse"="military"](${box});
     rel["landuse"="military"](${box});
     way["military"](${box});
     rel["military"](${box});
+    way["military"="danger_area"](${box});
+    rel["military"="danger_area"](${box});
+    way["military"="nuclear_testing_site"](${box});
+    rel["military"="nuclear_testing_site"](${box});
+    way["military"="range"](${box});
+    rel["military"="range"](${box});
+    way["military"="naval_base"](${box});
+    rel["military"="naval_base"](${box});
 
+    // ── Аэродромы / ВПП / вертолётные площадки (restricted) ──
     way["aeroway"~"^(aerodrome|runway|helipad|heliport)$"](${box});
     rel["aeroway"~"^(aerodrome|runway|helipad|heliport)$"](${box});
 
+    // ── Особо охраняемые природные территории (warning) ──
     way["boundary"="protected_area"](${box});
     rel["boundary"="protected_area"](${box});
+    way["boundary"="national_park"](${box});
+    rel["boundary"="national_park"](${box});
+    way["leisure"="nature_reserve"](${box});
+    rel["leisure"="nature_reserve"](${box});
+
+    // ── Закрытые зоны / ограниченный доступ (restricted) ──
+    way["access"="no"]["landuse"](${box});
+    rel["access"="no"]["landuse"](${box});
+
+    // ── Исправительные учреждения (restricted) ──
+    way["amenity"="prison"](${box});
+    rel["amenity"="prison"](${box});
+
+    // ── Пограничные зоны (restricted) ──
+    way["boundary"="border_zone"](${box});
+    rel["boundary"="border_zone"](${box});
   );
   out body;
   >;
@@ -88,8 +115,31 @@ function buildNodesMap(elements) {
   return map;
 }
 
+/**
+ * Строит карту way_id → [coords] для сборки relations
+ */
+function buildWaysMap(elements, nodesMap) {
+  const map = new Map();
+  for (const el of elements) {
+    if (el.type === 'way' && Array.isArray(el.nodes)) {
+      const coords = el.nodes.map(id => nodesMap.get(id)).filter(Boolean);
+      if (coords.length >= 2) {
+        map.set(el.id, { coords, tags: el.tags || {} });
+      }
+    }
+  }
+  return map;
+}
+
+/**
+ * Собирает полигоны из way-элементов (как раньше)
+ * и из relation type=multipolygon (НОВОЕ — даёт крупные объекты)
+ */
 function assemblePolygons(elements, nodesMap) {
+  const waysMap = buildWaysMap(elements, nodesMap);
   const polygons = [];
+
+  // 1) Обычные way-полигоны
   for (const el of elements) {
     if (el.type === 'way' && Array.isArray(el.nodes) && el.nodes.length >= 3) {
       const coords = el.nodes.map(id => nodesMap.get(id)).filter(Boolean);
@@ -101,13 +151,126 @@ function assemblePolygons(elements, nodesMap) {
       }
     }
   }
+
+  // 2) Relations type=multipolygon — собираем outer-кольца из member ways
+  for (const el of elements) {
+    if (el.type !== 'relation') continue;
+    const tags = el.tags || {};
+    if (tags.type !== 'multipolygon' && tags.type !== 'boundary') continue;
+    if (!Array.isArray(el.members)) continue;
+
+    // Берём outer-members (или без роли — тоже outer)
+    const outerWayIds = el.members
+      .filter(m => m.type === 'way' && (m.role === 'outer' || m.role === '' || !m.role))
+      .map(m => m.ref);
+
+    // Собираем кольца из отдельных way-сегментов
+    const rings = assembleRingsFromWays(outerWayIds, waysMap, nodesMap);
+    const relTags = { ...tags }; // теги от relation (обычно более информативные)
+
+    for (const ring of rings) {
+      if (ring.length >= 3) {
+        const first = ring[0];
+        const last = ring[ring.length - 1];
+        if (first[0] !== last[0] || first[1] !== last[1]) ring.push(first);
+        polygons.push({ coords: ring, tags: relTags });
+      }
+    }
+  }
+
   return polygons;
 }
 
+/**
+ * Склеивает way-сегменты в замкнутые кольца.
+ * OSM Relations хранят multipolygon как набор отдельных way, которые нужно
+ * соединить «конец к началу». Это стандартная процедура сборки OSM полигонов.
+ */
+function assembleRingsFromWays(wayIds, waysMap, nodesMap) {
+  // Собираем координатные цепочки
+  const segments = [];
+  for (const id of wayIds) {
+    const w = waysMap.get(id);
+    if (w && w.coords.length >= 2) {
+      segments.push([...w.coords]); // копия
+    }
+  }
+
+  const rings = [];
+  const used = new Set();
+
+  while (used.size < segments.length) {
+    // Находим первый неиспользованный сегмент
+    let startIdx = -1;
+    for (let i = 0; i < segments.length; i++) {
+      if (!used.has(i)) { startIdx = i; break; }
+    }
+    if (startIdx < 0) break;
+
+    const ring = [...segments[startIdx]];
+    used.add(startIdx);
+
+    // Пытаемся доращивать кольцо, присоединяя сегменты
+    let changed = true;
+    while (changed) {
+      changed = false;
+      const lastPt = ring[ring.length - 1];
+      const firstPt = ring[0];
+
+      // Проверяем замкнутость
+      if (ring.length >= 4 && Math.abs(lastPt[0] - firstPt[0]) < 1e-7 && Math.abs(lastPt[1] - firstPt[1]) < 1e-7) {
+        break; // кольцо замкнуто
+      }
+
+      for (let i = 0; i < segments.length; i++) {
+        if (used.has(i)) continue;
+        const seg = segments[i];
+        const segFirst = seg[0];
+        const segLast = seg[seg.length - 1];
+
+        // Конец кольца совпадает с началом сегмента?
+        if (Math.abs(lastPt[0] - segFirst[0]) < 1e-7 && Math.abs(lastPt[1] - segFirst[1]) < 1e-7) {
+          ring.push(...seg.slice(1));
+          used.add(i);
+          changed = true;
+          break;
+        }
+        // Конец кольца совпадает с концом сегмента? (реверс)
+        if (Math.abs(lastPt[0] - segLast[0]) < 1e-7 && Math.abs(lastPt[1] - segLast[1]) < 1e-7) {
+          ring.push(...seg.slice(0, -1).reverse());
+          used.add(i);
+          changed = true;
+          break;
+        }
+      }
+    }
+
+    if (ring.length >= 3) {
+      rings.push(ring);
+    }
+  }
+
+  return rings;
+}
+
 function tagToSeverityAndType(tags = {}) {
+  // ── Critical: военные объекты, стрельбища, ядерные полигоны ──
+  if (tags.military === 'danger_area') return { severity: 'critical', type: 'military_danger' };
+  if (tags.military === 'nuclear_testing_site') return { severity: 'critical', type: 'nuclear' };
+  if (tags.military === 'range') return { severity: 'critical', type: 'military_range' };
   if (tags.landuse === 'military' || tags.military) return { severity: 'critical', type: 'military' };
+
+  // ── Restricted: аэродромы, тюрьмы, пограничные зоны, закрытые территории ──
   if (tags.aeroway) return { severity: 'restricted', type: 'aerodrome' };
+  if (tags.amenity === 'prison') return { severity: 'restricted', type: 'prison' };
+  if (tags.boundary === 'border_zone') return { severity: 'restricted', type: 'border_zone' };
+  if (tags.access === 'no' && tags.landuse) return { severity: 'restricted', type: 'closed_area' };
+
+  // ── Warning: заповедники, нацпарки ──
   if (tags.boundary === 'protected_area') return { severity: 'warning', type: 'protected_area' };
+  if (tags.boundary === 'national_park') return { severity: 'warning', type: 'national_park' };
+  if (tags.leisure === 'nature_reserve') return { severity: 'warning', type: 'nature_reserve' };
+
   return { severity: 'restricted', type: 'restricted' };
 }
 
@@ -151,7 +314,22 @@ async function processDistrict(key) {
 
 async function main() {
   const arg = (process.argv.find(a => a.startsWith('--district=')) || '').split('=')[1] || 'all';
+  const noClear = process.argv.includes('--no-clear');
   const keys = arg === 'all' ? Object.keys(DISTRICTS) : arg.split(',').map(s => s.trim());
+
+  // Очищаем зоны перед полным импортом (если не указан --no-clear)
+  if (!noClear) {
+    console.log('Очистка предыдущих зон перед импортом...');
+    try {
+      await axios.post(BACKEND_IMPORT_URL.replace('/import', '/clear'), {}, {
+        headers: { 'Content-Type': 'application/json' }
+      }).catch(() => {
+        // Если /clear требует авторизации, игнорируем — новые зоны с дедупликацией
+        console.warn('Не удалось очистить старые зоны (возможно нужна авторизация). Дедупликация на стороне бэкенда.');
+      });
+    } catch {}
+  }
+
   for (const key of keys) {
     try {
       await processDistrict(key);

@@ -75,13 +75,15 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Для модерации и админ-панели не игнорируем ошибки авторизации
+    // Для модерации и админ-панели НЕ глушим ошибки — админ должен видеть проблемы
     const isAdminRequest = error.config?.url?.includes('/pending') || 
                           error.config?.url?.includes('/approve') || 
-                          error.config?.url?.includes('/reject');
+                          error.config?.url?.includes('/reject') ||
+                          error.config?.url?.includes('/revision') ||
+                          error.config?.url?.includes('/moderation');
     
-    if (isAdminRequest && (error.response?.status === 401 || error.response?.status === 403)) {
-      // Для админ-запросов пробрасываем ошибки дальше
+    if (isAdminRequest) {
+      // Для любых админ/модерационных запросов пробрасываем ВСЕ ошибки (401, 403, 500 и т.д.)
       return Promise.reject(error);
     }
     

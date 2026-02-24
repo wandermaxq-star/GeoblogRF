@@ -1,5 +1,5 @@
 import express from 'express';
-import { checkPointAgainstZones, checkLineAgainstZones, addZonesFromGeoJSON, clearZones, getZonesStats, getZonesSnapshot } from '../utils/zoneGuard.js';
+import { checkPointAgainstZones, checkLineAgainstZones, addZonesFromGeoJSON, clearZones, getZonesStats, getZonesSnapshot, getZonesFilePath } from '../utils/zoneGuard.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -40,15 +40,16 @@ router.post('/import', authenticateToken, requireRole(['admin']), async (req, re
   try {
     const geojson = req.body;
     if (!geojson) return res.status(400).json({ ok: false, message: 'GeoJSON required' });
+    // addZonesFromGeoJSON теперь автоматически сохраняет на диск
     const count = addZonesFromGeoJSON(geojson);
-    res.json({ ok: true, imported: count, stats: getZonesStats() });
+    res.json({ ok: true, imported: count, stats: getZonesStats(), persisted: getZonesFilePath() });
   } catch (e) {
     res.status(500).json({ ok: false, message: 'Import failed', error: e?.message });
   }
 });
 
 router.post('/clear', authenticateToken, requireRole(['admin']), async (_req, res) => {
-  clearZones();
+  clearZones(/* persistAfterClear= */ true);
   res.json({ ok: true, stats: getZonesStats() });
 });
 

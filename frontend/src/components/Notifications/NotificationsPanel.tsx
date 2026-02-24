@@ -272,6 +272,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
     const labels: Record<string, string> = {
       approved: 'Одобрено',
       rejected: 'Отклонён',
+      revision: 'На доработку',
       pending: 'На модерации'
     };
     return labels[status] || status;
@@ -295,6 +296,9 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
       
       case 'rejected':
         return `${title} не прошёл модерацию.`;
+      
+      case 'revision':
+        return `${title} отправлен на доработку.`;
       
       case 'pending':
         return `${title} отправлен на проверку.`;

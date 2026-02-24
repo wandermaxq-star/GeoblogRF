@@ -396,7 +396,10 @@ const AdminModerationModal: React.FC<AdminModerationModalProps> = ({
     if (!isAdmin) return;
     
     const reason = prompt('Причина отклонения:');
-    if (reason === null) return;
+    if (reason === null || reason.trim().length === 0) {
+      if (reason !== null) alert('Необходимо указать причину отклонения.');
+      return;
+    }
 
     setProcessingId(content.id);
     try {
@@ -448,10 +451,35 @@ const AdminModerationModal: React.FC<AdminModerationModalProps> = ({
     if (!isAdmin) return;
     
     const reason = prompt('Причина отправки на доработку:');
-    if (reason === null) return;
+    if (reason === null || reason.trim().length === 0) return;
 
     setProcessingId(content.id);
     try {
+      const token = localStorage.getItem('token');
+
+      // Если контент в БД — вызываем API
+      const isLocalId = content.id && (
+        content.id.startsWith('pending_') ||
+        content.id.startsWith('post:') ||
+        content.id.startsWith('marker:') ||
+        content.id.startsWith('event:') ||
+        content.id.startsWith('route:')
+      );
+
+      if (!isLocalId && token) {
+        const apiContentTypeMap: Record<ContentType, string> = {
+          'post': 'posts', 'marker': 'markers', 'event': 'events',
+          'route': 'routes', 'complaint': 'complaints', 'suggestion': 'suggestions',
+        };
+        const apiContentType = apiContentTypeMap[contentType] || contentType;
+
+        await apiClient.post(`/moderation/${apiContentType}/${content.id}/revision`, {
+          reason,
+        }, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+
       // Обновляем статус в локальном хранилище
       const updated: PendingContent = {
         ...content,
@@ -464,16 +492,14 @@ const AdminModerationModal: React.FC<AdminModerationModalProps> = ({
       const { savePendingContent } = await import('../../services/localModerationStorage');
       savePendingContent(updated);
 
-      // Обновляем список - обновляем статус контента
-      setPendingContent(prev => prev.map(c => 
-        c.id === content.id ? updated : c
-      ));
+      // Оптимистичное удаление из pending-списка
+      setPendingContent(prev => prev.filter(c => c.id !== content.id));
       
       alert('Контент отправлен на доработку');
-      loadPendingContent(); // Перезагружаем список
+      loadPendingContent();
     } catch (err: any) {
       console.error('Ошибка отправки на доработку:', err);
-      alert('Ошибка отправки на доработку');
+      alert(err.response?.data?.message || 'Ошибка отправки на доработку');
     } finally {
       setProcessingId(null);
     }
