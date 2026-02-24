@@ -452,7 +452,7 @@ const RussiaMapSvg: React.FC<RussiaMapSvgProps> = ({ onRegionClick }) => {
           );
         })}
 
-        {/* Подписи — всегда видны */}
+        {/* Подписи регионов — zoom ≥ 0.8 */}
         {showLabels &&
           regionEntries.map(({ id, cx, cy, r, geo }) => {
             const isActive = activeRegionId === id;
@@ -481,6 +481,33 @@ const RussiaMapSvg: React.FC<RussiaMapSvgProps> = ({ onRegionClick }) => {
               >
                 {geo.label}
               </text>
+            );
+          })}
+
+        {/* Столицы регионов — zoom ≥ 3 */}
+        {currentZoom >= 3 &&
+          regionEntries.map(({ id, geo }) => {
+            const [capX, capY] = projectToSvg(geo.capitalCoords[0], geo.capitalCoords[1]);
+            const dotR = Math.max(0.6, 1.2 / Math.sqrt(currentZoom));
+            const capFontSize = Math.max(1.8, 3.5 / Math.sqrt(currentZoom));
+            return (
+              <g key={`cap-${id}`} className="region-label">
+                <circle cx={capX} cy={capY} r={dotR} fill="#1e293b" />
+                <text
+                  x={capX}
+                  y={capY - dotR - capFontSize * 0.3}
+                  textAnchor="middle"
+                  fontSize={capFontSize}
+                  fontWeight={600}
+                  fill="#0f172a"
+                  fontFamily="system-ui, -apple-system, sans-serif"
+                  stroke="#ffffffcc"
+                  strokeWidth={capFontSize * 0.18}
+                  paintOrder="stroke"
+                >
+                  {geo.capital}
+                </text>
+              </g>
             );
           })}
       </svg>

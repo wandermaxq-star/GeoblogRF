@@ -319,6 +319,115 @@ Move-Item offline-tiles\vla.mbtiles.bak offline-tiles\vla.mbtiles
 
 ---
 
+## 11. Нарезка городов для тематических маршрутов
+
+### Концепция
+
+Помимо нарезки по **областям**, тайлы нарезаются и по **городам/районным центрам**.
+Каждый город — отдельный MBTiles-пакет (zoom 6–15), который повторно используется
+в любых тематических маршрутах (Золотое Кольцо, Транссиб, и т.д.).
+
+### Три уровня нарезки:
+
+| Уровень | Файл | Zoom | Примерный размер |
+|---------|------|------|-----------------|
+| Область | `vladimir_oblast.mbtiles` | 4–12 | ~20–40 МБ |
+| Столица региона | `vladimir_oblast_capital.mbtiles` | 8–16 | ~10–25 МБ |
+| **Город маршрута** | `cities/pereslavl.mbtiles` | 6–15 | ~3–8 МБ |
+
+### Структура файлов:
+
+```
+offline-tiles/
+├── boundaries/
+│   ├── vladimir_oblast.geojson          ← Контур области
+│   ├── vladimir_oblast_capital.geojson  ← Контур столицы
+│   └── cities/                          ← НОВОЕ: городские контуры
+│       ├── yaroslavl.geojson
+│       ├── pereslavl.geojson
+│       ├── suzdal.geojson
+│       ├── vladimir.geojson
+│       └── ...
+├── cities/                              ← НОВОЕ: городские MBTiles
+│   ├── yaroslavl.mbtiles
+│   ├── pereslavl.mbtiles
+│   └── ...
+├── routes/                              ← НОВОЕ: манифесты маршрутов
+│   ├── golden-ring.json
+│   ├── transsib.json
+│   └── baikal-ring.json
+└── ...
+```
+
+### Нарезка города:
+
+```bash
+# 1. Скачать контур города (из OSM admin_level=6 или вручную)
+python download_boundaries.py --city yaroslavl
+
+# 2. Нарезать тайлы
+python generate_region_tiles.py \
+  --region boundaries/cities/yaroslavl.geojson \
+  --output cities/yaroslavl.mbtiles \
+  --name "Ярославль" \
+  --min-zoom 6 --max-zoom 15 \
+  --buffer 5 \
+  --threads 20
+```
+
+### Пакетная нарезка городов маршрута:
+
+```bash
+# Все города Золотого Кольца
+for city in sergiev_posad pereslavl rostov_velikiy yaroslavl \
+            kostroma ivanovo suzdal vladimir; do
+    echo "=== $city ==="
+    python3 generate_region_tiles.py \
+      --region "boundaries/cities/${city}.geojson" \
+      --output "cities/${city}.mbtiles" \
+      --name "$city" \
+      --min-zoom 6 --max-zoom 15 \
+      --buffer 5
+done
+```
+
+### JSON-манифест маршрута:
+
+```json
+{
+  "id": "golden-ring",
+  "name": "Золотое Кольцо России",
+  "description": "Классический маршрут по 8 городам Центральной России",
+  "cities": [
+    { "id": "sergiev_posad", "name": "Сергиев Посад", "coords": [38.13, 56.31], "size_mb": 5 },
+    { "id": "pereslavl",     "name": "Переславль-Залесский", "coords": [38.85, 56.74], "size_mb": 4 },
+    { "id": "rostov_velikiy","name": "Ростов Великий",  "coords": [39.42, 57.19], "size_mb": 3 },
+    { "id": "yaroslavl",     "name": "Ярославль",       "coords": [39.89, 57.63], "size_mb": 8 },
+    { "id": "kostroma",      "name": "Кострома",        "coords": [40.93, 57.77], "size_mb": 6 },
+    { "id": "ivanovo",       "name": "Иваново",         "coords": [40.97, 56.99], "size_mb": 5 },
+    { "id": "suzdal",        "name": "Суздаль",         "coords": [40.45, 56.42], "size_mb": 3 },
+    { "id": "vladimir",      "name": "Владимир",        "coords": [40.41, 56.13], "size_mb": 7 }
+  ],
+  "route_geometry": "...encoded polyline...",
+  "total_size_mb": 41,
+  "category": "culture",
+  "difficulty": "easy",
+  "duration_days": "3-5",
+  "premium_only": true
+}
+```
+
+### Повторное использование тайлов:
+
+Один город нарезан один раз — участвует в любых маршрутах:
+- `yaroslavl.mbtiles` → «Золотое Кольцо» + «Волга: от истока до устья» + «Русский Север»
+- `irkutsk.mbtiles` → «Транссиб» + «Байкал-кольцо» + «Восточная Сибирь»
+
+При скачивании маршрута пользователем — загружаются только те города, которые он выбрал
+(чекбоксами в UI). Уже скачанные города пропускаются.
+
+---
+
 ## Частые проблемы
 
 | Проблема | Решение |
