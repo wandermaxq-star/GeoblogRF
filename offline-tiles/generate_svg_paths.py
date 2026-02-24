@@ -30,7 +30,7 @@ except ImportError:
 
 try:
     from shapely.geometry import shape, mapping, MultiPolygon, Polygon
-    from shapely.ops import unary_union, polygonize
+    from shapely.ops import unary_union, polygonize, transform as shapely_transform
     from shapely.geometry import LineString
 except ImportError:
     print("❌  pip install shapely")
@@ -101,6 +101,8 @@ def _compute_albers_bounds():
             data = json.load(f)
         geom_raw = data.get("geometry") or (data["features"][0]["geometry"] if data.get("type") == "FeatureCollection" else data)
         geom = shape(geom_raw)
+        # Нормализация антимеридиана (Чукотка и т.п.)
+        geom = _normalize_antimeridian(geom)
         bounds = geom.bounds  # (minx, miny, maxx, maxy) = (minlon, minlat, maxlon, maxlat)
         for lon in [bounds[0], bounds[2]]:
             for lat in [bounds[1], bounds[3]]:
@@ -176,7 +178,7 @@ REGIONS = {
     "karelia":              {"name": "Республика Карелия",               "osm_id": 393980},
     "kemerovo_oblast":      {"name": "Кемеровская область",              "osm_id": 144763},
     "khabarovsk_krai":      {"name": "Хабаровский край",                 "osm_id": 151223},
-    "khakassia":            {"name": "Республика Хакасия",               "osm_id": 190090},
+    "khakassia":            {"name": "Республика Хакасия",               "osm_id": 190911},
     "khanty_mansi_ao":      {"name": "ХМАО — Югра",                      "osm_id": 140296},
     "kirov_oblast":         {"name": "Кировская область",                "osm_id": 115100},
     "komi":                 {"name": "Республика Коми",                  "osm_id": 115136},
@@ -348,9 +350,26 @@ def download_all(only_ids: list[str] | None = None):
 # 2. Конвертация GeoJSON → SVG path‑строки
 # ═════════════════════════════════════════════════════════════════════
 
+def _normalize_antimeridian(geom):
+    """Нормализация геометрии, пересекающей антимеридиан (180°).
+    Если геометрия содержит координаты и > 150° и < -150°,
+    сдвигаем отрицательные долготы на +360° для непрерывности."""
+    bounds = geom.bounds  # (minlon, minlat, maxlon, maxlat)
+    if bounds[0] < -150 and bounds[2] > 150:
+        # Пересекает антимеридиан — сдвигаем все отрицательные lon на +360°
+        def _shift_lon(x, y, z=None):
+            new_x = [xi + 360 if xi < 0 else xi for xi in x]
+            return (new_x, y, z) if z is not None else (new_x, y)
+        geom = shapely_transform(_shift_lon, geom)
+    return geom
+
+
 def geojson_to_svg_path(geojson_geom: dict, tolerance: float) -> str:
     """Конвертирует GeoJSON geometry → SVG path string (d=…)."""
     geom = shape(geojson_geom)
+
+    # Нормализация антимеридиана (Чукотка и т.п.)
+    geom = _normalize_antimeridian(geom)
 
     # Упрощаем
     geom = geom.simplify(tolerance, preserve_topology=True)
@@ -385,6 +404,8 @@ def geojson_to_svg_path(geojson_geom: dict, tolerance: float) -> str:
 def compute_centroid_svg(geojson_geom: dict) -> tuple[float, float]:
     """Вычисляет центроид полигона в SVG-координатах."""
     geom = shape(geojson_geom)
+    # Нормализация антимеридиана (Чукотка и т.п.)
+    geom = _normalize_antimeridian(geom)
     c = geom.centroid
     return project(c.x, c.y)
 

@@ -1,0 +1,388 @@
+2026-02-23 22:01:11,402  INFO  \u2550\u2550\u2550 ╪ру 1: ╤ърўштрэшх ъюэЄєЁют шч OSM Overpass \u2550\u2550\u2550
+2026-02-23 22:01:11,403  INFO  \u26a0\ufe0f  ▌Єю ьюцхЄ чрэ Є№ ~30-60 ьшэ шч-чр ышьшЄют API
+2026-02-23 22:01:11,404  INFO  [1/85] ╨хёяєсышър └ф√ух 
+2026-02-23 22:01:11,404  INFO    Overpass \u2192 ╨хёяєсышър └ф√ух   (relation/253256) Е
+2026-02-23 22:01:15,549  ERROR    \u274c  Overpass ю°шсър: 504 Server Error: Gateway Timeout for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:01:15,549  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╨хёяєсышър └ф√ух 
+2026-02-23 22:01:20,550  INFO  [2/85] └ыЄрщёъшщ ъЁрщ
+2026-02-23 22:01:20,550  INFO    Overpass \u2192 └ыЄрщёъшщ ъЁрщ  (relation/144764) Е
+2026-02-23 22:01:24,641  ERROR    \u274c  Overpass ю°шсър: 504 Server Error: Gateway Timeout for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:01:24,641  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ └ыЄрщёъшщ ъЁрщ
+2026-02-23 22:01:29,642  INFO  [3/85] ╨хёяєсышър └ыЄрщ
+2026-02-23 22:01:29,642  INFO    Overpass \u2192 ╨хёяєсышър └ыЄрщ  (relation/145194) Е
+2026-02-23 22:01:32,334  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\altai_republic.geojson  (253 ╩┴)
+2026-02-23 22:01:37,335  INFO  [4/85] └ьєЁёър  юсырёЄ№
+2026-02-23 22:01:37,336  INFO    Overpass \u2192 └ьєЁёър  юсырёЄ№  (relation/147166) Е
+2026-02-23 22:01:39,822  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\amur_oblast.geojson  (525 ╩┴)
+2026-02-23 22:01:44,823  INFO  [5/85] └Ёїрэухы№ёър  юсырёЄ№
+2026-02-23 22:01:44,823  INFO    Overpass \u2192 └Ёїрэухы№ёър  юсырёЄ№  (relation/140337) Е
+2026-02-23 22:01:50,523  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:01:50,525  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ └Ёїрэухы№ёър  юсырёЄ№
+2026-02-23 22:01:55,526  INFO  [6/85] └ёЄЁрїрэёър  юсырёЄ№
+2026-02-23 22:01:55,526  INFO    Overpass \u2192 └ёЄЁрїрэёър  юсырёЄ№  (relation/112819) Е
+2026-02-23 22:02:00,547  ERROR    \u274c  Overpass ю°шсър: 504 Server Error: Gateway Timeout for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:02:00,547  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ └ёЄЁрїрэёър  юсырёЄ№
+2026-02-23 22:02:05,549  INFO  [7/85] ╨хёяєсышър ┴р°ъюЁЄюёЄрэ
+2026-02-23 22:02:05,549  INFO    Overpass \u2192 ╨хёяєсышър ┴р°ъюЁЄюёЄрэ  (relation/77665) Е
+2026-02-23 22:02:10,677  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\bashkortostan.geojson  (204 ╩┴)
+2026-02-23 22:02:15,680  INFO  [8/85] ┴хыуюЁюфёър  юсырёЄ№
+2026-02-23 22:02:15,681  INFO    Overpass \u2192 ┴хыуюЁюфёър  юсырёЄ№  (relation/83184) Е
+2026-02-23 22:02:16,494  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\belgorod_oblast.geojson  (291 ╩┴)
+2026-02-23 22:02:21,495  INFO  [9/85] ┴Ё эёър  юсырёЄ№
+2026-02-23 22:02:21,495  INFO    Overpass \u2192 ┴Ё эёър  юсырёЄ№  (relation/81997) Е
+2026-02-23 22:02:27,056  ERROR    \u274c  Overpass ю°шсър: 504 Server Error: Gateway Timeout for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:02:27,057  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ┴Ё эёър  юсырёЄ№
+2026-02-23 22:02:32,058  INFO  [10/85] ╨хёяєсышър ┴єЁ Єш 
+2026-02-23 22:02:32,058  INFO    Overpass \u2192 ╨хёяєсышър ┴єЁ Єш   (relation/145729) Е
+2026-02-23 22:02:37,932  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:02:37,933  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╨хёяєсышър ┴єЁ Єш 
+2026-02-23 22:02:42,934  INFO  [11/85] ╫хўхэёър  ╨хёяєсышър
+2026-02-23 22:02:42,934  INFO    Overpass \u2192 ╫хўхэёър  ╨хёяєсышър  (relation/109877) Е
+2026-02-23 22:03:05,125  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\chechnya.geojson  (188 ╩┴)
+2026-02-23 22:03:10,126  INFO  [12/85] ╫хы сшэёър  юсырёЄ№
+2026-02-23 22:03:10,126  INFO    Overpass \u2192 ╫хы сшэёър  юсырёЄ№  (relation/77687) Е
+2026-02-23 22:04:00,771  ERROR    \u274c  Overpass ю°шсър: ('Connection broken: IncompleteRead(82 bytes read, 8014 more expected)', IncompleteRead(82 bytes read, 8014 more expected))
+2026-02-23 22:04:00,771  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╫хы сшэёър  юсырёЄ№
+2026-02-23 22:04:05,773  INFO  [13/85] ╫єъюЄёъшщ └╬
+2026-02-23 22:04:05,773  INFO    Overpass \u2192 ╫єъюЄёъшщ └╬  (relation/151228) Е
+2026-02-23 22:04:14,834  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\chukotka_ao.geojson  (432 ╩┴)
+2026-02-23 22:04:19,835  INFO  [14/85] ╫єтр°ёър  ╨хёяєсышър
+2026-02-23 22:04:19,835  INFO    Overpass \u2192 ╫єтр°ёър  ╨хёяєсышър  (relation/80513) Е
+2026-02-23 22:04:31,757  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:04:31,758  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╫єтр°ёър  ╨хёяєсышър
+2026-02-23 22:04:36,760  INFO  [15/85] ╨хёяєсышър ╩Ё√ь
+2026-02-23 22:04:36,760  INFO    Overpass \u2192 ╨хёяєсышър ╩Ё√ь  (relation/3795586) Е
+2026-02-23 22:04:43,729  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:04:43,729  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╨хёяєсышър ╩Ё√ь
+2026-02-23 22:04:48,730  INFO  [16/85] ╨хёяєсышър ─рухёЄрэ
+2026-02-23 22:04:48,730  INFO    Overpass \u2192 ╨хёяєсышър ─рухёЄрэ  (relation/109876) Е
+2026-02-23 22:04:51,302  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\dagestan.geojson  (197 ╩┴)
+2026-02-23 22:04:56,303  INFO  [17/85] ╨хёяєсышър ╚эує°хЄш 
+2026-02-23 22:04:56,303  INFO    Overpass \u2192 ╨хёяєсышър ╚эує°хЄш   (relation/253252) Е
+2026-02-23 22:05:01,557  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:05:01,558  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╨хёяєсышър ╚эує°хЄш 
+2026-02-23 22:05:06,559  INFO  [18/85] ╚ЁъєЄёър  юсырёЄ№
+2026-02-23 22:05:06,559  INFO    Overpass \u2192 ╚ЁъєЄёър  юсырёЄ№  (relation/145454) Е
+2026-02-23 22:05:08,477  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\irkutsk_oblast.geojson  (1414 ╩┴)
+2026-02-23 22:05:13,478  INFO  [19/85] ╚трэютёър  юсырёЄ№
+2026-02-23 22:05:13,478  INFO    Overpass \u2192 ╚трэютёър  юсырёЄ№  (relation/85617) Е
+2026-02-23 22:05:19,230  ERROR    \u274c  Overpass ю°шсър: 504 Server Error: Gateway Timeout for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:05:19,234  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╚трэютёър  юсырёЄ№
+2026-02-23 22:05:24,235  INFO  [20/85] ┼тЁхщёър  └╬
+2026-02-23 22:05:24,235  INFO    Overpass \u2192 ┼тЁхщёър  └╬  (relation/147167) Е
+2026-02-23 22:05:25,716  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\jewish_ao.geojson  (180 ╩┴)
+2026-02-23 22:05:30,716  INFO  [21/85] ╩рсрЁфшэю-┴рыърЁёър  ╨хёяєсышър
+2026-02-23 22:05:30,717  INFO    Overpass \u2192 ╩рсрЁфшэю-┴рыърЁёър  ╨хёяєсышър  (relation/109879) Е
+2026-02-23 22:05:37,013  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:05:37,014  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╩рсрЁфшэю-┴рыърЁёър  ╨хёяєсышър
+2026-02-23 22:05:42,015  INFO  [22/85] ╩рышэшэуЁрфёър  юсырёЄ№
+2026-02-23 22:05:42,015  INFO    Overpass \u2192 ╩рышэшэуЁрфёър  юсырёЄ№  (relation/103906) Е
+2026-02-23 22:05:48,546  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:05:48,546  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╩рышэшэуЁрфёър  юсырёЄ№
+2026-02-23 22:05:53,547  INFO  [23/85] \u23ed\ufe0f  ╨хёяєсышър ╩рыь√ъш  Ч єцх хёЄ№
+2026-02-23 22:05:53,548  INFO  [24/85] ╩рыєцёър  юсырёЄ№
+2026-02-23 22:05:53,548  INFO    Overpass \u2192 ╩рыєцёър  юсырёЄ№  (relation/81995) Е
+2026-02-23 22:05:54,846  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\kaluga_oblast.geojson  (390 ╩┴)
+2026-02-23 22:05:59,848  INFO  [25/85] ╩рьўрЄёъшщ ъЁрщ
+2026-02-23 22:05:59,848  INFO    Overpass \u2192 ╩рьўрЄёъшщ ъЁрщ  (relation/151233) Е
+2026-02-23 22:06:11,707  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:06:11,709  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╩рьўрЄёъшщ ъЁрщ
+2026-02-23 22:06:16,710  INFO  [26/85] ╩рЁрўрхтю-╫хЁъхёёър  ╨хёяєсышър
+2026-02-23 22:06:16,710  INFO    Overpass \u2192 ╩рЁрўрхтю-╫хЁъхёёър  ╨хёяєсышър  (relation/109878) Е
+2026-02-23 22:06:22,774  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:06:22,775  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╩рЁрўрхтю-╫хЁъхёёър  ╨хёяєсышър
+2026-02-23 22:06:27,776  INFO  [27/85] \u23ed\ufe0f  ╨хёяєсышър ╩рЁхыш  Ч єцх хёЄ№
+2026-02-23 22:06:27,776  INFO  [28/85] ╩хьхЁютёър  юсырёЄ№
+2026-02-23 22:06:27,776  INFO    Overpass \u2192 ╩хьхЁютёър  юсырёЄ№  (relation/144763) Е
+2026-02-23 22:06:34,659  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:06:34,660  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╩хьхЁютёър  юсырёЄ№
+2026-02-23 22:06:39,661  INFO  [29/85] ╒рсрЁютёъшщ ъЁрщ
+2026-02-23 22:06:39,662  INFO    Overpass \u2192 ╒рсрЁютёъшщ ъЁрщ  (relation/151223) Е
+2026-02-23 22:06:45,467  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\khabarovsk_krai.geojson  (1097 ╩┴)
+2026-02-23 22:06:50,469  INFO  [30/85] ╨хёяєсышър ╒рърёш 
+2026-02-23 22:06:50,469  INFO    Overpass \u2192 ╨хёяєсышър ╒рърёш   (relation/190090) Е
+2026-02-23 22:06:56,635  ERROR    \u274c  Overpass ю°шсър: 504 Server Error: Gateway Timeout for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:06:56,641  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╨хёяєсышър ╒рърёш 
+2026-02-23 22:07:01,642  INFO  [31/85] ╒╠└╬ Ч ▐уЁр
+2026-02-23 22:07:01,643  INFO    Overpass \u2192 ╒╠└╬ Ч ▐уЁр  (relation/140296) Е
+2026-02-23 22:07:03,174  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\khanty_mansi_ao.geojson  (472 ╩┴)
+2026-02-23 22:07:08,175  INFO  [32/85] ╩шЁютёър  юсырёЄ№
+2026-02-23 22:07:08,176  INFO    Overpass \u2192 ╩шЁютёър  юсырёЄ№  (relation/115100) Е
+2026-02-23 22:07:16,534  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:07:16,536  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╩шЁютёър  юсырёЄ№
+2026-02-23 22:07:21,537  INFO  [33/85] ╨хёяєсышър ╩юьш
+2026-02-23 22:07:21,538  INFO    Overpass \u2192 ╨хёяєсышър ╩юьш  (relation/115136) Е
+2026-02-23 22:07:22,604  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\komi.geojson  (431 ╩┴)
+2026-02-23 22:07:27,605  INFO  [34/85] ╩юёЄЁюьёър  юсырёЄ№
+2026-02-23 22:07:27,605  INFO    Overpass \u2192 ╩юёЄЁюьёър  юсырёЄ№  (relation/85963) Е
+2026-02-23 22:07:28,565  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\kostroma_oblast.geojson  (265 ╩┴)
+2026-02-23 22:07:33,566  INFO  [35/85] ╩ЁрёэюфрЁёъшщ ъЁрщ
+2026-02-23 22:07:33,566  INFO    Overpass \u2192 ╩ЁрёэюфрЁёъшщ ъЁрщ  (relation/108082) Е
+2026-02-23 22:07:40,265  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:07:40,266  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╩ЁрёэюфрЁёъшщ ъЁрщ
+2026-02-23 22:07:45,268  INFO  [36/85] ╩Ёрёэю Ёёъшщ ъЁрщ
+2026-02-23 22:07:45,268  INFO    Overpass \u2192 ╩Ёрёэю Ёёъшщ ъЁрщ  (relation/190090) Е
+2026-02-23 22:07:54,350  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\krasnoyarsk_krai.geojson  (1647 ╩┴)
+2026-02-23 22:07:59,351  INFO  [37/85] ╩єЁурэёър  юсырёЄ№
+2026-02-23 22:07:59,351  INFO    Overpass \u2192 ╩єЁурэёър  юсырёЄ№  (relation/140295) Е
+2026-02-23 22:08:05,738  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:08:05,743  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╩єЁурэёър  юсырёЄ№
+2026-02-23 22:08:10,744  INFO  [38/85] ╩єЁёър  юсырёЄ№
+2026-02-23 22:08:10,744  INFO    Overpass \u2192 ╩єЁёър  юсырёЄ№  (relation/72223) Е
+2026-02-23 22:08:18,596  ERROR    \u274c  Overpass ю°шсър: 504 Server Error: Gateway Timeout for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:08:18,597  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╩єЁёър  юсырёЄ№
+2026-02-23 22:08:23,599  INFO  [39/85] ╦хэшэуЁрфёър  юсырёЄ№
+2026-02-23 22:08:23,599  INFO    Overpass \u2192 ╦хэшэуЁрфёър  юсырёЄ№  (relation/176095) Е
+2026-02-23 22:08:25,112  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\leningrad_oblast.geojson  (121 ╩┴)
+2026-02-23 22:08:30,114  INFO  [40/85] ╦шяхЎър  юсырёЄ№
+2026-02-23 22:08:30,114  INFO    Overpass \u2192 ╦шяхЎър  юсырёЄ№  (relation/72169) Е
+2026-02-23 22:08:36,712  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:08:36,713  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╦шяхЎър  юсырёЄ№
+2026-02-23 22:08:41,714  INFO  [41/85] ╠рурфрэёър  юсырёЄ№
+2026-02-23 22:08:41,714  INFO    Overpass \u2192 ╠рурфрэёър  юсырёЄ№  (relation/151225) Е
+2026-02-23 22:08:48,339  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\magadan_oblast.geojson  (437 ╩┴)
+2026-02-23 22:08:53,341  INFO  [42/85] ╨хёяєсышър ╠рЁшщ ▌ы
+2026-02-23 22:08:53,341  INFO    Overpass \u2192 ╨хёяєсышър ╠рЁшщ ▌ы  (relation/115114) Е
+2026-02-23 22:08:55,429  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\mari_el.geojson  (158 ╩┴)
+2026-02-23 22:09:00,430  INFO  [43/85] ╨хёяєсышър ╠юЁфютш 
+2026-02-23 22:09:00,430  INFO    Overpass \u2192 ╨хёяєсышър ╠юЁфютш   (relation/72196) Е
+2026-02-23 22:09:01,723  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\mordovia.geojson  (652 ╩┴)
+2026-02-23 22:09:06,724  INFO  [44/85] ╠юёътр
+2026-02-23 22:09:06,724  INFO    Overpass \u2192 ╠юёътр  (relation/102269) Е
+2026-02-23 22:09:16,925  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:09:16,927  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╠юёътр
+2026-02-23 22:09:21,928  INFO  [45/85] ╠юёъютёър  юсырёЄ№
+2026-02-23 22:09:21,929  INFO    Overpass \u2192 ╠юёъютёър  юсырёЄ№  (relation/51490) Е
+2026-02-23 22:09:23,796  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\moscow_oblast.geojson  (509 ╩┴)
+2026-02-23 22:09:28,797  INFO  [46/85] ╠єЁьрэёър  юсырёЄ№
+2026-02-23 22:09:28,797  INFO    Overpass \u2192 ╠єЁьрэёър  юсырёЄ№  (relation/2099216) Е
+2026-02-23 22:09:34,453  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:09:34,454  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╠єЁьрэёър  юсырёЄ№
+2026-02-23 22:09:39,456  INFO  [47/85] ═хэхЎъшщ └╬
+2026-02-23 22:09:39,456  INFO    Overpass \u2192 ═хэхЎъшщ └╬  (relation/274048) Е
+2026-02-23 22:09:40,403  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\nenets_ao.geojson  (283 ╩┴)
+2026-02-23 22:09:45,404  INFO  [48/85] ═шцхуюЁюфёър  юсырёЄ№
+2026-02-23 22:09:45,404  INFO    Overpass \u2192 ═шцхуюЁюфёър  юсырёЄ№  (relation/72195) Е
+2026-02-23 22:09:46,412  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\nizhny_novgorod_oblast.geojson  (467 ╩┴)
+2026-02-23 22:09:51,413  INFO  [49/85] ╤хтхЁэр  ╬ёхЄш  Ч └ырэш 
+2026-02-23 22:09:51,413  INFO    Overpass \u2192 ╤хтхЁэр  ╬ёхЄш  Ч └ырэш   (relation/110032) Е
+2026-02-23 22:09:52,110  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\north_ossetia.geojson  (71 ╩┴)
+2026-02-23 22:09:57,111  INFO  [50/85] ═ютуюЁюфёър  юсырёЄ№
+2026-02-23 22:09:57,111  INFO    Overpass \u2192 ═ютуюЁюфёър  юсырёЄ№  (relation/89331) Е
+2026-02-23 22:10:03,642  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:10:03,642  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ═ютуюЁюфёър  юсырёЄ№
+2026-02-23 22:10:08,644  INFO  [51/85] ═ютюёшсшЁёър  юсырёЄ№
+2026-02-23 22:10:08,644  INFO    Overpass \u2192 ═ютюёшсшЁёър  юсырёЄ№  (relation/140294) Е
+2026-02-23 22:10:19,061  ERROR    \u274c  Overpass ю°шсър: 504 Server Error: Gateway Timeout for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:10:19,062  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ═ютюёшсшЁёър  юсырёЄ№
+2026-02-23 22:10:24,063  INFO  [52/85] ╬ьёър  юсырёЄ№
+2026-02-23 22:10:24,063  INFO    Overpass \u2192 ╬ьёър  юсырёЄ№  (relation/140292) Е
+2026-02-23 22:10:25,133  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\omsk_oblast.geojson  (184 ╩┴)
+2026-02-23 22:10:30,134  INFO  [53/85] ╬ЁхэсєЁуёър  юсырёЄ№
+2026-02-23 22:10:30,135  INFO    Overpass \u2192 ╬ЁхэсєЁуёър  юсырёЄ№  (relation/77669) Е
+2026-02-23 22:10:31,087  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\orenburg_oblast.geojson  (308 ╩┴)
+2026-02-23 22:10:36,088  INFO  [54/85] ╬Ёыютёър  юсырёЄ№
+2026-02-23 22:10:36,088  INFO    Overpass \u2192 ╬Ёыютёър  юсырёЄ№  (relation/72224) Е
+2026-02-23 22:10:39,710  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\oryol_oblast.geojson  (144 ╩┴)
+2026-02-23 22:10:44,711  INFO  [55/85] ╧хэчхэёър  юсырёЄ№
+2026-02-23 22:10:44,711  INFO    Overpass \u2192 ╧хэчхэёър  юсырёЄ№  (relation/72182) Е
+2026-02-23 22:10:48,878  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\penza_oblast.geojson  (245 ╩┴)
+2026-02-23 22:10:53,880  INFO  [56/85] ╧хЁьёъшщ ъЁрщ
+2026-02-23 22:10:53,880  INFO    Overpass \u2192 ╧хЁьёъшщ ъЁрщ  (relation/115135) Е
+2026-02-23 22:11:00,677  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:11:00,678  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╧хЁьёъшщ ъЁрщ
+2026-02-23 22:11:05,679  INFO  [57/85] ╧ЁшьюЁёъшщ ъЁрщ
+2026-02-23 22:11:05,680  INFO    Overpass \u2192 ╧ЁшьюЁёъшщ ъЁрщ  (relation/151222) Е
+2026-02-23 22:11:11,996  ERROR    \u274c  Overpass ю°шсър: 504 Server Error: Gateway Timeout for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:11:11,997  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╧ЁшьюЁёъшщ ъЁрщ
+2026-02-23 22:11:17,003  INFO  [58/85] ╧ёъютёър  юсырёЄ№
+2026-02-23 22:11:17,003  INFO    Overpass \u2192 ╧ёъютёър  юсырёЄ№  (relation/155262) Е
+2026-02-23 22:11:24,714  ERROR    \u274c  Overpass ю°шсър: 504 Server Error: Gateway Timeout for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:11:24,714  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╧ёъютёър  юсырёЄ№
+2026-02-23 22:11:29,715  INFO  [59/85] ╨юёЄютёър  юсырёЄ№
+2026-02-23 22:11:29,716  INFO    Overpass \u2192 ╨юёЄютёър  юсырёЄ№  (relation/85606) Е
+2026-02-23 22:11:35,459  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:11:35,460  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╨юёЄютёър  юсырёЄ№
+2026-02-23 22:11:40,460  INFO  [60/85] ╨ чрэёър  юсырёЄ№
+2026-02-23 22:11:40,461  INFO    Overpass \u2192 ╨ чрэёър  юсырёЄ№  (relation/71950) Е
+2026-02-23 22:11:41,303  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\ryazan_oblast.geojson  (386 ╩┴)
+2026-02-23 22:11:46,304  INFO  [61/85] ╤рїрышэёър  юсырёЄ№
+2026-02-23 22:11:46,304  INFO    Overpass \u2192 ╤рїрышэёър  юсырёЄ№  (relation/394235) Е
+2026-02-23 22:11:49,894  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\sakhalin_oblast.geojson  (91 ╩┴)
+2026-02-23 22:11:54,895  INFO  [62/85] ╤рьрЁёър  юсырёЄ№
+2026-02-23 22:11:54,895  INFO    Overpass \u2192 ╤рьрЁёър  юсырёЄ№  (relation/72194) Е
+2026-02-23 22:12:01,576  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:12:01,577  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╤рьрЁёър  юсырёЄ№
+2026-02-23 22:12:06,579  INFO  [63/85] ╤рЁрЄютёър  юсырёЄ№
+2026-02-23 22:12:06,579  INFO    Overpass \u2192 ╤рЁрЄютёър  юсырёЄ№  (relation/72193) Е
+2026-02-23 22:12:13,675  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:12:13,675  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╤рЁрЄютёър  юсырёЄ№
+2026-02-23 22:12:18,676  INFO  [64/85] ╤хтрёЄюяюы№
+2026-02-23 22:12:18,677  INFO    Overpass \u2192 ╤хтрёЄюяюы№  (relation/1574364) Е
+2026-02-23 22:12:24,879  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\sevastopol.geojson  (24 ╩┴)
+2026-02-23 22:12:29,879  INFO  [65/85] ╤ьюыхэёър  юсырёЄ№
+2026-02-23 22:12:29,880  INFO    Overpass \u2192 ╤ьюыхэёър  юсырёЄ№  (relation/81996) Е
+2026-02-23 22:12:30,993  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\smolensk_oblast.geojson  (379 ╩┴)
+2026-02-23 22:12:35,994  INFO  [66/85] \u23ed\ufe0f  ╤рэъЄ-╧хЄхЁсєЁу Ч єцх хёЄ№
+2026-02-23 22:12:35,994  INFO  [67/85] ╤ЄртЁюяюы№ёъшщ ъЁрщ
+2026-02-23 22:12:35,994  INFO    Overpass \u2192 ╤ЄртЁюяюы№ёъшщ ъЁрщ  (relation/108081) Е
+2026-02-23 22:12:42,489  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:12:42,491  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╤ЄртЁюяюы№ёъшщ ъЁрщ
+2026-02-23 22:12:47,492  INFO  [68/85] ╤тхЁфыютёър  юсырёЄ№
+2026-02-23 22:12:47,492  INFO    Overpass \u2192 ╤тхЁфыютёър  юсырёЄ№  (relation/140293) Е
+2026-02-23 22:12:53,496  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:12:53,496  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╤тхЁфыютёър  юсырёЄ№
+2026-02-23 22:12:58,497  INFO  [69/85] ╥рьсютёър  юсырёЄ№
+2026-02-23 22:12:58,497  INFO    Overpass \u2192 ╥рьсютёър  юсырёЄ№  (relation/72180) Е
+2026-02-23 22:13:03,633  ERROR    \u274c  Overpass ю°шсър: 504 Server Error: Gateway Timeout for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:13:03,634  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╥рьсютёър  юсырёЄ№
+2026-02-23 22:13:08,635  INFO  [70/85] ╨хёяєсышър ╥рЄрЁёЄрэ
+2026-02-23 22:13:08,635  INFO    Overpass \u2192 ╨хёяєсышър ╥рЄрЁёЄрэ  (relation/79374) Е
+2026-02-23 22:13:13,587  ERROR    \u274c  Overpass ю°шсър: 504 Server Error: Gateway Timeout for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:13:13,588  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╨хёяєсышър ╥рЄрЁёЄрэ
+2026-02-23 22:13:18,589  INFO  [71/85] ╥юьёър  юсырёЄ№
+2026-02-23 22:13:18,589  INFO    Overpass \u2192 ╥юьёър  юсырёЄ№  (relation/140295) Е
+2026-02-23 22:13:19,717  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\tomsk_oblast.geojson  (457 ╩┴)
+2026-02-23 22:13:24,718  INFO  [72/85] ╥єы№ёър  юсырёЄ№
+2026-02-23 22:13:24,718  INFO    Overpass \u2192 ╥єы№ёър  юсырёЄ№  (relation/81993) Е
+2026-02-23 22:13:29,791  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:13:29,792  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╥єы№ёър  юсырёЄ№
+2026-02-23 22:13:34,794  INFO  [73/85] ╨хёяєсышър ╥√тр
+2026-02-23 22:13:34,794  INFO    Overpass \u2192 ╨хёяєсышър ╥√тр  (relation/145195) Е
+2026-02-23 22:13:42,893  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\tuva.geojson  (431 ╩┴)
+2026-02-23 22:13:47,894  INFO  [74/85] ╥тхЁёър  юсырёЄ№
+2026-02-23 22:13:47,897  INFO    Overpass \u2192 ╥тхЁёър  юсырёЄ№  (relation/2095259) Е
+2026-02-23 22:13:53,484  ERROR    \u274c  Overpass ю°шсър: 504 Server Error: Gateway Timeout for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:13:53,485  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╥тхЁёър  юсырёЄ№
+2026-02-23 22:13:58,486  INFO  [75/85] ╥■ьхэёър  юсырёЄ№
+2026-02-23 22:13:58,486  INFO    Overpass \u2192 ╥■ьхэёър  юсырёЄ№  (relation/140291) Е
+2026-02-23 22:13:59,904  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\tyumen_oblast.geojson  (231 ╩┴)
+2026-02-23 22:14:04,906  INFO  [76/85] ╙фьєЁЄёър  ╨хёяєсышър
+2026-02-23 22:14:04,906  INFO    Overpass \u2192 ╙фьєЁЄёър  ╨хёяєсышър  (relation/115134) Е
+2026-02-23 22:14:15,131  ERROR    \u274c  Overpass ю°шсър: 504 Server Error: Gateway Timeout for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:14:15,131  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╙фьєЁЄёър  ╨хёяєсышър
+2026-02-23 22:14:20,132  INFO  [77/85] ╙ы№ эютёър  юсырёЄ№
+2026-02-23 22:14:20,132  INFO    Overpass \u2192 ╙ы№ эютёър  юсырёЄ№  (relation/72192) Е
+2026-02-23 22:14:26,549  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:14:26,550  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╙ы№ эютёър  юсырёЄ№
+2026-02-23 22:14:31,551  INFO  [78/85] ┬ырфшьшЁёър  юсырёЄ№
+2026-02-23 22:14:31,552  INFO    Overpass \u2192 ┬ырфшьшЁёър  юсырёЄ№  (relation/72197) Е
+2026-02-23 22:14:38,110  ERROR    \u274c  Overpass ю°шсър: 429 Client Error: Too Many Requests for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:14:38,110  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ┬ырфшьшЁёър  юсырёЄ№
+2026-02-23 22:14:43,111  INFO  [79/85] ┬юыуюуЁрфёър  юсырёЄ№
+2026-02-23 22:14:43,111  INFO    Overpass \u2192 ┬юыуюуЁрфёър  юсырёЄ№  (relation/77665) Е
+2026-02-23 22:14:44,098  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\volgograd_oblast.geojson  (204 ╩┴)
+2026-02-23 22:14:49,098  INFO  [80/85] ┬юыюуюфёър  юсырёЄ№
+2026-02-23 22:14:49,099  INFO    Overpass \u2192 ┬юыюуюфёър  юсырёЄ№  (relation/115106) Е
+2026-02-23 22:14:50,453  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\vologda_oblast.geojson  (117 ╩┴)
+2026-02-23 22:14:55,453  INFO  [81/85] ┬юЁюэхцёър  юсырёЄ№
+2026-02-23 22:14:55,454  INFO    Overpass \u2192 ┬юЁюэхцёър  юсырёЄ№  (relation/72181) Е
+2026-02-23 22:15:00,749  ERROR    \u274c  Overpass ю°шсър: 504 Server Error: Gateway Timeout for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:15:00,750  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ┬юЁюэхцёър  юсырёЄ№
+2026-02-23 22:15:05,750  INFO  [82/85] ╨хёяєсышър ╤рїр (▀ъєЄш )
+2026-02-23 22:15:05,751  INFO    Overpass \u2192 ╨хёяєсышър ╤рїр (▀ъєЄш )  (relation/151231) Е
+2026-02-23 22:15:15,782  ERROR    \u274c  Overpass ю°шсър: 504 Server Error: Gateway Timeout for url: https://overpass-api.de/api/interpreter
+2026-02-23 22:15:15,784  ERROR    \u274c  ═х єфрыюё№ ёърўрЄ№ ╨хёяєсышър ╤рїр (▀ъєЄш )
+2026-02-23 22:15:20,785  INFO  [83/85] ▀ьрыю-═хэхЎъшщ └╬
+2026-02-23 22:15:20,785  INFO    Overpass \u2192 ▀ьрыю-═хэхЎъшщ └╬  (relation/191706) Е
+2026-02-23 22:15:22,634  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\yamal_ao.geojson  (628 ╩┴)
+2026-02-23 22:15:27,635  INFO  [84/85] ▀Ёюёыртёър  юсырёЄ№
+2026-02-23 22:15:27,635  INFO    Overpass \u2192 ▀Ёюёыртёър  юсырёЄ№  (relation/81994) Е
+2026-02-23 22:15:32,562  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\yaroslavl_oblast.geojson  (134 ╩┴)
+2026-02-23 22:15:37,564  INFO  [85/85] ╟рсрщъры№ёъшщ ъЁрщ
+2026-02-23 22:15:37,564  INFO    Overpass \u2192 ╟рсрщъры№ёъшщ ъЁрщ  (relation/145730) Е
+2026-02-23 22:15:39,741  INFO    \u2705  D:\newgeoblogrf\offline-tiles\boundaries\zabaykalsky_krai.geojson  (556 ╩┴)
+2026-02-23 22:15:44,747  INFO  
+\u2550\u2550\u2550 ╪ру 2: ╩юэтхЁЄрЎш  GeoJSON \u2192 SVG paths \u2550\u2550\u2550
+2026-02-23 22:15:44,781  INFO    \u2705  adygea                          path=  1299 chars   center=(135.8, 440.0)
+2026-02-23 22:15:44,887  INFO    \u2705  altai_krai                      path=  3039 chars   center=(398.8, 306.5)
+2026-02-23 22:15:44,969  INFO    \u2705  altai_republic                  path=  2751 chars   center=(426.0, 337.7)
+2026-02-23 22:15:45,107  INFO    \u2705  amur_oblast                     path=  6639 chars   center=(677.3, 293.1)
+2026-02-23 22:15:45,148  INFO    \u2705  arkhangelsk_oblast              path=  5559 chars   center=(200.9, -0.1)
+2026-02-23 22:15:45,170  INFO    \u2705  astrakhan_oblast                path=  1687 chars   center=(181.7, 401.7)
+2026-02-23 22:15:45,227  INFO    \u2705  bashkortostan                   path=  2391 chars   center=(161.4, 356.4)
+2026-02-23 22:15:45,305  INFO    \u2705  belgorod_oblast                 path=  1791 chars   center=(120.3, 338.8)
+2026-02-23 22:15:45,411  INFO    \u2705  bryansk_oblast                  path=  1914 chars   center=(95.2, 301.5)
+2026-02-23 22:15:45,534  INFO    \u2705  buryatia                        path=  6075 chars   center=(564.9, 290.7)
+2026-02-23 22:15:45,600  INFO    \u2705  chechnya                        path=   999 chars   center=(171.2, 461.6)
+2026-02-23 22:15:45,765  INFO    \u2705  chelyabinsk_oblast              path=  4455 chars   center=(261.7, 275.9)
+2026-02-23 22:15:45,875  INFO    \u2705  chukotka_ao                     path=  5400 chars   center=(839.9, 142.3)
+2026-02-23 22:15:45,936  INFO    \u2705  chuvashia                       path=  1927 chars   center=(179.5, 258.5)
+2026-02-23 22:15:45,950  INFO    \u2705  crimea                          path=   681 chars   center=(101.4, 428.9)
+2026-02-23 22:15:46,013  INFO    \u2705  dagestan                        path=  1839 chars   center=(179.2, 464.2)
+2026-02-23 22:15:46,034  INFO    \u2705  ingushetia                      path=   543 chars   center=(165.9, 463.6)
+2026-02-23 22:15:46,406  INFO    \u2705  irkutsk_oblast                  path= 10947 chars   center=(545.5, 231.7)
+2026-02-23 22:15:46,458  INFO    \u2705  ivanovo_oblast                  path=  1587 chars   center=(145.4, 233.5)
+2026-02-23 22:15:46,505  INFO    \u2705  jewish_ao                       path=  1395 chars   center=(705.3, 374.6)
+2026-02-23 22:15:46,523  INFO    \u2705  kabardino_balkaria              path=   807 chars   center=(156.8, 458.4)
+2026-02-23 22:15:46,572  INFO    \u2705  kaliningrad_oblast              path=   428 chars   center=(19.4, 270.5)
+2026-02-23 22:15:46,593  INFO    \u2705  kalmykia                        path=  2075 chars   center=(168.6, 409.5)
+2026-02-23 22:15:46,694  INFO    \u2705  kaluga_oblast                   path=  2082 chars   center=(107.7, 277.1)
+2026-02-23 22:15:46,756  INFO    \u2705  kamchatka_krai                  path=  4259 chars   center=(894.9, 207.1)
+2026-02-23 22:15:46,778  INFO    \u2705  karachay_cherkessia             path=  1011 chars   center=(146.6, 453.8)
+2026-02-23 22:15:46,812  INFO    \u2705  karelia                         path=  1864 chars   center=(94.1, 122.7)
+2026-02-23 22:15:46,950  INFO    \u2705  kemerovo_oblast                 path=  3151 chars   center=(427.2, 270.3)
+2026-02-23 22:15:47,241  INFO    \u2705  khabarovsk_krai                 path= 10567 chars   center=(737.8, 269.6)
+2026-02-23 22:15:47,690  INFO    \u2705  khakassia                       path= 16146 chars   center=(480.2, 38.9)
+2026-02-23 22:15:47,829  INFO    \u2705  khanty_mansi_ao                 path=  4387 chars   center=(322.8, 152.3)
+2026-02-23 22:15:47,939  INFO    \u2705  kirov_oblast                    path=  4555 chars   center=(196.5, 205.3)
+2026-02-23 22:15:48,059  INFO    \u2705  komi                            path=  3982 chars   center=(227.1, 114.6)
+2026-02-23 22:15:48,148  INFO    \u2705  kostroma_oblast                 path=  2799 chars   center=(159.2, 209.1)
+2026-02-23 22:15:48,187  INFO    \u2705  krasnodar_krai                  path=  1707 chars   center=(131.3, 429.9)
+2026-02-23 22:15:48,661  INFO    \u2705  krasnoyarsk_krai                path= 16146 chars   center=(480.2, 38.9)
+2026-02-23 22:15:48,798  INFO    \u2705  kurgan_oblast                   path=  2751 chars   center=(395.9, 208.5)
+2026-02-23 22:15:48,929  INFO    \u2705  kursk_oblast                    path=  1728 chars   center=(111.8, 322.0)
+2026-02-23 22:15:48,976  INFO    \u2705  leningrad_oblast                path=  2658 chars   center=(81.9, 183.0)
+2026-02-23 22:15:49,015  INFO    \u2705  lipetsk_oblast                  path=  1839 chars   center=(130.6, 305.9)
+2026-02-23 22:15:49,296  INFO    \u2705  magadan_oblast                  path=  2895 chars   center=(720.3, 433.8)
+2026-02-23 22:15:49,365  INFO    \u2705  mari_el                         path=  2115 chars   center=(184.8, 240.4)
+2026-02-23 22:15:49,685  INFO    \u2705  mordovia                        path=  2815 chars   center=(163.3, 277.3)
+2026-02-23 22:15:49,787  INFO    \u2705  moscow_city                     path=  1527 chars   center=(119.5, 257.3)
+2026-02-23 22:15:49,938  INFO    \u2705  moscow_oblast                   path=  3195 chars   center=(121.3, 255.5)
+2026-02-23 22:15:50,003  INFO    \u2705  murmansk_oblast                 path=   748 chars   center=(106.3, 53.7)
+2026-02-23 22:15:50,087  INFO    \u2705  nenets_ao                       path=  2119 chars   center=(220.5, 48.2)
+2026-02-23 22:15:50,208  INFO    \u2705  nizhny_novgorod_oblast          path=  3159 chars   center=(164.3, 244.8)
+2026-02-23 22:15:50,230  INFO    \u2705  north_ossetia                   path=   831 chars   center=(162.1, 465.1)
+2026-02-23 22:15:50,267  INFO    \u2705  novgorod_oblast                 path=  2975 chars   center=(89.4, 211.5)
+2026-02-23 22:15:50,331  INFO    \u2705  novosibirsk_oblast              path=  3327 chars   center=(381.3, 262.1)
+2026-02-23 22:15:50,381  INFO    \u2705  omsk_oblast                     path=  3591 chars   center=(341.6, 248.3)
+2026-02-23 22:15:50,464  INFO    \u2705  orenburg_oblast                 path=  5127 chars   center=(232.3, 316.8)
+2026-02-23 22:15:50,499  INFO    \u2705  oryol_oblast                    path=  1467 chars   center=(114.1, 303.6)
+2026-02-23 22:15:50,565  INFO    \u2705  penza_oblast                    path=  2515 chars   center=(164.4, 297.0)
+2026-02-23 22:15:50,681  INFO    \u2705  perm_krai                       path=  3255 chars   center=(236.0, 198.1)
+2026-02-23 22:15:50,681  WARNING    \u26a0\ufe0f  ═хЄ Їрщыр D:\newgeoblogrf\offline-tiles\boundaries\primorsky_krai.geojson, яЁюяєёърхь primorsky_krai
+2026-02-23 22:15:50,818  INFO    \u2705  pskov_oblast                    path=  2236 chars   center=(69.3, 229.4)
+2026-02-23 22:15:51,003  INFO    \u2705  rostov_oblast                   path=  2727 chars   center=(143.6, 387.9)
+2026-02-23 22:15:51,113  INFO    \u2705  ryazan_oblast                   path=  2423 chars   center=(139.7, 277.8)
+2026-02-23 22:15:51,141  INFO    \u2705  sakhalin_oblast                 path=  3827 chars   center=(788.5, 367.1)
+2026-02-23 22:15:51,202  INFO    \u2705  samara_oblast                   path=  2623 chars   center=(200.4, 295.4)
+2026-02-23 22:15:51,256  INFO    \u2705  saratov_oblast                  path=  3339 chars   center=(177.8, 323.7)
+2026-02-23 22:15:51,264  INFO    \u2705  sevastopol                      path=   190 chars   center=(95.5, 440.8)
+2026-02-23 22:15:51,364  INFO    \u2705  smolensk_oblast                 path=  2373 chars   center=(92.6, 267.4)
+2026-02-23 22:15:51,387  INFO    \u2705  spb                             path=   458 chars   center=(74.5, 184.0)
+2026-02-23 22:15:51,414  INFO    \u2705  stavropol_krai                  path=  1659 chars   center=(156.4, 434.1)
+2026-02-23 22:15:51,421  INFO    \u2705  sverdlovsk_oblast               path=    68 chars   center=(-106.8, 413.4)
+2026-02-23 22:15:51,455  INFO    \u2705  tambov_oblast                   path=  1767 chars   center=(145.6, 305.3)
+2026-02-23 22:15:51,623  INFO    \u2705  tatarstan                       path=  5555 chars   center=(203.2, 260.8)
+2026-02-23 22:15:51,743  INFO    \u2705  tomsk_oblast                    path=  2751 chars   center=(395.9, 208.5)
+2026-02-23 22:15:51,791  INFO    \u2705  tula_oblast                     path=  1779 chars   center=(120.8, 285.2)
+2026-02-23 22:15:51,907  INFO    \u2705  tuva                            path=  3291 chars   center=(474.0, 323.6)
+2026-02-23 22:15:51,972  INFO    \u2705  tver_oblast                     path=  3201 chars   center=(103.1, 231.8)
+2026-02-23 22:15:52,035  INFO    \u2705  tyumen_oblast                   path=  2987 chars   center=(315.7, 221.9)
+2026-02-23 22:15:52,097  INFO    \u2705  udmurtia                        path=  3235 chars   center=(214.8, 230.5)
+2026-02-23 22:15:52,190  INFO    \u2705  ulyanovsk_oblast                path=  2647 chars   center=(184.9, 285.2)
+2026-02-23 22:15:52,190  WARNING    \u26a0\ufe0f  ═хЄ Їрщыр D:\newgeoblogrf\offline-tiles\boundaries\vladimir_oblast.geojson, яЁюяєёърхь vladimir_oblast
+2026-02-23 22:15:52,248  INFO    \u2705  volgograd_oblast                path=  2391 chars   center=(161.4, 356.4)
+2026-02-23 22:15:52,284  INFO    \u2705  vologda_oblast                  path=  4419 chars   center=(138.9, 183.9)
+2026-02-23 22:15:52,284  WARNING    \u26a0\ufe0f  ═хЄ Їрщыр D:\newgeoblogrf\offline-tiles\boundaries\voronezh_oblast.geojson, яЁюяєёърхь voronezh_oblast
+2026-02-23 22:15:52,284  WARNING    \u26a0\ufe0f  ═хЄ Їрщыр D:\newgeoblogrf\offline-tiles\boundaries\yakutia.geojson, яЁюяєёърхь yakutia
+2026-02-23 22:15:52,459  INFO    \u2705  yamal_ao                        path=  6676 chars   center=(347.1, 55.3)
+2026-02-23 22:15:52,503  INFO    \u2705  yaroslavl_oblast                path=  1995 chars   center=(130.5, 218.9)
+2026-02-23 22:15:52,754  INFO    \u2705  zabaykalsky_krai                path=  6627 chars   center=(606.2, 302.5)
+2026-02-23 22:15:52,755  INFO  
+\u2550\u2550\u2550 ╪ру 3: ├хэхЁрЎш  TypeScript \u2550\u2550\u2550
+2026-02-23 22:15:52,774  INFO  
+\u2705  ╤ухэхЁшЁютрэ D:\newgeoblogrf\frontend\src\data\russiaRegionsPaths.ts
+2026-02-23 22:15:52,774  INFO     ╨рчьхЁ: 260 ╩┴,  Ёхушюэют: 81
+2026-02-23 22:15:52,775  INFO  
+\U0001f389  ├юЄютю!
