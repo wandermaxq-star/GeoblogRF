@@ -47,7 +47,7 @@ const ExecutiveOverview: React.FC = () => {
     );
   }
 
-  const { product, behavioral, technical, gamification, content } = metrics;
+  const { users, contentStats, moderation, geography, notifications, gamificationExtended } = metrics;
 
   return (
     <div className="space-y-6">
@@ -66,102 +66,145 @@ const ExecutiveOverview: React.FC = () => {
         </select>
       </div>
 
-      {/* Общие метрики */}
+      {/* Пользователи */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">🎯 Общие метрики</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">👥 Пользователи</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard
-            title="Рост пользователей"
-            value={`+${product.business.user_growth.growth_rate}%`}
-            subtitle="за месяц"
-            trend={{ value: product.business.user_growth.growth_rate, direction: 'up' }}
-            color="green"
-            icon="📈"
+            title="Всего пользователей"
+            value={users?.total ?? 0}
+            icon="👥"
+            color="blue"
           />
           <MetricCard
-            title="Retention (Day 30)"
-            value={`${product.business.retention.day_30 || 0}%`}
-            subtitle="пользователей возвращаются"
-            color="blue"
-            icon="💰"
+            title="Новых за период"
+            value={`+${users?.new_users ?? 0}`}
+            subtitle={`рост ${users?.growth_rate ?? 0}%`}
+            trend={users?.growth_rate ? { value: users.growth_rate, direction: users.growth_rate >= 0 ? 'up' : 'down' } : undefined}
+            icon="📈"
+            color="green"
+          />
+          <MetricCard
+            title="Активных авторов"
+            value={users?.active_authors ?? 0}
+            subtitle="создавали контент"
+            icon="✍️"
+            color="purple"
           />
           <MetricCard
             title="Средний уровень"
-            value={gamification.level_distribution.length > 0 
-              ? (gamification.level_distribution.reduce((sum, l) => sum + l.level * l.user_count, 0) / 
-                 gamification.level_distribution.reduce((sum, l) => sum + l.user_count, 0)).toFixed(1)
-              : '4.2'}
-            subtitle="средний уровень пользователей"
-            color="purple"
+            value={gamificationExtended?.avg_level ?? 0}
+            subtitle={`макс: ${gamificationExtended?.max_level ?? 0}`}
             icon="🎮"
-          />
-          <MetricCard
-            title="Время в приложении"
-            value={`${(content.engagement.avg_engagement_time / 60).toFixed(1)} мин`}
-            subtitle="среднее время сессии"
             color="orange"
-            icon="⏱️"
           />
         </div>
       </div>
 
-      {/* Географические инсайты */}
+      {/* Контент */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">🗺️ Географические инсайты</h3>
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="space-y-3">
-            <div>
-              <div className="text-sm text-gray-600 mb-1">Популярные направления:</div>
-              {/* ВАЖНО: Отображаем только регионы, не точные координаты (соответствие 152-ФЗ) */}
-              <div className="flex flex-wrap gap-2">
-                {behavioral?.travel_patterns?.popular_routes?.slice(0, 5).map((route, idx) => (
-                  <span key={idx} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
-                    {route.region}
-                  </span>
-                )) || <span className="text-gray-500 text-sm">Нет данных</span>}
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">📝 Контент за период</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <MetricCard title="Посты" value={contentStats?.period.posts ?? 0} subtitle={`всего: ${contentStats?.totals.posts ?? 0}`} icon="📄" color="blue" />
+          <MetricCard title="Метки" value={contentStats?.period.markers ?? 0} subtitle={`всего: ${contentStats?.totals.markers ?? 0}`} icon="📍" color="red" />
+          <MetricCard title="События" value={contentStats?.period.events ?? 0} subtitle={`всего: ${contentStats?.totals.events ?? 0}`} icon="📅" color="green" />
+          <MetricCard title="Маршруты" value={contentStats?.period.routes ?? 0} subtitle={`всего: ${contentStats?.totals.routes ?? 0}`} icon="🗺️" color="purple" />
+          <MetricCard title="Комментарии" value={contentStats?.period.comments ?? 0} subtitle={`всего: ${contentStats?.totals.comments ?? 0}`} icon="💬" color="orange" />
+        </div>
+      </div>
+
+      {/* География */}
+      {geography && geography.top_regions.length > 0 && (
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">🗺️ География меток</h3>
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <div className="text-sm font-medium text-gray-700 mb-3">Топ регионов:</div>
+                <div className="space-y-2">
+                  {geography.top_regions.slice(0, 8).map((r, idx) => (
+                    <div key={idx} className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">{r.region}</span>
+                      <span className="text-sm font-medium text-gray-800">{r.count}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-600 mb-1">Сезонные тренды:</div>
-              <div className="text-sm text-gray-800">
-                {behavioral?.travel_patterns?.seasonal_destinations?.length > 0 && (
-                  <span>
-                    +{Math.floor(Math.random() * 50)}% запросов "{behavioral.travel_patterns.seasonal_destinations[0].destination}"
-                  </span>
-                ) || <span className="text-gray-500">Нет данных</span>}
+              <div>
+                <div className="text-sm font-medium text-gray-700 mb-3">По категориям:</div>
+                <div className="space-y-2">
+                  {geography.by_category.slice(0, 8).map((c, idx) => (
+                    <div key={idx} className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">{c.category}</span>
+                      <span className="text-sm font-medium text-gray-800">{c.count}</span>
+                    </div>
+                  ))}
+                </div>
+                {geography.markers_without_coords > 0 && (
+                  <div className="mt-3 text-xs text-amber-600">
+                    ⚠️ {geography.markers_without_coords} меток без координат
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Техническое здоровье */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">🔧 Техническое здоровье</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <MetricCard
-            title="Ошибок"
-            value={`${technical.error_rate.toFixed(1)}%`}
-            color={technical.error_rate < 1 ? 'green' : technical.error_rate < 5 ? 'orange' : 'red'}
-            icon="🐛"
-          />
-          <MetricCard
-            title="Производительность"
-            value={product.performance.core_web_vitals 
-              ? `${Math.round((1 - (product.performance.core_web_vitals.lcp / 3000)) * 100)}/100`
-              : '92/100'}
-            subtitle="Core Web Vitals"
-            color="green"
-            icon="⚡"
-          />
-          <MetricCard
-            title="PWA установок"
-            value={technical.pwa_installs || 1234}
-            subtitle="установок приложения"
-            color="purple"
-            icon="📱"
-          />
-        </div>
+      {/* Модерация и уведомления */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {moderation && (
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">🛡️ Модерация</h3>
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="space-y-3">
+                {[
+                  { label: 'Посты', data: moderation.posts },
+                  { label: 'Метки', data: moderation.markers },
+                  { label: 'События', data: moderation.events },
+                ].map(({ label, data }) => (
+                  <div key={label} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">{label}</span>
+                    <div className="flex gap-2">
+                      {data.approved != null && <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">✅ {data.approved ?? 0}</span>}
+                      {data.pending != null && <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs">⏳ {data.pending ?? 0}</span>}
+                      {data.rejected != null && <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs">❌ {data.rejected ?? 0}</span>}
+                    </div>
+                  </div>
+                ))}
+                <div className="pt-2 border-t border-gray-100">
+                  <div className="text-sm text-gray-600">ИИ-модерация: точность <span className="font-semibold text-gray-900">{moderation.ai.accuracy_pct}%</span> ({moderation.ai.reviewed} проверено)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {notifications && (
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">🔔 Уведомления за период</h3>
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs text-gray-600">Отправлено</div>
+                  <div className="text-2xl font-semibold text-gray-900">{notifications.total}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-600">Прочитано</div>
+                  <div className="text-2xl font-semibold text-green-600">{notifications.read_rate_pct}%</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-600">Прочитано</div>
+                  <div className="text-lg font-semibold text-gray-900">{notifications.read}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-600">Непрочитано</div>
+                  <div className="text-lg font-semibold text-orange-600">{notifications.unread}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -41,7 +41,7 @@ const ProductTeamDashboard: React.FC = () => {
     );
   }
 
-  const { gamification, content } = metrics;
+  const { gamification, contentStats, gamificationExtended } = metrics;
 
   return (
     <div className="space-y-6">
@@ -65,38 +65,82 @@ const ProductTeamDashboard: React.FC = () => {
         <h3 className="text-lg font-semibold text-gray-800 mb-4">🎮 Геймификация</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <MetricCard
-            title="Daily Goals completion"
+            title="Активность сегодня"
             value={`${gamification.daily_goals_completion}%`}
+            subtitle="получали XP сегодня"
             color="green"
           />
           <MetricCard
-            title="Achievement unlock rate"
+            title="Вовлечение за период"
             value={`${gamification.achievement_unlock_rate}%`}
+            subtitle="получали XP за период"
             color="purple"
+          />
+          <MetricCard
+            title="Средний уровень"
+            value={gamificationExtended?.avg_level ?? 0}
+            subtitle={`макс: ${gamificationExtended?.max_level ?? 0}`}
+            color="blue"
           />
         </div>
         
-        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-4">
-          <div className="text-sm font-medium text-gray-700 mb-3">XP sources:</div>
-          <div className="space-y-2">
-            {gamification.xp_sources.map((source, idx) => (
-              <div key={idx} className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">{source.source}</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-32 bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-blue-600 h-2 rounded-full"
-                      style={{ width: `${source.percentage}%` }}
-                    ></div>
+        {/* XP по источникам */}
+        {gamification.xp_sources.length > 0 && (
+          <div className="bg-white rounded-lg border border-gray-200 p-6 mb-4">
+            <div className="text-sm font-medium text-gray-700 mb-3">Источники XP за период:</div>
+            <div className="space-y-2">
+              {gamification.xp_sources.map((source, idx) => (
+                <div key={idx} className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">{source.source}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-32 bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full"
+                        style={{ width: `${source.percentage}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-medium text-gray-700 w-20 text-right">
+                      {source.total_xp} XP ({source.percentage}%)
+                    </span>
                   </div>
-                  <span className="text-sm font-medium text-gray-700 w-12 text-right">
-                    {source.percentage}%
-                  </span>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Распределение по уровням */}
+        {gamification.level_distribution.length > 0 && (
+          <div className="bg-white rounded-lg border border-gray-200 p-6 mb-4">
+            <div className="text-sm font-medium text-gray-700 mb-3">Распределение по уровням:</div>
+            <div className="flex flex-wrap gap-2">
+              {gamification.level_distribution.map((l, idx) => (
+                <div key={idx} className="px-3 py-2 bg-gray-50 rounded-lg text-center min-w-[60px]">
+                  <div className="text-xs text-gray-500">Ур. {l.level}</div>
+                  <div className="text-sm font-semibold text-gray-800">{l.user_count}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Топ пользователей */}
+        {gamificationExtended && gamificationExtended.top_users.length > 0 && (
+          <div className="bg-white rounded-lg border border-gray-200 p-6 mb-4">
+            <div className="text-sm font-medium text-gray-700 mb-3">🏆 Топ-10 по XP:</div>
+            <div className="space-y-2">
+              {gamificationExtended.top_users.map((u, idx) => (
+                <div key={idx} className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">
+                    <span className="font-medium text-gray-400 mr-2">#{idx + 1}</span>
+                    {u.username}
+                  </span>
+                  <span className="text-gray-700">{u.total_xp} XP · Ур. {u.level}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {gamification.problem_areas.length > 0 && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
@@ -119,50 +163,37 @@ const ProductTeamDashboard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <MetricCard
             title="Постов с фото"
-            value={`${content.quality.posts_with_photos}%`}
-            trend={content.quality.trends.find(t => t.metric === 'Посты с фото') ? {
-              value: content.quality.trends.find(t => t.metric === 'Посты с фото')!.change,
-              direction: content.quality.trends.find(t => t.metric === 'Посты с фото')!.direction
-            } : undefined}
+            value={`${contentStats?.posts_with_photos_pct ?? 0}%`}
+            subtitle="от всех постов"
             color="green"
           />
           <MetricCard
-            title="Детальных описаний"
-            value={`${content.quality.detailed_descriptions}%`}
-            trend={content.quality.trends.find(t => t.metric === 'Детальные описания') ? {
-              value: content.quality.trends.find(t => t.metric === 'Детальные описания')!.change,
-              direction: content.quality.trends.find(t => t.metric === 'Детальные описания')!.direction
-            } : undefined}
+            title="Комментариев/пост"
+            value={contentStats?.avg_comments_per_post ?? 0}
+            subtitle="в среднем"
             color="orange"
           />
           <MetricCard
-            title="Повторного использования"
-            value={`${content.quality.reuse_rate}%`}
-            color="blue"
+            title="Лайков за период"
+            value={contentStats?.total_likes_period ?? 0}
+            color="red"
           />
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="text-sm font-medium text-gray-700 mb-3">Вовлеченность:</div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <div className="text-xs text-gray-600">Лайки/просмотры</div>
-              <div className="text-lg font-semibold text-gray-900">{content.engagement.likes_per_view}%</div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-600">Шеринг</div>
-              <div className="text-lg font-semibold text-gray-900">{content.engagement.sharing_rate}%</div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-600">Сохранение</div>
-              <div className="text-lg font-semibold text-gray-900">{content.engagement.save_rate}%</div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-600">Комментарии/пост</div>
-              <div className="text-lg font-semibold text-gray-900">{content.engagement.comments_per_post}</div>
+        {/* Топ авторов */}
+        {contentStats && contentStats.top_authors.length > 0 && (
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="text-sm font-medium text-gray-700 mb-3">✍️ Топ авторов за период:</div>
+            <div className="space-y-2">
+              {contentStats.top_authors.map((a, idx) => (
+                <div key={idx} className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">{a.username}</span>
+                  <span className="text-gray-700 font-medium">{a.post_count} постов</span>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

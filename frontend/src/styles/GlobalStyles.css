@@ -1241,3 +1241,27 @@ html, body, #root {
   pointer-events: none !important;
   opacity: 0 !important;
 }
+
+/* ===== РЕЖИМ АДМИН-ПАНЕЛИ — полная прокрутка ===== */
+.page-layout-container.admin-mode {
+  height: auto !important;
+  min-height: 100vh !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+.page-container.admin-mode .page-main-area {
+  overflow: visible !important;
+  height: auto !important;
+  min-height: auto !important;
+}
+.page-container.admin-mode .page-content-wrapper {
+  overflow: visible !important;
+  height: auto !important;
+  min-height: auto !important;
+}
+.page-container.admin-mode .page-main-panel {
+  overflow: auto !important;
+  height: auto !important;
+  min-height: auto !important;
+  max-height: calc(100vh - 100px) !important;
+}

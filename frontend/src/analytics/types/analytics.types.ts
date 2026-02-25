@@ -272,6 +272,63 @@ export interface ComprehensiveMetrics {
   gamification: GamificationMetrics;
   content: ContentAnalytics;
   timestamp: number;
+
+  // === Расширенные реальные данные из БД ===
+  users?: UsersRealData;
+  contentStats?: ContentRealData;
+  moderation?: ModerationRealData;
+  geography?: GeographyRealData;
+  notifications?: NotificationRealData;
+  gamificationExtended?: GamificationExtendedData;
+}
+
+// ========== Реальные данные из БД ==========
+
+export interface UsersRealData {
+  total: number;
+  new_users: number;
+  active_authors: number;
+  silent_users: number;
+  growth_rate: number;
+  registrations_by_day: { day: string; count: number }[];
+}
+
+export interface ContentRealData {
+  period: { posts: number; markers: number; events: number; routes: number; comments: number };
+  totals: { posts: number; markers: number; events: number; routes: number; comments: number };
+  posts_with_photos_pct: number;
+  avg_comments_per_post: number;
+  posts_by_day: { day: string; count: number }[];
+  top_authors: { username: string; post_count: number }[];
+  total_likes_period: number;
+}
+
+export interface ModerationRealData {
+  posts: Record<string, number>;
+  markers: Record<string, number>;
+  events: Record<string, number>;
+  routes: Record<string, number>;
+  ai: { total_decisions: number; reviewed: number; accuracy_pct: number };
+}
+
+export interface GeographyRealData {
+  by_category: { category: string; count: number }[];
+  top_regions: { region: string; count: number }[];
+  markers_without_coords: number;
+}
+
+export interface NotificationRealData {
+  total: number;
+  read: number;
+  unread: number;
+  read_rate_pct: number;
+}
+
+export interface GamificationExtendedData {
+  avg_level: number;
+  max_level: number;
+  top_users: { username: string; total_xp: number; level: number }[];
+  xp_by_day: { day: string; total_xp: number }[];
 }
 
 // ========== Time Range ==========

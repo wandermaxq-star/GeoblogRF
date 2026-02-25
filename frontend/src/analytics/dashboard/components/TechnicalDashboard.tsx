@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { analyticsOrchestrator } from '../../services/analyticsOrchestrator';
 import { ComprehensiveMetrics, TimeRange } from '../../types/analytics.types';
-import { errorTrackingService } from '../../services/errorTrackingService';
 import MetricCard from './MetricCard';
 
 const TechnicalDashboard: React.FC = () => {
@@ -42,18 +41,11 @@ const TechnicalDashboard: React.FC = () => {
     );
   }
 
-  const { product, technical } = metrics;
-  const coreWebVitals = product.performance.core_web_vitals;
+  const { moderation, contentStats, users } = metrics;
 
-  const getVitalStatus = (value: number, thresholds: { good: number; poor: number }): 'good' | 'needs_improvement' | 'poor' => {
-    if (value <= thresholds.good) return 'good';
-    if (value <= thresholds.poor) return 'needs_improvement';
-    return 'poor';
-  };
-
-  const lcpStatus = coreWebVitals ? getVitalStatus(coreWebVitals.lcp, { good: 2500, poor: 4000 }) : 'good';
-  const fidStatus = coreWebVitals ? getVitalStatus(coreWebVitals.fid, { good: 100, poor: 300 }) : 'good';
-  const clsStatus = coreWebVitals ? getVitalStatus(coreWebVitals.cls, { good: 0.1, poor: 0.25 }) : 'good';
+  // Подсчёт контента по статусам модерации
+  const totalPending = (moderation?.posts?.pending ?? 0) + (moderation?.markers?.pending ?? 0) + (moderation?.events?.pending ?? 0) + (moderation?.routes?.pending ?? 0);
+  const totalRejected = (moderation?.posts?.rejected ?? 0) + (moderation?.markers?.rejected ?? 0) + (moderation?.events?.rejected ?? 0) + (moderation?.routes?.rejected ?? 0);
 
   return (
     <div className="space-y-6">
@@ -72,137 +64,155 @@ const TechnicalDashboard: React.FC = () => {
         </select>
       </div>
 
-      {/* Производительность */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">⚡ Производительность</h3>
-        
-        {coreWebVitals && (
-          <div className="bg-white rounded-lg border border-gray-200 p-6 mb-4">
-            <div className="text-sm font-medium text-gray-700 mb-4">Core Web Vitals:</div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className={`p-4 rounded-lg border-2 ${
-                lcpStatus === 'good' ? 'border-green-200 bg-green-50' :
-                lcpStatus === 'needs_improvement' ? 'border-yellow-200 bg-yellow-50' :
-                'border-red-200 bg-red-50'
-              }`}>
-                <div className="text-xs text-gray-600 mb-1">LCP</div>
-                <div className="text-lg font-semibold">{coreWebVitals.lcp.toFixed(1)}s</div>
-                <div className="text-xs mt-1">
-                  {lcpStatus === 'good' ? '✅ Хорошо' :
-                   lcpStatus === 'needs_improvement' ? '⚠️ Требует улучшения' :
-                   '❌ Плохо'}
-                </div>
-              </div>
-              <div className={`p-4 rounded-lg border-2 ${
-                fidStatus === 'good' ? 'border-green-200 bg-green-50' :
-                fidStatus === 'needs_improvement' ? 'border-yellow-200 bg-yellow-50' :
-                'border-red-200 bg-red-50'
-              }`}>
-                <div className="text-xs text-gray-600 mb-1">FID</div>
-                <div className="text-lg font-semibold">{coreWebVitals.fid.toFixed(0)}ms</div>
-                <div className="text-xs mt-1">
-                  {fidStatus === 'good' ? '✅ Отлично' :
-                   fidStatus === 'needs_improvement' ? '⚠️ Требует улучшения' :
-                   '❌ Плохо'}
-                </div>
-              </div>
-              <div className={`p-4 rounded-lg border-2 ${
-                clsStatus === 'good' ? 'border-green-200 bg-green-50' :
-                clsStatus === 'needs_improvement' ? 'border-yellow-200 bg-yellow-50' :
-                'border-red-200 bg-red-50'
-              }`}>
-                <div className="text-xs text-gray-600 mb-1">CLS</div>
-                <div className="text-lg font-semibold">{coreWebVitals.cls.toFixed(2)}</div>
-                <div className="text-xs mt-1">
-                  {clsStatus === 'good' ? '✅ Хорошо' :
-                   clsStatus === 'needs_improvement' ? '⚠️ Требует улучшения' :
-                   '❌ Плохо'}
-                </div>
-              </div>
+      {/* ИИ-модерация */}
+      {moderation && (
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">🤖 ИИ-модерация</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <MetricCard
+              title="Точность ИИ"
+              value={`${moderation.ai.accuracy_pct}%`}
+              subtitle={`${moderation.ai.reviewed} проверено`}
+              color={moderation.ai.accuracy_pct >= 80 ? 'green' : moderation.ai.accuracy_pct >= 50 ? 'orange' : 'red'}
+              icon="🎯"
+            />
+            <MetricCard
+              title="Ожидают модерации"
+              value={totalPending}
+              color={totalPending > 10 ? 'red' : totalPending > 0 ? 'orange' : 'green'}
+              icon="⏳"
+            />
+            <MetricCard
+              title="Отклонено"
+              value={totalRejected}
+              subtitle="всего"
+              color="red"
+              icon="❌"
+            />
+          </div>
+
+          {/* Детальная разбивка по типам */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="text-sm font-medium text-gray-700 mb-3">Статусы контента по типам:</div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-2 pr-4 text-gray-600 font-medium">Тип</th>
+                    <th className="text-right py-2 px-2 text-green-600 font-medium">Одобрено</th>
+                    <th className="text-right py-2 px-2 text-yellow-600 font-medium">На модерации</th>
+                    <th className="text-right py-2 px-2 text-red-600 font-medium">Отклонено</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { name: 'Посты', data: moderation.posts },
+                    { name: 'Метки', data: moderation.markers },
+                    { name: 'События', data: moderation.events },
+                    { name: 'Маршруты', data: moderation.routes },
+                  ].map(({ name, data }) => (
+                    <tr key={name} className="border-b border-gray-100">
+                      <td className="py-2 pr-4 text-gray-700">{name}</td>
+                      <td className="text-right py-2 px-2 text-green-700">{data.approved ?? 0}</td>
+                      <td className="text-right py-2 px-2 text-yellow-700">{data.pending ?? 0}</td>
+                      <td className="text-right py-2 px-2 text-red-700">{data.rejected ?? 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <MetricCard
-            title="Загрузка Яндекс.Карт"
-            value={`${product.performance.map_load_time.toFixed(1)}s`}
-            color="blue"
-          />
-          <MetricCard
-            title="Загрузка Leaflet"
-            value="0.8s"
-            color="green"
-          />
-          <MetricCard
-            title="API errors"
-            value={`${technical.api_errors.length > 0 
-              ? technical.api_errors.reduce((sum, e) => sum + e.error_rate, 0).toFixed(1)
-              : '0.4'}%`}
-            color={technical.api_errors.length > 0 && technical.api_errors.reduce((sum, e) => sum + e.error_rate, 0) > 1 ? 'red' : 'green'}
-          />
         </div>
-      </div>
+      )}
 
-      {/* Ошибки */}
+      {/* Статистика контента */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">🐛 Ошибки</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">📊 Общая статистика</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="text-sm font-medium text-gray-700 mb-3">По компонентам:</div>
-            <div className="space-y-2">
-              {Object.entries(technical.errors_by_component)
-                .sort(([, a], [, b]) => b - a)
-                .slice(0, 5)
-                .map(([component, count]) => (
-                  <div key={component} className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">{component}</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-red-600 h-2 rounded-full"
-                          style={{ 
-                            width: `${(count / Object.values(technical.errors_by_component).reduce((a, b) => a + b, 1)) * 100}%` 
-                          }}
-                        ></div>
-                      </div>
-                      <span className="text-sm font-medium text-gray-700 w-12 text-right">
-                        {count}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+            <div className="text-sm font-medium text-gray-700 mb-3">Контент (всего в системе):</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="text-xs text-gray-600">Постов</div>
+                <div className="text-xl font-semibold text-gray-900">{contentStats?.totals.posts ?? 0}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-600">Меток</div>
+                <div className="text-xl font-semibold text-gray-900">{contentStats?.totals.markers ?? 0}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-600">Событий</div>
+                <div className="text-xl font-semibold text-gray-900">{contentStats?.totals.events ?? 0}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-600">Маршрутов</div>
+                <div className="text-xl font-semibold text-gray-900">{contentStats?.totals.routes ?? 0}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-600">Комментариев</div>
+                <div className="text-xl font-semibold text-gray-900">{contentStats?.totals.comments ?? 0}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-600">Постов с фото</div>
+                <div className="text-xl font-semibold text-gray-900">{contentStats?.posts_with_photos_pct ?? 0}%</div>
+              </div>
             </div>
           </div>
 
           <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="text-sm font-medium text-gray-700 mb-3">По браузерам:</div>
-            <div className="space-y-2">
-              {Object.entries(technical.errors_by_browser)
-                .sort(([, a], [, b]) => b - a)
-                .map(([browser, count]) => (
-                  <div key={browser} className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">{browser}</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-orange-600 h-2 rounded-full"
-                          style={{ 
-                            width: `${(count / Object.values(technical.errors_by_browser).reduce((a, b) => a + b, 1)) * 100}%` 
-                          }}
-                        ></div>
-                      </div>
-                      <span className="text-sm font-medium text-gray-700 w-12 text-right">
-                        {count}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+            <div className="text-sm font-medium text-gray-700 mb-3">Пользователи:</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="text-xs text-gray-600">Всего</div>
+                <div className="text-xl font-semibold text-gray-900">{users?.total ?? 0}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-600">Активных(контент)</div>
+                <div className="text-xl font-semibold text-gray-900">{users?.active_authors ?? 0}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-600">Новых за период</div>
+                <div className="text-xl font-semibold text-green-600">+{users?.new_users ?? 0}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-600">Рост</div>
+                <div className="text-xl font-semibold text-gray-900">{users?.growth_rate ?? 0}%</div>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Посты по дням (график) */}
+      {contentStats && contentStats.posts_by_day.length > 0 && (
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">📈 Посты по дням</h3>
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="flex items-end gap-1 h-32">
+              {contentStats.posts_by_day.map((d, idx) => {
+                const max = Math.max(...contentStats.posts_by_day.map(x => x.count), 1);
+                const height = (d.count / max) * 100;
+                return (
+                  <div key={idx} className="flex flex-col items-center flex-1" title={`${d.day}: ${d.count}`}>
+                    <div className="text-xs text-gray-500 mb-1">{d.count}</div>
+                    <div
+                      className="w-full bg-blue-500 rounded-t-sm min-h-[2px]"
+                      style={{ height: `${height}%` }}
+                    ></div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex gap-1 mt-1">
+              {contentStats.posts_by_day.map((d, idx) => (
+                <div key={idx} className="flex-1 text-center text-[10px] text-gray-400 truncate">
+                  {new Date(d.day).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

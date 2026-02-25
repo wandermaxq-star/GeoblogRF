@@ -25,7 +25,7 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <MirrorGradientContainer className="page-layout-container page-container">
+    <MirrorGradientContainer className="page-layout-container page-container admin-mode">
       <div className="page-main-area">
         <div className="page-content-wrapper">
           <div className="page-main-panel relative">

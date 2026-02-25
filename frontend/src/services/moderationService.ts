@@ -60,6 +60,19 @@ export class ModerationService {
     return Promise.all(contents.map(c => this.moderateContent(c)));
   }
 
+  /** Статистика модерации (заглушка — реальные данные на бэкенде). */
+  async getModerationStats() {
+    return {
+      totalChecked: 0,
+      approved: 0,
+      hidden: 0,
+      reviewed: 0,
+      blocked: 0,
+      spamDetected: 0,
+      fakeReviews: 0,
+    };
+  }
+
   // ── Внутренние проверки ────────────────────────────────────────────
 
   private check(content: ContentData) {
