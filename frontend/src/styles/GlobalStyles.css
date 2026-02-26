@@ -11,7 +11,7 @@
 }
 
 /* Исключение для chat-container, planner-mode, map-mode, posts-mode и calendar-mode - отступы не нужны */
-.page-container:not(.chat-container):not(.planner-mode):not(.map-mode):not(.posts-mode):not(.calendar-mode) {
+.page-container:not(.chat-container):not(.planner-mode):not(.map-mode):not(.posts-mode):not(.calendar-mode):not(.centre-mode) {
   padding: 24px;
 }
 
@@ -445,7 +445,7 @@ html, body, #root {
 }
 
 /* Исключение для chat-container - там нужны отступы */
-.page-container:not(.chat-container):not(.planner-mode) {
+.page-container:not(.chat-container):not(.planner-mode):not(.centre-mode) {
   padding: 24px;
 }
 
@@ -664,6 +664,10 @@ html, body, #root {
 .mirror-bg.posts-mode.glass-dark,
 .mirror-bg.posts-mode.glass-light {
   background: transparent;
+}
+/* Centre-mode: прозрачный фон — glassmorphism работает поверх SVG-карты */
+.mirror-bg.centre-mode {
+  background: transparent !important;
 }
 
 .mirror-bg-vertical {

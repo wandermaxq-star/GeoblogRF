@@ -3,11 +3,11 @@
    ======================================== */
 
 /* --- Default mode (обычный режим) --- */
-.page-layout-container:not(.map-mode):not(.planner-mode):not(.chat-container):not(.posts-mode):not(.calendar-mode):not(.activity-map-background) {
+.page-layout-container:not(.map-mode):not(.planner-mode):not(.chat-container):not(.posts-mode):not(.calendar-mode):not(.activity-map-background):not(.centre-mode) {
   padding: 28px;
 }
 
-.page-container:not(.map-mode):not(.planner-mode):not(.chat-container):not(.posts-mode):not(.calendar-mode) {
+.page-container:not(.map-mode):not(.planner-mode):not(.chat-container):not(.posts-mode):not(.calendar-mode):not(.centre-mode) {
   padding: 28px;
 }
 
