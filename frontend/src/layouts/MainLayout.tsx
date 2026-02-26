@@ -163,6 +163,17 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         }}>
           {/* Статичный SVG-фон карты — тот же backdrop что и у posts/activity */}
           <MapBackgroundExtension />
+          {/* Тёмный градиент поверх SVG карты — контраст для glassmorphism */}
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 1,
+            pointerEvents: 'none',
+            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 27, 75, 0.80) 40%, rgba(20, 20, 50, 0.75) 100%)',
+          }} />
           <Sidebar />
           {/* Glass-обёртка для soloPage контента */}
           <div className="activity-feed no-left-panel" style={{

@@ -16,12 +16,20 @@ const GOAL_ICONS: Record<string, string> = {
   get_approval: '✅',
 };
 
-const CentreDailyGoals: React.FC = () => {
-  const { dailyGoals, completeGoal, claimDailyReward, stats } = useGamification();
+interface CentreDailyGoalsProps {
+  /** Demo-данные — если переданы, контекст игнорируется */
+  demoGoals?: DailyGoal[];
+  demoStreak?: number;
+}
 
+const CentreDailyGoals: React.FC<CentreDailyGoalsProps> = ({ demoGoals, demoStreak }) => {
+  const { dailyGoals: ctxGoals, completeGoal, claimDailyReward, stats } = useGamification();
+  const dailyGoals = demoGoals || ctxGoals;
+
+  const isDemo = !!demoGoals;
   const allCompleted = dailyGoals.length > 0 && dailyGoals.every(g => g.completed);
   const completedCount = dailyGoals.filter(g => g.completed).length;
-  const streak = stats?.dailyGoals?.streak ?? 0;
+  const streak = demoStreak ?? stats?.dailyGoals?.streak ?? 0;
 
   if (dailyGoals.length === 0) {
     return (
@@ -49,7 +57,7 @@ const CentreDailyGoals: React.FC = () => {
       {/* Список заданий */}
       <div className="space-y-2.5">
         {dailyGoals.map((goal) => (
-          <GoalItem key={goal.id} goal={goal} onComplete={completeGoal} />
+          <GoalItem key={goal.id} goal={goal} onComplete={isDemo ? async () => {} : completeGoal} />
         ))}
       </div>
 
@@ -61,7 +69,7 @@ const CentreDailyGoals: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-yellow-400">+50 XP</span>
-          {allCompleted && (
+          {allCompleted && !isDemo && (
             <button
               onClick={() => claimDailyReward()}
               className="px-3 py-1 text-xs font-medium bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full hover:opacity-90 transition-opacity"
