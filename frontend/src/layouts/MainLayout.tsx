@@ -133,10 +133,56 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   if (isSoloPage) {
     return (
-      <div className="flex min-h-screen">
-        <Sidebar />
-        <div className="flex-1 flex flex-col">
-          {children}
+      <div className="app-root" style={{
+        background: 'transparent',
+        minHeight: '100vh',
+        overflow: 'visible',
+        position: 'relative',
+        width: '100%',
+        height: '100vh'
+      }}>
+        {/* Topbar — общий над всем */}
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1200,
+          height: '64px'
+        }}>
+          <Topbar />
+        </div>
+
+        <div className="map-with-sidebar-container" style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100vh',
+          overflow: 'visible'
+        }}>
+          {/* Статичный SVG-фон карты — тот же backdrop что и у posts/activity */}
+          <MapBackgroundExtension />
+          <Sidebar />
+          {/* Glass-обёртка для soloPage контента */}
+          <div className="activity-feed no-left-panel" style={{
+            position: 'fixed',
+            top: '64px',
+            bottom: '60px',
+            left: '56px',
+            right: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            pointerEvents: 'auto',
+            overflow: 'visible',
+            background: 'transparent',
+          }}>
+            <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'visible' }}>
+              {children}
+            </div>
+          </div>
         </div>
         <SideContentPanel />
         <GuestIndicator />

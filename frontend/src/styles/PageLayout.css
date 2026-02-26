@@ -1690,3 +1690,178 @@
   background: #667eea !important; /* Фиолетово-синий градиент */
   border: 3px dashed #fff !important;
 }
+
+/* ===== СТИЛИ ДЛЯ CENTRE-MODE — Центр Влияния ===== */
+
+/* Основной контейнер centre-mode — UNIFIED GLASS идентично posts-mode */
+.page-container.centre-mode {
+  position: fixed !important;
+  top: calc(64px + 1cm) !important;
+  bottom: 1cm !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: calc(100vw - 56px - 2cm) !important;
+  max-width: 1000px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+
+  /* UNIFIED GLASS */
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(10px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(160%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 14px 48px rgba(0, 0, 0, 0.25) !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  z-index: 1145 !important;
+}
+
+/* Заголовок centre */
+.centre-static-header {
+  position: relative !important;
+  flex-shrink: 0 !important;
+  padding: 16px 20px 12px 20px !important;
+  margin: 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: transparent !important;
+  z-index: 10 !important;
+}
+
+.centre-static-header h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Скролльная область centre */
+.centre-scroll-area {
+  flex: 1 !important;
+  position: relative !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 16px 20px 30px 20px !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.centre-scroll-area::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Ограничиваем ширину контента внутри скролла */
+.centre-scroll-area .centre-content {
+  max-width: 900px !important;
+  margin: 0 auto !important;
+  padding-bottom: 20px !important;
+}
+
+/* Скрываем скролл на уровне контейнера */
+.page-container.centre-mode {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.page-container.centre-mode::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* ===== Centre glass-карточки ===== */
+
+.centre-glass-card {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(8px) saturate(140%);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.centre-glass-card:hover {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Карточка профиля другого пользователя */
+.centre-user-profile-card {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.centre-user-profile-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6, #a855f7, #ec4899);
+  border-radius: 16px 16px 0 0;
+}
+
+/* Рарность бейджей */
+.centre-rarity-common { color: #9ca3af; }
+.centre-rarity-rare { color: #3b82f6; text-shadow: 0 0 8px rgba(59, 130, 246, 0.3); }
+.centre-rarity-epic { color: #8b5cf6; text-shadow: 0 0 8px rgba(139, 92, 246, 0.3); }
+.centre-rarity-legendary {
+  color: #f59e0b;
+  text-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+  animation: centre-legendary-pulse 2s ease-in-out infinite;
+}
+
+@keyframes centre-legendary-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.05); }
+}
+
+/* Достижения — не заработанные */
+.centre-achievement-locked {
+  filter: grayscale(100%) blur(1px);
+  opacity: 0.4;
+}
+
+/* Круговой прогресс-бар SVG */
+.centre-level-ring {
+  transform: rotate(-90deg);
+  filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.3));
+}
+
+/* Dark theme overrides */
+[data-theme="dark"] .centre-glass-card {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .centre-glass-card:hover {
+  background: rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="dark"] .centre-user-profile-card {
+  background: rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.10);
+}
+
+[data-theme="dark"] .centre-static-header {
+  border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+}

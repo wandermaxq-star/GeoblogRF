@@ -203,10 +203,31 @@ export const getDailyGoals = async (req, res) => {
       [userId, today]
     );
 
-    // Если целей нет, создаём новые (это должно быть в отдельной функции генерации)
+    // Если целей нет, создаём новые автоматически
     if (goals.rows.length === 0) {
-      // TODO: Генерация целей (пока возвращаем пустой массив)
-      return res.json({ goals: [] });
+      const generatedGoals = generateDailyGoals();
+      
+      for (const goal of generatedGoals) {
+        await pool.query(
+          `INSERT INTO daily_goals (user_id, goal_id, type, title, description, target, current, completed, xp_reward, difficulty, icon, date)
+           VALUES ($1, $2, $3, $4, $5, $6, 0, FALSE, $7, $8, $9, $10)
+           ON CONFLICT (user_id, goal_id, date) DO NOTHING`,
+          [userId, goal.id, goal.type, goal.title, goal.description, goal.target, goal.xpReward, goal.difficulty, goal.icon, today]
+        );
+      }
+      
+      // Перечитываем из БД
+      goals = await pool.query(
+        'SELECT * FROM daily_goals WHERE user_id = $1 AND date = $2 ORDER BY created_at',
+        [userId, today]
+      );
+      
+      if (goals.rows.length === 0) {
+        // Если не удалось вставить — прямой возврат сгенерированных
+        return res.json({ goals: generatedGoals.map(g => ({
+          ...g, current: 0, completed: false, date: today
+        })) });
+      }
     }
 
     res.json({ goals: goals.rows });
@@ -564,3 +585,163 @@ export const getStats = async (req, res) => {
   }
 };
 
+/**
+ * Генератор ежедневных целей — 3 задания разной сложности
+ */
+function generateDailyGoals() {
+  // Пул возможных целей
+  const goalPool = [
+    { id: 'post_1', type: 'create_posts', title: 'Создай пост', description: 'Создай 1 пост с фото', target: 1, xpReward: 20, difficulty: 'easy', icon: '✍️' },
+    { id: 'post_2', type: 'create_posts', title: 'Напиши 2 поста', description: 'Создай 2 поста за сегодня', target: 2, xpReward: 35, difficulty: 'medium', icon: '✍️' },
+    { id: 'marker_1', type: 'create_markers', title: 'Добавь метку', description: 'Отметь 1 интересное место на карте', target: 1, xpReward: 20, difficulty: 'easy', icon: '📍' },
+    { id: 'marker_3', type: 'create_markers', title: 'Добавь 3 метки', description: 'Отметь 3 интересных места', target: 3, xpReward: 40, difficulty: 'medium', icon: '📍' },
+    { id: 'photo_2', type: 'add_photos', title: 'Добавь фото', description: 'Добавь 2 фото к постам или маркерам', target: 2, xpReward: 15, difficulty: 'easy', icon: '📸' },
+    { id: 'photo_5', type: 'add_photos', title: 'Фотосессия', description: 'Добавь 5 фото за сегодня', target: 5, xpReward: 30, difficulty: 'medium', icon: '📸' },
+    { id: 'quality_1', type: 'improve_quality', title: 'Качественный контент', description: 'Создай контент с описанием > 100 символов', target: 1, xpReward: 25, difficulty: 'medium', icon: '⭐' },
+  ];
+
+  // Берём по одной из каждой категории, остальное — рандом
+  const categories = ['create_posts', 'create_markers', 'add_photos'];
+  const selected = [];
+  const usedCategories = new Set();
+
+  // Перемешиваем
+  const shuffled = goalPool.sort(() => Math.random() - 0.5);
+
+  for (const goal of shuffled) {
+    if (selected.length >= 3) break;
+    if (usedCategories.has(goal.type)) continue;
+    selected.push(goal);
+    usedCategories.add(goal.type);
+  }
+
+  // Дополняем до 3 если не набрали
+  for (const goal of shuffled) {
+    if (selected.length >= 3) break;
+    if (!selected.find(s => s.id === goal.id)) {
+      selected.push(goal);
+    }
+  }
+
+  // Добавляем суффикс даты к id для уникальности
+  const today = new Date().toISOString().split('T')[0];
+  return selected.map(g => ({
+    ...g,
+    id: `${g.id}_${today}`,
+  }));
+}
+
+/**
+ * Публичный профиль пользователя для Центра Влияния
+ * GET /api/gamification/user/:userId/profile
+ */
+export const getUserProfile = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+
+    // Уровень пользователя
+    const levelResult = await pool.query(
+      'SELECT * FROM user_levels WHERE user_id = $1',
+      [userId]
+    );
+
+    // Имя пользователя
+    const userResult = await pool.query(
+      'SELECT username, email FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (!userResult.rows[0]) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userResult.rows[0];
+    const level = levelResult.rows[0];
+
+    // Достижения
+    const achievementsResult = await pool.query(
+      'SELECT * FROM user_achievements WHERE user_id = $1',
+      [userId]
+    );
+
+    // Стрик
+    const historyResult = await pool.query(
+      'SELECT * FROM daily_goals_history WHERE user_id = $1 ORDER BY date DESC LIMIT 1',
+      [userId]
+    );
+
+    // Статистика контента
+    const markersCount = await pool.query(
+      'SELECT COUNT(*) FROM markers WHERE user_id = $1',
+      [userId]
+    ).catch(() => ({ rows: [{ count: 0 }] }));
+
+    const postsCount = await pool.query(
+      'SELECT COUNT(*) FROM posts WHERE author_id = $1',
+      [userId]
+    ).catch(() => ({ rows: [{ count: 0 }] }));
+
+    const routesCount = await pool.query(
+      'SELECT COUNT(*) FROM routes WHERE user_id = $1',
+      [userId]
+    ).catch(() => ({ rows: [{ count: 0 }] }));
+
+    const commentsCount = await pool.query(
+      'SELECT COUNT(*) FROM comments WHERE author_id = $1',
+      [userId]
+    ).catch(() => ({ rows: [{ count: 0 }] }));
+
+    const levelData = level ? {
+      level: level.current_level,
+      currentXP: level.current_level_xp || 0,
+      requiredXP: level.required_xp || 100,
+      totalXP: level.total_xp || 0,
+      rank: level.rank || 'novice',
+      progress: level.required_xp > 0 
+        ? Math.round((level.current_level_xp / level.required_xp) * 100) 
+        : 0,
+    } : {
+      level: 1, currentXP: 0, requiredXP: 100, totalXP: 0, rank: 'novice', progress: 0,
+    };
+
+    const achievements = (achievementsResult.rows || []).map(a => ({
+      id: a.achievement_id,
+      title: a.title || a.achievement_id,
+      description: a.description || '',
+      icon: a.icon || '🏆',
+      category: a.category || 'special',
+      rarity: a.rarity || 'common',
+      progress: { current: a.progress_current || 0, target: a.progress_target || 1 },
+      unlocked: a.unlocked || false,
+      unlockedAt: a.unlocked_at,
+      xpReward: a.xp_reward || 0,
+    }));
+
+    res.json({
+      userId,
+      username: user.username || user.email?.split('@')[0] || 'Пользователь',
+      level: levelData.level,
+      totalXP: levelData.totalXP,
+      rank: levelData.rank,
+      currentXP: levelData.currentXP,
+      requiredXP: levelData.requiredXP,
+      progress: levelData.progress,
+      streak: historyResult.rows[0]?.streak || 0,
+      achievements,
+      stats: {
+        markers: parseInt(markersCount.rows[0]?.count || '0'),
+        posts: parseInt(postsCount.rows[0]?.count || '0'),
+        routes: parseInt(routesCount.rows[0]?.count || '0'),
+        comments: parseInt(commentsCount.rows[0]?.count || '0'),
+      },
+      badges: [], // TODO: Фаза 4 — бейджи из таблицы user_badges
+    });
+  } catch (error) {
+    logger.error('getUserProfile error:', error);
+    res.status(500).json({ error: 'Failed to get user profile' });
+  }
+};

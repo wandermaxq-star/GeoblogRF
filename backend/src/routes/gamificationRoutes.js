@@ -11,6 +11,7 @@ import {
   getFeatures,
   applyRetroactiveGamification,
   markGuestActionAsApproved,
+  getUserProfile,
 } from '../controllers/gamificationController.js';
 
 const router = express.Router();
@@ -43,6 +44,9 @@ router.get('/achievements', getAchievements);
 
 // Статистика
 router.get('/stats', getStats);
+
+// Публичный профиль пользователя (для Центра Влияния)
+router.get('/user/:userId/profile', getUserProfile);
 
 export default router;
 
