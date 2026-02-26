@@ -6,7 +6,7 @@
  * DEMO MODE: если пользователь не авторизован — показываем mock-данные
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { MirrorGradientContainer, usePanelRegistration } from '../components/MirrorGradientProvider';
 import { useEffect } from 'react';
@@ -184,14 +184,14 @@ function CentrePageDesktop({ selectedUserId, setSelectedUserId, isDemo }: Centre
           </div>
           <div className="flex items-center gap-2">
             {isDemo && <DemoBadge />}
-            <p className="text-xs text-white/40">Прогресс · Соревнования · Мотивация</p>
+            <p className="text-xs" style={{ color: 'var(--glass-text-secondary)' }}>Прогресс · Соревнования · Мотивация</p>
           </div>
         </div>
       </div>
 
       {/* Скролльный контент */}
       <div className="centre-scroll-area">
-        <div className="centre-content space-y-4">
+        <div className="centre-content space-y-5">
           {/* Карточка профиля другого пользователя (overlay) */}
           {selectedUserId && !isDemo && (
             <UserProfileCard
@@ -200,37 +200,45 @@ function CentrePageDesktop({ selectedUserId, setSelectedUserId, isDemo }: Centre
             />
           )}
 
-          {/* 1. Карточка уровня */}
-          <CentreLevelCard
-            externalData={isDemo ? {
-              userLevel: DEMO_USER_LEVEL,
-              username: 'Демо Путешественник',
-              streak: 5,
-            } : undefined}
-          />
+          {/* Верхний ряд: Профиль + Достижения бок о бок */}
+          <div className="grid grid-cols-5 gap-5">
+            {/* 1. Карточка уровня — занимает 3 колонки */}
+            <div className="col-span-3">
+              <CentreLevelCard
+                externalData={isDemo ? {
+                  userLevel: DEMO_USER_LEVEL,
+                  username: 'Демо Путешественник',
+                  streak: 5,
+                } : undefined}
+              />
+            </div>
 
-          {/* 2. Ежедневные задания */}
+            {/* 2. Достижения — занимают 2 колонки, вертикально */}
+            <div className="col-span-2">
+              <CentreAchievementsRow
+                externalAchievements={isDemo ? DEMO_ACHIEVEMENTS : undefined}
+              />
+            </div>
+          </div>
+
+          {/* 3. Ежедневные задания — на всю ширину */}
           <CentreDailyGoals
             demoGoals={isDemo ? DEMO_DAILY_GOALS : undefined}
-            demoStreak={isDemo ? 5 : undefined}
           />
 
-          {/* 3. Достижения */}
-          <CentreAchievementsRow
-            externalAchievements={isDemo ? DEMO_ACHIEVEMENTS : undefined}
-          />
-
-          {/* 4–7: Заглушки для будущих секций (Фазы 2–4) */}
-          <ComingSoonSection
-            icon={<Trophy className="w-5 h-5 text-yellow-400" />}
-            title="Лидерборд"
-            description="Рейтинг лучших исследователей — скоро"
-          />
-          <ComingSoonSection
-            icon={<Flame className="w-5 h-5 text-orange-400" />}
-            title="Сезонный конкурс"
-            description="Сезонные соревнования — скоро"
-          />
+          {/* 4–5: Заглушки в два столбца */}
+          <div className="grid grid-cols-2 gap-5">
+            <ComingSoonSection
+              icon={<Trophy className="w-5 h-5 text-yellow-500" />}
+              title="Лидерборд"
+              description="Рейтинг лучших исследователей — скоро"
+            />
+            <ComingSoonSection
+              icon={<Flame className="w-5 h-5 text-orange-500" />}
+              title="Сезонный конкурс"
+              description="Сезонные соревнования — скоро"
+            />
+          </div>
         </div>
       </div>
     </MirrorGradientContainer>
@@ -271,7 +279,6 @@ function CentrePageMobile({ selectedUserId, setSelectedUserId, isDemo }: CentreP
         {/* 2. Ежедневные задания */}
         <CentreDailyGoals
           demoGoals={isDemo ? DEMO_DAILY_GOALS : undefined}
-          demoStreak={isDemo ? 5 : undefined}
         />
 
         {/* 3. Достижения */}
@@ -313,11 +320,14 @@ function ComingSoonSection({ icon, title, description }: {
   description: string;
 }) {
   return (
-    <div className="centre-glass-card flex items-center gap-3 opacity-60">
-      {icon}
+    <div className="centre-glass-card flex items-center gap-3 opacity-70 hover:opacity-90 transition-opacity">
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm"
+           style={{ background: 'var(--card-bg-subtle)' }}>
+        {icon}
+      </div>
       <div>
-        <p className="text-sm font-medium text-white/70">{title}</p>
-        <p className="text-xs text-white/40">{description}</p>
+        <p className="text-sm font-bold cg-text">{title}</p>
+        <p className="text-xs font-medium cg-text-muted">{description}</p>
       </div>
     </div>
   );

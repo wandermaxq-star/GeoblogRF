@@ -1693,26 +1693,27 @@
 
 /* ===== СТИЛИ ДЛЯ CENTRE-MODE — Центр Влияния ===== */
 
-/* Основной контейнер centre-mode — UNIFIED GLASS идентично posts-mode */
+/* Основной контейнер centre-mode — единый glass-стиль из _glass-theme.css */
 .page-container.centre-mode {
   position: fixed !important;
   top: calc(64px + 1cm) !important;
   bottom: 1cm !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
-  width: calc(100vw - 56px - 2cm) !important;
-  max-width: 1000px !important;
+  width: calc(100vw - 56px - 1cm) !important;
+  max-width: 1400px !important;
   height: auto !important;
   min-height: 0 !important;
   max-height: none !important;
 
-  /* UNIFIED GLASS — без saturate чтобы SVG-фон не давал синий/фиолетовый оттенок */
-  background: rgba(255, 255, 255, 0.12) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  border-radius: 12px !important;
-  box-shadow: 0 14px 48px rgba(0, 0, 0, 0.18) !important;
+  /* Glass — идентично сайдбару и топбару, авто-переключение dark/light */
+  background: var(--glass-l1-bg) !important;
+  backdrop-filter: var(--glass-blur-strong) !important;
+  -webkit-backdrop-filter: var(--glass-blur-strong) !important;
+  border: 1px solid var(--glass-l1-border) !important;
+  border-radius: var(--glass-radius) !important;
+  box-shadow: var(--glass-l1-shadow) !important;
+  color: var(--glass-text) !important;
 
   display: flex !important;
   flex-direction: column !important;
@@ -1728,7 +1729,7 @@
   flex-shrink: 0 !important;
   padding: 16px 20px 12px 20px !important;
   margin: 0 !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-bottom: 1px solid var(--glass-l2-border) !important;
   background: transparent !important;
   z-index: 10 !important;
 }
@@ -1736,7 +1737,7 @@
 .centre-static-header h2 {
   font-size: 1.25rem;
   font-weight: 700;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7);
+  background: linear-gradient(135deg, #4f46e5, #7c3aed, #9333ea);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1761,7 +1762,7 @@
 
 /* Ограничиваем ширину контента внутри скролла */
 .centre-scroll-area .centre-content {
-  max-width: 900px !important;
+  max-width: 1200px !important;
   margin: 0 auto !important;
   padding-bottom: 20px !important;
 }
@@ -1779,22 +1780,39 @@
 }
 
 /* ===== Centre glass-карточки ===== */
+/* Тот же glass-card-bg что контейнер — наслаивается и визуально 2x темнее/плотнее */
+/* Рамка — белая для контраста */
 
 .centre-glass-card {
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(8px) saturate(140%);
-  -webkit-backdrop-filter: blur(8px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 12px;
-  padding: 16px;
-  transition: all 0.2s ease;
+  background: var(--glass-card-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: var(--glass-radius-sm);
+  padding: 18px;
+  transition: all 0.25s ease;
+  box-shadow: var(--glass-shadow);
+
+  /* Текст — наследуем из glass-theme */
+  --card-text: var(--glass-card-text);
+  --card-text-dim: var(--glass-card-text-secondary);
+  --card-text-muted: var(--glass-card-text-muted);
+  --card-bg-subtle: var(--glass-l2-bg);
+  --card-border: var(--glass-l2-border);
+  color: var(--card-text);
 }
 
 .centre-glass-card:hover {
-  background: rgba(255, 255, 255, 0.10);
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  background: var(--glass-card-bg-hover);
+  border-color: rgba(255, 255, 255, 0.50);
+  box-shadow: var(--glass-shadow-hover);
+  transform: translateY(-1px);
 }
+
+/* Утилиты для текста внутри карточек (авто-инверсия при смене темы) */
+.cg-text { color: var(--card-text) !important; }
+.cg-text-dim { color: var(--card-text-dim) !important; }
+.cg-text-muted { color: var(--card-text-muted) !important; }
 
 /* Карточка профиля другого пользователя */
 .centre-user-profile-card {
@@ -1846,22 +1864,49 @@
   filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.3));
 }
 
-/* Dark theme overrides */
+/* Dark theme: контейнер автоматически берёт стили из --glass-l1-bg (dark) — не нужен override */
+
+/* Dark: карточки автоматически наследуют --glass-card-bg (dark) из _glass-theme.css
+   Рамка остаётся белой для контраста */
 [data-theme="dark"] .centre-glass-card {
-  background: rgba(0, 0, 0, 0.2);
-  border-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 [data-theme="dark"] .centre-glass-card:hover {
-  background: rgba(0, 0, 0, 0.3);
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.40);
 }
 
 [data-theme="dark"] .centre-user-profile-card {
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.10);
 }
 
 [data-theme="dark"] .centre-static-header {
-  border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ===== Скрываем контролы карты когда она фон для solo-страниц ===== */
+
+/* Элементы внутри DOM-дерева */
+.solo-page-map-bg .map-action-buttons-container,
+.solo-page-map-bg .page-side-buttons,
+.solo-page-map-bg .map-side-buttons,
+.solo-page-map-bg .mobile-map-controls {
+  display: none !important;
+}
+
+/* Элементы через Portal (на body) — Leaflet-контролы, категории, поиск, регионы, attribution */
+body.solo-page-active .leaflet-control-container,
+body.solo-page-active .map-action-buttons-container,
+body.solo-page-active .page-side-buttons,
+body.solo-page-active .map-side-buttons,
+body.solo-page-active .category-quick-filter,
+body.solo-page-active .leaflet-control-zoom,
+body.solo-page-active .leaflet-control-attribution,
+body.solo-page-active .map-search-toolbar,
+body.solo-page-active .region-selector-container,
+body.solo-page-active .region-selector-dropdown {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }

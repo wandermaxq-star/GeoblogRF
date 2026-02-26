@@ -3,21 +3,10 @@
  * Круглые иконки по категориям, незаработанные — размыты
  */
 
-import React, { useRef } from 'react';
-import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
+import React from 'react';
+import { Lock } from 'lucide-react';
 import { useGamification } from '../../contexts/GamificationContext';
 import { Achievement } from '../../types/gamification';
-
-const CATEGORY_LABELS: Record<string, string> = {
-  places: '🗺️ Исследователь',
-  posts: '📸 Фотограф',
-  quality: '⭐ Качество',
-  activity: '🔥 Активность',
-  special: '👑 Специальные',
-  routes: '🧭 Штурман',
-  content: '✍️ Блогер',
-  offline: '📡 Оффлайнер',
-};
 
 const RARITY_COLORS: Record<string, string> = {
   common: 'ring-gray-400/40',
@@ -40,27 +29,19 @@ interface CentreAchievementsRowProps {
 
 const CentreAchievementsRow: React.FC<CentreAchievementsRowProps> = ({ externalAchievements }) => {
   const { achievements: ownAchievements } = useGamification();
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   const achievements = externalAchievements || ownAchievements;
   const unlockedCount = achievements.filter(a => a.unlocked).length;
   const totalCount = achievements.length;
-
-  const scroll = (direction: 'left' | 'right') => {
-    if (scrollRef.current) {
-      const amount = direction === 'left' ? -200 : 200;
-      scrollRef.current.scrollBy({ left: amount, behavior: 'smooth' });
-    }
-  };
 
   if (achievements.length === 0) {
     return (
       <div className="centre-glass-card">
         <div className="flex items-center gap-2">
           <span className="text-lg">🏆</span>
-          <h3 className="text-sm font-semibold text-white/90">Достижения</h3>
+          <h3 className="text-base font-bold cg-text">Достижения</h3>
         </div>
-        <p className="text-sm text-white/50 mt-2">Достижения пока недоступны</p>
+        <p className="text-sm font-medium cg-text-muted mt-2">Достижения пока недоступны</p>
       </div>
     );
   }
@@ -73,34 +54,19 @@ const CentreAchievementsRow: React.FC<CentreAchievementsRowProps> = ({ externalA
   });
 
   return (
-    <div className="centre-glass-card">
+    <div className="centre-glass-card h-full flex flex-col">
       {/* Заголовок */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className="text-lg">🏆</span>
-          <h3 className="text-sm font-semibold text-white/90">Достижения</h3>
-          <span className="text-xs text-white/50">{unlockedCount}/{totalCount}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => scroll('left')}
-            className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4 text-white/60" />
-          </button>
-          <button
-            onClick={() => scroll('right')}
-            className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
-          >
-            <ChevronRight className="w-4 h-4 text-white/60" />
-          </button>
+          <h3 className="text-base font-bold cg-text">Достижения</h3>
+          <span className="text-sm font-medium cg-text-muted">{unlockedCount}/{totalCount}</span>
         </div>
       </div>
 
-      {/* Горизонтальный скролл */}
+      {/* Сетка достижений (wrap) */}
       <div
-        ref={scrollRef}
-        className="flex gap-3 overflow-x-auto pb-2"
+        className="flex flex-wrap gap-3 overflow-y-auto flex-1"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {sorted.map((achievement) => (
@@ -128,32 +94,27 @@ const AchievementBadge: React.FC<AchievementBadgeProps> = ({ achievement }) => {
           ${achievement.unlocked ? glow : 'centre-achievement-locked'}
           ${isLegendary ? 'centre-rarity-legendary' : ''}
           transition-transform group-hover:scale-110`}
-        style={{
-          background: achievement.unlocked
-            ? 'rgba(255,255,255,0.08)'
-            : 'rgba(255,255,255,0.02)',
-        }}
       >
         {achievement.unlocked ? (
           <span>{achievement.icon}</span>
         ) : (
-          <Lock className="w-5 h-5 text-white/20" />
+          <Lock className="w-5 h-5 cg-text-muted" />
         )}
       </div>
 
       {/* Название */}
       <span className={`text-[10px] text-center max-w-[60px] leading-tight
-        ${achievement.unlocked ? 'text-white/70' : 'text-white/30'}`}>
+        ${achievement.unlocked ? 'cg-text-dim' : 'cg-text-muted'}`}>
         {achievement.title}
       </span>
 
       {/* Тултип при ховере */}
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-black/80 backdrop-blur-sm rounded-lg
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-gray-900/90 backdrop-blur-sm rounded-lg
         text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
         <div className="font-medium">{achievement.title}</div>
-        <div className="text-white/60">{achievement.description}</div>
+        <div className="text-white/70">{achievement.description}</div>
         {!achievement.unlocked && (
-          <div className="text-white/40 mt-0.5">
+          <div className="text-white/50 mt-0.5">
             {achievement.progress.current}/{achievement.progress.target}
           </div>
         )}

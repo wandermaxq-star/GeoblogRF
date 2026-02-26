@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import SideContentPanel from '../components/SideContentPanel';
 import GuestIndicator from '../components/GuestIndicator';
-import { useLayoutState } from '../contexts/LayoutContext';
 import { useContentStore, ContentType } from '../stores/contentStore';
 import PageLayer from '../pages/PageLayer';
 import { usePreload } from '../hooks/usePreload';
@@ -11,7 +10,7 @@ import Topbar from '../components/Topbar';
 import MapBackgroundExtension from '../components/MapBackgroundExtension';
 // import AppRoutes from '../routes';
 
-const SOLO_ROUTES: string[] = []; // Страницы которые открываются на полный экран (блог обрабатывается отдельно)
+// Unused: const SOLO_ROUTES: string[] = [];
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -19,15 +18,12 @@ interface MainLayoutProps {
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const location = useLocation();
-  const layoutContext = useLayoutState();
 
   // Используем store для получения состояния панелей
   const leftContent = useContentStore((state) => state.leftContent);
   const rightContent = useContentStore((state) => state.rightContent);
   const navigate = useNavigate();
-  const isMobile = useContentStore((state) => state.isMobile);
   const resetAllPanels = useContentStore((state) => state.resetAllPanels);
-  const openRightPanel = useContentStore((state) => state.openRightPanel);
   const { preloadRoute } = usePreload();
 
   // Определяем страницы, которые НЕ участвуют в двухоконном режиме
@@ -83,7 +79,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         store.setLeftContent('map');
       }
       store.setRightContent(null);
+      // Скрываем контролы карты через body-класс
+      document.body.classList.add('solo-page-active');
       return;
+    } else {
+      document.body.classList.remove('solo-page-active');
     }
 
     // Синхронизируем route с store - ТОЛЬКО на основе pathname
@@ -92,7 +92,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     // КРИТИЧНО: Если leftContent УЖЕ установлен (через Sidebar), НЕ перезаписываем!
     // Это предотвращает гонку между Sidebar.setLeftContent() и navigate()
     // Sidebar всегда имеет приоритет над URL-based синхронизацией
-    const leftContentAlreadySet = store.leftContent !== null;
 
     // Если путь указывает на карту или планировщик - открываем соответствующую панель
     // КРИТИЧНО: НЕ трогаем rightContent! Sidebar уже установил нужное состояние.
@@ -170,7 +169,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           <MapBackgroundExtension />
           {/* Leaflet-карта как фоновый слой — идентично posts/activity */}
           <div
-            className="h-full absolute top-0 left-0 left-panel-map"
+            className="h-full absolute top-0 left-0 left-panel-map solo-page-map-bg"
             style={{
               width: '100%',
               visibility: 'visible',

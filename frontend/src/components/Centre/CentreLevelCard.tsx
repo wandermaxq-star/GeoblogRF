@@ -37,10 +37,10 @@ const CentreLevelCard: React.FC<CentreLevelCardProps> = ({ externalData }) => {
     return (
       <div className="centre-glass-card animate-pulse">
         <div className="flex items-center gap-4">
-          <div className="w-20 h-20 bg-gray-200/20 rounded-full" />
+          <div className="w-20 h-20 bg-white/10 rounded-full" />
           <div className="flex-1 space-y-2">
-            <div className="h-5 bg-gray-200/20 rounded w-1/3" />
-            <div className="h-4 bg-gray-200/20 rounded w-1/2" />
+            <div className="h-5 bg-white/10 rounded w-1/3" />
+            <div className="h-4 bg-white/10 rounded w-1/2" />
           </div>
         </div>
       </div>
@@ -50,7 +50,7 @@ const CentreLevelCard: React.FC<CentreLevelCardProps> = ({ externalData }) => {
   if (!userLevel) return null;
 
   const level = userLevel.level;
-  const radius = 36;
+  const radius = 40;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
 
@@ -74,11 +74,11 @@ const CentreLevelCard: React.FC<CentreLevelCardProps> = ({ externalData }) => {
     .slice(0, 2) || 'U';
 
   return (
-    <div className="centre-glass-card">
-      <div className="flex items-center gap-4">
+    <div className="centre-glass-card h-full">
+      <div className="flex items-center gap-5">
         {/* Круговой прогресс-бар с аватаром внутри */}
         <div className="relative flex-shrink-0">
-          <svg width="88" height="88" viewBox="0 0 88 88" className="centre-level-ring">
+          <svg width="96" height="96" viewBox="0 0 96 96" className="centre-level-ring">
             <defs>
               <linearGradient id="levelRingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor={ringGradient.from} />
@@ -87,14 +87,14 @@ const CentreLevelCard: React.FC<CentreLevelCardProps> = ({ externalData }) => {
             </defs>
             {/* Фоновая дорожка */}
             <circle
-              cx="44" cy="44" r={radius}
+              cx="48" cy="48" r={radius}
               fill="none"
-              stroke="rgba(255,255,255,0.08)"
+              stroke="rgba(255,255,255,0.10)"
               strokeWidth="5"
             />
             {/* Прогресс */}
             <circle
-              cx="44" cy="44" r={radius}
+              cx="48" cy="48" r={radius}
               fill="none"
               stroke="url(#levelRingGradient)"
               strokeWidth="5"
@@ -106,14 +106,14 @@ const CentreLevelCard: React.FC<CentreLevelCardProps> = ({ externalData }) => {
           </svg>
           {/* Аватар по центру кольца */}
           <div className="absolute inset-0 flex items-center justify-center" style={{ transform: 'rotate(90deg)' }}>
-            <Avatar className="w-14 h-14 border-2 border-white/20">
-              <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-lg">
+            <Avatar className="w-16 h-16 border-2 border-white/30 shadow-lg">
+              <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-xl">
                 {userInitials}
               </AvatarFallback>
             </Avatar>
           </div>
           {/* Уровень — бейдж внизу-справа */}
-          <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold border-2 border-white/20 shadow-lg"
+          <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold border-2 border-white/30 shadow-lg"
                style={{ transform: 'rotate(90deg)' }}>
             {level}
           </div>
@@ -122,27 +122,37 @@ const CentreLevelCard: React.FC<CentreLevelCardProps> = ({ externalData }) => {
         {/* Информация */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-lg font-bold text-white truncate">{username}</span>
+            <span className="text-xl font-bold cg-text truncate">{username}</span>
           </div>
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xl">{rankInfo?.emoji || '🌱'}</span>
-            <span className="text-sm font-medium text-white/80">{rankInfo?.name || 'Новичок'}</span>
+            <span className="text-2xl">{rankInfo?.emoji || '🌱'}</span>
+            <span className="text-base font-semibold cg-text-dim">{rankInfo?.name || 'Новичок'}</span>
+          </div>
+          {/* Линейный прогресс-бар */}
+          <div className="w-full h-2 rounded-full overflow-hidden mb-2" style={{ background: 'var(--card-bg-subtle)' }}>
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{
+                width: `${progressPercentage}%`,
+                background: `linear-gradient(90deg, ${ringGradient.from}, ${ringGradient.to})`,
+              }}
+            />
           </div>
           {/* XP текст */}
-          <div className="flex items-center gap-3 text-xs text-white/60">
-            <span className="flex items-center gap-1">
-              <Zap className="w-3 h-3 text-yellow-400" />
+          <div className="flex items-center gap-4 text-sm cg-text-dim">
+            <span className="flex items-center gap-1 font-medium">
+              <Zap className="w-3.5 h-3.5 text-yellow-500" />
               {userLevel.totalXP.toLocaleString()} XP
             </span>
-            <span>
+            <span className="cg-text-muted">
               {Math.round(progressPercentage)}% до L{level + 1}
             </span>
           </div>
           {/* Стрик */}
           {streak > 0 && (
-            <div className="flex items-center gap-1 mt-1.5">
-              <Flame className="w-4 h-4 text-orange-400" />
-              <span className="text-sm font-semibold text-orange-300">{streak} {getDayWord(streak)} подряд</span>
+            <div className="flex items-center gap-1.5 mt-2">
+              <Flame className="w-4 h-4 text-orange-500" />
+              <span className="text-sm font-bold text-orange-600">{streak} {getDayWord(streak)} подряд 🔥</span>
             </div>
           )}
         </div>
