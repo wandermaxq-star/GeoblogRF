@@ -77,7 +77,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     lastPathnameRef.current = location.pathname;
 
     if (isSoloPage) {
-      resetAllPanels();
+      // Solo-страницы (Centre и др.) показывают Leaflet-карту как фон
+      const store = useContentStore.getState();
+      if (store.leftContent !== 'map') {
+        store.setLeftContent('map');
+      }
+      store.setRightContent(null);
       return;
     }
 
@@ -161,19 +166,21 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           height: '100vh',
           overflow: 'visible'
         }}>
-          {/* Статичный SVG-фон карты — тот же backdrop что и у posts/activity */}
+          {/* Статичный SVG-фон карты — fallback пока Leaflet загружается */}
           <MapBackgroundExtension />
-          {/* Тёмный градиент поверх SVG карты — контраст для glassmorphism */}
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 1,
-            pointerEvents: 'none',
-            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 27, 75, 0.80) 40%, rgba(20, 20, 50, 0.75) 100%)',
-          }} />
+          {/* Leaflet-карта как фоновый слой — идентично posts/activity */}
+          <div
+            className="h-full absolute top-0 left-0 left-panel-map"
+            style={{
+              width: '100%',
+              visibility: 'visible',
+              zIndex: 1,
+              overflow: 'visible',
+              pointerEvents: 'none',
+            }}
+          >
+            <PageLayer side="left" />
+          </div>
           <Sidebar />
           {/* Glass-обёртка для soloPage контента */}
           <div className="activity-feed no-left-panel" style={{
