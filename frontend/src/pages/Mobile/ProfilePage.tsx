@@ -50,7 +50,7 @@ const ProfilePage: React.FC = () => {
     <div className="flex flex-col h-screen">
       <TopBar title="Профиль" />
       
-      <div className="flex-1 overflow-y-auto pb-bottom-nav bg-background">
+      <div className="flex-1 overflow-y-auto pb-bottom-nav m-glass-page">
         {/* Profile Header */}
         <div className="relative">
           <div className="h-32 bg-gradient-hero"></div>
@@ -103,21 +103,21 @@ const ProfilePage: React.FC = () => {
         {/* Stats Grid */}
         <div className="px-4 pb-4">
           <div className="grid grid-cols-2 gap-3 mb-4">
-            <Card className="p-4 text-center">
+            <Card className="m-glass-card p-4 text-center">
               <div className="text-3xl font-bold text-primary mb-1">{totalXP.toLocaleString()}</div>
-              <div className="text-sm text-muted-foreground">XP очков</div>
+              <div className="text-sm m-glass-text-secondary">XP очков</div>
             </Card>
-            <Card className="p-4 text-center">
+            <Card className="m-glass-card p-4 text-center">
               <div className="text-3xl font-bold text-secondary mb-1">
                 {stats?.dailyGoals?.streak || 0}
               </div>
-              <div className="text-sm text-muted-foreground">дней стрик</div>
+              <div className="text-sm m-glass-text-secondary">дней стрик</div>
             </Card>
           </div>
 
           {/* Activity Stats */}
-          <Card className="p-4 mb-4">
-            <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
+          <Card className="m-glass-card p-4 mb-4">
+            <h3 className="font-bold m-glass-text mb-4 flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-primary" />
               Статистика
             </h3>
@@ -153,13 +153,13 @@ const ProfilePage: React.FC = () => {
           </Card>
 
           {/* Achievements */}
-          <Card className="p-4">
-            <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
+          <Card className="m-glass-card p-4">
+            <h3 className="font-bold m-glass-text mb-4 flex items-center gap-2">
               <Award className="w-5 h-5 text-primary" />
               Достижения
             </h3>
             {achievements.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-8 m-glass-text-muted">
                 <p className="text-sm">Пока нет достижений</p>
                 <p className="text-xs mt-2">Создавайте контент, чтобы получить достижения!</p>
               </div>

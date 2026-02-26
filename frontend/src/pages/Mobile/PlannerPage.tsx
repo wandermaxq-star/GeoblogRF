@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import FilterTabs from '../../components/Mobile/FilterTabs';
 import MobileMapSettings from '../../components/Mobile/MobileMapSettings';
 import MobileFavoritesPanel from '../../components/Mobile/MobileFavoritesPanel';
@@ -7,9 +7,10 @@ import { Navigation, Settings, Search, X, MapPin, ArrowUp, ArrowDown, Star } fro
 import { cn } from '../../lib/utils';
 import { mapFacade, MapMarker, Route } from '../../services/map_facade/index';
 import { useFavorites } from '../../contexts/FavoritesContext';
-import { useRoutePlanner } from '../../contexts/RoutePlannerContext';
+import { useRoutePlanner, RoutePlannerProvider } from '../../contexts/RoutePlannerContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { geocodingService, Place } from '../../services/geocodingService';
+import { useContentStore } from '../../stores/contentStore';
 
 const PlannerPage: React.FC = () => {
   const location = useLocation();
@@ -25,6 +26,17 @@ const PlannerPage: React.FC = () => {
   const [showCoordinateInput, setShowCoordinateInput] = useState(false);
   const [openRouteSection, setOpenRouteSection] = useState<string>('');
   
+  // КРИТИЧНО: устанавливаем leftContent = 'planner' для Map.tsx интерактивности
+  useEffect(() => {
+    useContentStore.getState().setLeftContent('planner');
+    return () => {
+      const current = useContentStore.getState().leftContent;
+      if (current === 'planner') {
+        useContentStore.getState().setLeftContent(null);
+      }
+    };
+  }, []);
+
   // Сбрасываем открытые разделы при открытии меню маршрутов
   useEffect(() => {
     if (routesOpen) {
@@ -71,6 +83,11 @@ const PlannerPage: React.FC = () => {
   const favorites = useFavorites();
   const routePlanner = useRoutePlanner();
   const navigate = useNavigate();
+  // Ref для доступа к актуальному routePlanner в колбэках без пересоздания эффектов
+  const routePlannerRef = useRef(routePlanner);
+  routePlannerRef.current = routePlanner;
+  // Флаг инициализации карты — предотвращает повторную инициализацию
+  const mapInitializedRef = useRef(false);
   // Состояние для хранения геометрии маршрута (для сохранения в постах)
   const [routeGeometry, setRouteGeometry] = useState<Array<[number, number]>>([]);
 
@@ -145,9 +162,11 @@ const PlannerPage: React.FC = () => {
 
   // Yandex Maps загружается автоматически через фасад
 
-  // Инициализация карты
+  // Инициализация карты (один раз при монтировании)
   useEffect(() => {
     if (!mapContainerRef.current) return;
+    // Предотвращаем повторную инициализацию
+    if (mapInitializedRef.current) return;
 
     let attempts = 0;
     const maxAttempts = 20;
@@ -173,14 +192,18 @@ const PlannerPage: React.FC = () => {
           zoom: 10,
         });
 
+        mapInitializedRef.current = true;
+
         // Подписываемся на клики по карте для добавления точек маршрута
+        // Используем ref чтобы всегда иметь актуальное значение routePlanner
         mapFacade().onClick((coords: [number, number]) => {
-          if (routePlanner?.addRoutePoint) {
-            routePlanner.addRoutePoint({
+          const rp = routePlannerRef.current;
+          if (rp?.addRoutePoint) {
+            rp.addRoutePoint({
               id: `point-${Date.now()}`,
               latitude: coords[0],
               longitude: coords[1],
-              title: `Точка ${(routePlanner.routePoints?.length || 0) + 1}`,
+              title: `Точка ${(rp.routePoints?.length || 0) + 1}`,
             });
           }
         });
@@ -195,9 +218,9 @@ const PlannerPage: React.FC = () => {
     initializeMap();
 
     return () => {
-      // Очистка будет выполнена автоматически при размонтировании
+      mapInitializedRef.current = false;
     };
-  }, [provider, routePlanner]);
+  }, [provider]);
 
   // Подписка на геометрию маршрута от Yandex Maps (после готовности карты)
   useEffect(() => {
@@ -319,47 +342,7 @@ const PlannerPage: React.FC = () => {
     }
   }, [location.search, isMapReady, favorites, addedFavoriteMarkers]);
 
-  // Обработка параметра marker - отображение метки на карте
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const markerId = params.get('marker');
-    
-    if (markerId && isMapReady && favorites?.favoritePlaces) {
-      const place = favorites.favoritePlaces.find(p => p.id === markerId);
-      if (place && place.latitude !== undefined && place.longitude !== undefined) {
-        // Проверяем, не добавлена ли уже метка (чтобы не дублировать)
-        if (!addedFavoriteMarkers.has(place.id)) {
-          try {
-            // Добавляем метку на карту
-            mapFacade().addMarker({
-              id: place.id,
-              position: { lat: Number(place.latitude), lon: Number(place.longitude) },
-              title: place.name || 'Место',
-              category: 'favorite',
-            });
-            // Сохраняем ID добавленной метки
-            setAddedFavoriteMarkers(prev => new Set(prev).add(place.id));
-          } catch (err: any) {
-          }
-        }
-        
-        // Всегда центрируем карту на метке с зумом
-        try {
-          mapFacade().setView([place.latitude!, place.longitude!], 15);
-        } catch (err) {
-          // Если setView не поддерживается, используем setCenter
-          try {
-            mapFacade().setCenter([place.latitude!, place.longitude!], 15);
-          } catch (e) {
-          }
-        }
-      }
-    } else if (!markerId) {
-      // Если параметр marker удалён из URL, очищаем список добавленных меток из избранного
-      // (но не удаляем их с карты, так как они могут быть нужны)
-      // setAddedFavoriteMarkers(new Set());
-    }
-  }, [location.search, isMapReady, favorites, addedFavoriteMarkers]);
+  // Обработка параметра marker (обработчик выше, дубликат удалён)
 
   return (
     <div className="absolute inset-0 w-full h-full">
@@ -368,36 +351,36 @@ const PlannerPage: React.FC = () => {
         className="absolute left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-2"
         style={{ top: 'calc(var(--action-buttons-height) + 3px)' }}
       >
-        {/* Кнопка настроек - такая же как кнопки быстрого выбора */}
+        {/* Кнопка настроек */}
         <button
           onClick={() => setSettingsOpen(true)}
-          className="bg-gray-100 text-gray-800 border border-gray-200 shadow-lg hover:shadow-xl hover:bg-gray-200 transition-all duration-300 rounded-xl p-3 flex flex-col items-center justify-center gap-2 min-w-[70px] max-w-[70px] h-[70px] relative active:scale-95"
+          className="m-glass-btn transition-all duration-300 rounded-xl p-3 flex flex-col items-center justify-center gap-2 min-w-[70px] max-w-[70px] h-[70px] relative"
           title="Настройки карты"
         >
-          <Settings className="w-5 h-5 text-gray-800" />
-          <span className="text-[10px] font-medium leading-tight text-center text-gray-800">Настройки</span>
+          <Settings className="w-5 h-5 m-glass-icon" />
+          <span className="text-[10px] font-medium leading-tight text-center m-glass-text">Настройки</span>
         </button>
         
         {/* Поисковая строка */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 m-glass-text-muted" size={16} />
           <input
             type="text"
             placeholder="Поиск мест или меток..."
-            className="bg-white rounded-full pl-10 pr-4 py-2 shadow-lg border-2 border-gray-300 min-w-[200px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="m-glass-input rounded-full pl-10 pr-4 py-2 min-w-[200px]"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />
         </div>
         
-        {/* Кнопка "Маршруты" - открывает меню маршрутов */}
+        {/* Кнопка "Маршруты" */}
         <button
           onClick={() => setRoutesOpen(true)}
-          className="bg-gray-100 text-gray-800 border border-gray-200 shadow-lg hover:shadow-xl hover:bg-gray-200 transition-all duration-300 rounded-xl p-3 flex flex-col items-center justify-center gap-2 min-w-[70px] max-w-[70px] h-[70px] relative active:scale-95"
+          className="m-glass-btn transition-all duration-300 rounded-xl p-3 flex flex-col items-center justify-center gap-2 min-w-[70px] max-w-[70px] h-[70px] relative"
           title="Маршруты"
         >
-          <Navigation className="w-5 h-5 text-gray-800" />
-          <span className="text-[10px] font-medium leading-tight text-center text-gray-800">Маршрут</span>
+          <Navigation className="w-5 h-5 m-glass-icon" />
+          <span className="text-[10px] font-medium leading-tight text-center m-glass-text">Маршрут</span>
         </button>
       </div>
       
@@ -446,14 +429,14 @@ const PlannerPage: React.FC = () => {
         <>
           {/* Overlay */}
           <div
-            className="fixed inset-0 bg-black/30 z-40 transition-opacity"
+            className="fixed inset-0 m-glass-overlay z-40 transition-opacity"
             onClick={() => setRoutesOpen(false)}
           />
           
           {/* Меню маршрутов */}
           <div
             className={cn(
-              "fixed left-1/2 transform -translate-x-1/2 z-50 bg-white rounded-[20px] shadow-[0_4px_24px_0_rgba(0,0,0,0.10)] border-2 border-[#7c7b7b91]",
+              "fixed left-1/2 transform -translate-x-1/2 z-50 m-glass-panel rounded-[20px]",
               "max-w-[340px] min-w-[280px] w-[calc(100vw-32px)] max-h-[calc(100vh-200px)]",
               "overflow-hidden flex flex-col transition-all duration-300"
             )}
@@ -461,27 +444,27 @@ const PlannerPage: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 text-white text-[1.1em] font-bold py-4 rounded-t-[20px] text-center relative flex items-center justify-center border-b border-gray-700 shadow-inner">
-              <h2 className="text-base font-bold text-white">Маршруты</h2>
+            <div className="m-glass-panel-hdr text-[1.1em] font-bold py-4 rounded-t-[20px] text-center relative flex items-center justify-center">
+              <h2 className="text-base font-bold m-glass-text">Маршруты</h2>
               <button
                 onClick={() => setRoutesOpen(false)}
-                className="absolute top-1/2 right-4 transform -translate-y-1/2 bg-none border-none text-white cursor-pointer p-1 w-6 h-6 rounded-full transition-all hover:bg-white/20 flex items-center justify-center text-lg font-bold leading-none"
+                className="absolute top-1/2 right-4 transform -translate-y-1/2 bg-none border-none m-glass-text cursor-pointer p-1 w-6 h-6 rounded-full transition-all hover:bg-white/20 flex items-center justify-center text-lg font-bold leading-none"
                 title="Закрыть"
               >
                 ×
               </button>
             </div>
             
-            {/* Content - управление точками маршрута */}
-            <div className="flex-1 overflow-y-auto bg-white">
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto">
               {/* Точки маршрута */}
-              <div className="px-7 pb-4.5 border-b border-gray-200">
+              <div className="px-7 pb-4.5 m-glass-accordion-section">
                 <div
                   className={cn(
                     "text-base font-semibold cursor-pointer py-2.5 rounded-lg flex items-center transition-colors",
                     openRouteSection === 'points' 
-                      ? "bg-[#22c55e] text-white" 
-                      : "bg-white text-gray-800 hover:bg-gray-100"
+                      ? "m-glass-accordion-header open" 
+                      : "m-glass-accordion-header"
                   )}
                   onClick={() => setOpenRouteSection(openRouteSection === 'points' ? '' : 'points')}
                 >
@@ -496,14 +479,14 @@ const PlannerPage: React.FC = () => {
                         {routePlanner.routePoints.map((point, index) => (
                           <div
                             key={point.id}
-                            className="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-between"
+                            className="px-3 py-2 rounded-lg m-glass-card flex items-center justify-between"
                           >
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="text-xs font-medium text-gray-600 w-4">{index + 1}</span>
-                                <span className="text-sm font-medium text-gray-800 truncate">{point.title}</span>
+                                <span className="text-xs font-medium m-glass-text-secondary w-4">{index + 1}</span>
+                                <span className="text-sm font-medium m-glass-text truncate">{point.title}</span>
                               </div>
-                              <div className="text-xs text-gray-500 ml-6">
+                              <div className="text-xs m-glass-text-muted ml-6">
                                 {point.latitude.toFixed(4)}, {point.longitude.toFixed(4)}
                               </div>
                             </div>
@@ -511,7 +494,7 @@ const PlannerPage: React.FC = () => {
                               <button
                                 onClick={() => handleReorderPoints(index, 'up')}
                                 disabled={index === 0}
-                                className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                                className="p-1 m-glass-text-muted hover:m-glass-text disabled:opacity-30"
                                 title="Вверх"
                               >
                                 <ArrowUp className="w-3 h-3" />
@@ -519,7 +502,7 @@ const PlannerPage: React.FC = () => {
                               <button
                                 onClick={() => handleReorderPoints(index, 'down')}
                                 disabled={index === routePlanner.routePoints.length - 1}
-                                className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                                className="p-1 m-glass-text-muted hover:m-glass-text disabled:opacity-30"
                                 title="Вниз"
                               >
                                 <ArrowDown className="w-3 h-3" />
@@ -536,7 +519,7 @@ const PlannerPage: React.FC = () => {
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-4 text-gray-500 text-sm">
+                      <div className="text-center py-4 m-glass-text-muted text-sm">
                         Нет точек маршрута. Добавьте точки для построения маршрута.
                       </div>
                     )}
@@ -548,23 +531,23 @@ const PlannerPage: React.FC = () => {
                           setOpenRouteSection('search');
                           setShowSearchForm(true);
                         }}
-                        className="w-full px-3 py-2 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+                        className="w-full px-3 py-2 text-left m-glass-card rounded-lg transition-colors flex items-center gap-2"
                       >
-                        <Search className="w-4 h-4 text-blue-500" />
+                        <Search className="w-4 h-4 m-glass-icon-accent" />
                         <div>
-                          <div className="text-sm font-medium text-gray-800">🔍 Поиск адреса</div>
-                          <div className="text-xs text-gray-500">Найти место по названию</div>
+                          <div className="text-sm font-medium m-glass-text">🔍 Поиск адреса</div>
+                          <div className="text-xs m-glass-text-muted">Найти место по названию</div>
                         </div>
                       </button>
                       
                       <button
                         onClick={() => setShowCoordinateInput(true)}
-                        className="w-full px-3 py-2 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+                        className="w-full px-3 py-2 text-left m-glass-card rounded-lg transition-colors flex items-center gap-2"
                       >
-                        <MapPin className="w-4 h-4 text-purple-500" />
+                        <MapPin className="w-4 h-4 m-glass-icon-accent" />
                         <div>
-                          <div className="text-sm font-medium text-gray-800">📍 Ввод координат</div>
-                          <div className="text-xs text-gray-500">Добавить по точным координатам</div>
+                          <div className="text-sm font-medium m-glass-text">📍 Ввод координат</div>
+                          <div className="text-xs m-glass-text-muted">Добавить по точным координатам</div>
                         </div>
                       </button>
                       
@@ -573,12 +556,12 @@ const PlannerPage: React.FC = () => {
                           setFavoritesOpen(true);
                           setRoutesOpen(false);
                         }}
-                        className="w-full px-3 py-2 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+                        className="w-full px-3 py-2 text-left m-glass-card rounded-lg transition-colors flex items-center gap-2"
                       >
                         <Star className="w-4 h-4 text-yellow-500" />
                         <div>
-                          <div className="text-sm font-medium text-gray-800">⭐ Из избранного</div>
-                          <div className="text-xs text-gray-500">Выбрать из сохраненных мест</div>
+                          <div className="text-sm font-medium m-glass-text">⭐ Из избранного</div>
+                          <div className="text-xs m-glass-text-muted">Выбрать из сохраненных мест</div>
                         </div>
                       </button>
                     </div>
@@ -588,13 +571,13 @@ const PlannerPage: React.FC = () => {
 
               {/* Поиск адресов */}
               {showSearchForm && (
-                <div className="px-7 pb-4.5 border-b border-gray-200">
+                <div className="px-7 pb-4.5 m-glass-accordion-section">
                   <div
                     className={cn(
                       "text-base font-semibold cursor-pointer py-2.5 rounded-lg flex items-center transition-colors",
                       openRouteSection === 'search' 
-                        ? "bg-[#22c55e] text-white" 
-                        : "bg-white text-gray-800 hover:bg-gray-100"
+                        ? "m-glass-accordion-header open" 
+                        : "m-glass-accordion-header"
                     )}
                     onClick={() => {
                       setOpenRouteSection(openRouteSection === 'search' ? '' : 'search');
@@ -614,14 +597,14 @@ const PlannerPage: React.FC = () => {
               )}
             </div>
             
-            {/* Footer с кнопками действий */}
-            <div className="bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 flex flex-col items-center gap-3 py-4 rounded-b-[20px] border-t border-gray-700 shadow-inner">
+            {/* Footer */}
+            <div className="m-glass-panel-ftr flex flex-col items-center gap-3 py-4 rounded-b-[20px]">
               <div className="flex gap-3 px-5 w-full justify-center">
                 <button
                   onClick={() => {
                     routePlanner?.clearRoutePoints();
                   }}
-                  className="flex-1 px-4.5 py-2 border-none rounded-md cursor-pointer font-bold text-[15px] bg-white text-black hover:bg-gray-100 transition-all"
+                  className="flex-1 px-4.5 py-2 rounded-md cursor-pointer font-bold text-[15px] m-glass-btn transition-all"
                 >
                   Очистить
                 </button>
@@ -630,13 +613,13 @@ const PlannerPage: React.FC = () => {
                     routePlanner?.startRouteBuilding();
                     setRoutesOpen(false);
                   }}
-                  className="flex-1 px-4.5 py-2 border-none rounded-md cursor-pointer font-bold text-[15px] bg-white text-black hover:bg-gray-100 transition-all"
+                  className="flex-1 px-4.5 py-2 rounded-md cursor-pointer font-bold text-[15px] m-glass-tab-active transition-all"
                 >
                   Создать
                 </button>
               </div>
               {routePlanner?.routePoints && routePlanner.routePoints.length > 0 && (
-                <div className="text-xs text-white/80 text-center">
+                <div className="text-xs m-glass-text-secondary text-center">
                   Точек: {routePlanner.routePoints.length} {routePlanner.routePoints.length >= 2 && '✓ Готов к построению'}
                 </div>
               )}
@@ -714,22 +697,22 @@ const RouteSearchForm: React.FC<{
           setSearchQuery(e.target.value);
           handleSearch(e.target.value);
         }}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+        className="m-glass-input w-full px-3 py-2 rounded-lg text-sm"
       />
       {isSearching && (
-        <div className="text-xs text-gray-500">Поиск...</div>
+        <div className="text-xs m-glass-text-muted">Поиск...</div>
       )}
       {searchResults.length > 0 && (
-        <div className="max-h-[150px] overflow-y-auto border border-gray-200 rounded-lg">
+        <div className="max-h-[150px] overflow-y-auto m-glass-card rounded-lg">
           {searchResults.map((place, idx) => (
             <button
               key={idx}
               onClick={() => handleSelectResult(place)}
-              className="w-full px-3 py-2 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+              className="w-full px-3 py-2 text-left hover:bg-white/10 m-glass-accordion-section last:border-b-0"
             >
-              <div className="text-sm font-medium text-gray-800">{place.label}</div>
+              <div className="text-sm font-medium m-glass-text">{place.label}</div>
               {(place as any).address && (
-                <div className="text-xs text-gray-500">{(place as any).address}</div>
+                <div className="text-xs m-glass-text-muted">{(place as any).address}</div>
               )}
             </button>
           ))}
@@ -739,5 +722,12 @@ const RouteSearchForm: React.FC<{
   );
 };
 
-export default PlannerPage;
+// Оборачиваем в RoutePlannerProvider, т.к. он не включён в глобальное дерево
+const PlannerPageWithProvider: React.FC = () => (
+  <RoutePlannerProvider>
+    <PlannerPage />
+  </RoutePlannerProvider>
+);
+
+export default PlannerPageWithProvider;
 

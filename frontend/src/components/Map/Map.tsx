@@ -688,6 +688,30 @@ const Map: React.FC<MapProps> = ({
                     }
                 }
 
+                // Гарантируем, что mapRef — это реальный Leaflet instance с .on()
+                if (mapRef.current && typeof mapRef.current.on !== 'function') {
+                    const candidates = [
+                        mapRef.current?.map, mapRef.current?.mapInstance,
+                        (facadeApi as any)?.map, (facadeApi as any)?.mapInstance,
+                        initResult?.map, initResult?.mapInstance
+                    ];
+                    for (const c of candidates) {
+                        if (c && typeof c.on === 'function' && typeof c.addLayer === 'function') {
+                            mapRef.current = c;
+                            break;
+                        }
+                    }
+                }
+
+                // Перерегистрируем в фасаде после unwrap, чтобы фасад тоже
+                // ссылался на реальный Leaflet instance
+                if (mapRef.current && typeof mapRef.current.on === 'function') {
+                    mapFacade().registerBackgroundApi(
+                        { map: mapRef.current, mapInstance: mapRef.current, containerId: 'map' },
+                        'map'
+                    );
+                }
+
                 const map = mapRef.current;
                 const tileLayerInfo = getTileLayer(mapSettings.mapType);
                 let hasTileLayer = false;
@@ -738,27 +762,32 @@ const Map: React.FC<MapProps> = ({
                     }
                 }, 100);
 
-                mapRef.current?.eachLayer((layer: any) => {
-                    if (layer && typeof layer.getLayers === 'function' && layer !== markerClusterGroupRef.current) {
-                        try { mapRef.current?.removeLayer(layer); } catch (e) { }
-                    }
-                });
-
-                mapRef.current?.on('moveend', () => {
-                    if (onBoundsChange && mapRef.current) {
-                        const bounds = mapRef.current.getBounds();
-                        if (bounds && typeof bounds.getNorth === 'function') {
-                            onBoundsChange({
-                                north: bounds.getNorth(),
-                                south: bounds.getSouth(),
-                                east: bounds.getEast(),
-                                west: bounds.getWest()
-                            });
+                if (mapRef.current && typeof mapRef.current.eachLayer === 'function') {
+                    mapRef.current.eachLayer((layer: any) => {
+                        if (layer && typeof layer.getLayers === 'function' && layer !== markerClusterGroupRef.current) {
+                            try { mapRef.current?.removeLayer(layer); } catch (e) { }
                         }
-                    }
-                });
+                    });
+                }
 
-                mapRef.current?.on('click', async (e: any) => {
+                if (mapRef.current && typeof mapRef.current.on === 'function') {
+                    mapRef.current.on('moveend', () => {
+                        if (onBoundsChange && mapRef.current) {
+                            const bounds = mapRef.current.getBounds();
+                            if (bounds && typeof bounds.getNorth === 'function') {
+                                onBoundsChange({
+                                    north: bounds.getNorth(),
+                                    south: bounds.getSouth(),
+                                    east: bounds.getEast(),
+                                    west: bounds.getWest()
+                                });
+                            }
+                        }
+                    });
+                }
+
+                if (mapRef.current && typeof mapRef.current.on === 'function') {
+                    mapRef.current.on('click', async (e: any) => {
                     if (!mapRef.current) return; // Guard to avoid crashes if map is gone
 
                     // --- Pick event location mode ---
@@ -912,6 +941,7 @@ const Map: React.FC<MapProps> = ({
                         onMapClick([e.latlng.lat, e.latlng.lng]);
                     }
                 });
+                }
 
                 setIsLoading(false);
                 setIsMapReady(true);
@@ -966,6 +996,7 @@ const Map: React.FC<MapProps> = ({
         if (!mapRef.current || !isMapReady) return;
 
         const map = mapRef.current;
+        if (typeof map.on !== 'function') return;
 
         const saveState = () => {
             try {
@@ -1199,10 +1230,12 @@ const Map: React.FC<MapProps> = ({
                         }
 
                         let hasTileLayer = false;
-                        mapRef.current.eachLayer((layer: any) => {
-                            // Avoid instanceof checks; assume presence of _url means a tile layer
-                            if ((layer as any)?._url) hasTileLayer = true;
-                        });
+                        if (typeof mapRef.current.eachLayer === 'function') {
+                            mapRef.current.eachLayer((layer: any) => {
+                                // Avoid instanceof checks; assume presence of _url means a tile layer
+                                if ((layer as any)?._url) hasTileLayer = true;
+                            });
+                        }
 
                         if (!hasTileLayer) {
                             setTimeout(() => {
@@ -1432,11 +1465,13 @@ const Map: React.FC<MapProps> = ({
     useEffect(() => {
         if (!mapRef.current || !routeData) return;
 
-        mapRef.current.eachLayer((layer: any) => {
-            if ((layer as any).isRouteLayer) {
-                try { mapRef.current?.removeLayer(layer); } catch (e) { }
-            }
-        });
+        if (typeof mapRef.current.eachLayer === 'function') {
+            mapRef.current.eachLayer((layer: any) => {
+                if ((layer as any).isRouteLayer) {
+                    try { mapRef.current?.removeLayer(layer); } catch (e) { }
+                }
+            });
+        }
 
         let routePolyline: any = null;
         let allLatLngs: any[] = [];
@@ -1511,7 +1546,7 @@ const Map: React.FC<MapProps> = ({
         }
 
         let zoomHandler: any;
-        if (mapRef.current && routePolyline) {
+        if (mapRef.current && routePolyline && typeof mapRef.current.on === 'function') {
             const updateStyle = () => {
                 const z = mapRef.current?.getZoom() ?? 0;
                 const weight = z <= 5 ? 8 : z <= 8 ? 6 : z <= 12 ? 5 : 4;
@@ -1528,12 +1563,14 @@ const Map: React.FC<MapProps> = ({
 
         return () => {
             if (mapRef.current) {
-                mapRef.current.eachLayer((layer: any) => {
-                    if ((layer as any).isRouteLayer) {
-                        mapRef.current?.removeLayer(layer);
-                    }
-                });
-                if (zoomHandler) {
+                if (typeof mapRef.current.eachLayer === 'function') {
+                    mapRef.current.eachLayer((layer: any) => {
+                        if ((layer as any).isRouteLayer) {
+                            mapRef.current?.removeLayer(layer);
+                        }
+                    });
+                }
+                if (zoomHandler && typeof mapRef.current.off === 'function') {
                     mapRef.current.off('zoomend', zoomHandler);
                 }
             }
@@ -1549,11 +1586,13 @@ const Map: React.FC<MapProps> = ({
     useEffect(() => {
         if (!mapRef.current) return;
 
-        mapRef.current.eachLayer((layer: any) => {
-            if ((layer as any)?.isZoneLayer) {
-                try { mapRef.current?.removeLayer(layer); } catch (e) { }
-            }
-        });
+        if (typeof mapRef.current.eachLayer === 'function') {
+            mapRef.current.eachLayer((layer: any) => {
+                if ((layer as any)?.isZoneLayer) {
+                    try { mapRef.current?.removeLayer(layer); } catch (e) { }
+                }
+            });
+        }
 
         zones.forEach(zone => {
             const color = (zone.severity === 'critical') ? '#EF4444' : (zone.severity === 'warning') ? '#F59E0B' : '#FB923C';
@@ -1653,12 +1692,16 @@ const Map: React.FC<MapProps> = ({
                     };
                     const onUp = (ev: any) => {
                         onSearchRadiusCenterChange([ev.latlng.lat, ev.latlng.lng]);
-                        mapRef.current?.off('mousemove', onMove);
-                        mapRef.current?.off('mouseup', onUp);
+                        if (typeof mapRef.current?.off === 'function') {
+                            mapRef.current.off('mousemove', onMove);
+                            mapRef.current.off('mouseup', onUp);
+                        }
                         mapRef.current?.dragging?.enable();
                     };
-                    mapRef.current?.on('mousemove', onMove);
-                    mapRef.current?.on('mouseup', onUp);
+                    if (typeof mapRef.current?.on === 'function') {
+                        mapRef.current.on('mousemove', onMove);
+                        mapRef.current.on('mouseup', onUp);
+                    }
                 });
             }
         }
@@ -1670,6 +1713,7 @@ const Map: React.FC<MapProps> = ({
     useEffect(() => {
         if (!mapRef.current) return;
         const map = mapRef.current;
+        if (typeof map.on !== 'function') return;
 
         const closeMiniPopup = () => {
             setMiniPopup(null);
@@ -2149,6 +2193,11 @@ const Map: React.FC<MapProps> = ({
                                 if (facadeApi) {
                                     if (facadeApi.map) mapRef.current = facadeApi.map;
                                     else if (facadeApi.mapInstance) mapRef.current = facadeApi.mapInstance;
+                                    // Unwrap если mapRef не настоящий Leaflet
+                                    if (mapRef.current && typeof mapRef.current.on !== 'function') {
+                                        const inner = mapRef.current.map || mapRef.current.mapInstance;
+                                        if (inner && typeof inner.on === 'function') mapRef.current = inner;
+                                    }
                                 }
                                 setIsMapReady(true);
                                 setError(null);

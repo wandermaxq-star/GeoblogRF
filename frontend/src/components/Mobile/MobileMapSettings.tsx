@@ -205,16 +205,16 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
       {/* Overlay */}
       {isOpen && (
       <div
-          className="fixed inset-0 bg-black/30 z-40 transition-opacity"
+          className="fixed inset-0 m-glass-overlay z-40 transition-opacity"
           style={{ pointerEvents: 'auto' }}
         onClick={onClose}
       />
       )}
       
-      {/* Settings Panel - компактное аккордеонное окно как в браузерной версии */}
+      {/* Settings Panel - glassmorphism */}
       <div
         className={cn(
-          "fixed left-1/2 transform -translate-x-1/2 z-50 bg-white rounded-[20px] shadow-[0_4px_24px_0_rgba(0,0,0,0.10)] border-2 border-[#7c7b7b91]",
+          "fixed left-1/2 transform -translate-x-1/2 z-50 m-glass-panel rounded-[20px]",
           "max-w-[340px] min-w-[280px] w-[calc(100vw-32px)] max-h-[calc(100vh-200px)]",
           "overflow-hidden flex flex-col transition-all duration-300",
           isOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[-20px] pointer-events-none"
@@ -222,14 +222,14 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
         style={{ top: 'calc(var(--action-buttons-height) + 40px + 70px + 40px)', pointerEvents: isOpen ? 'auto' : 'none' }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header - стальной градиент */}
-        <div className="bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 text-white text-[1.1em] font-bold py-4 rounded-t-[20px] text-center relative flex items-center justify-center border-b border-gray-700 shadow-inner">
-          <h2 className="text-base font-bold text-white">
+        {/* Header */}
+        <div className="m-glass-panel-hdr text-[1.1em] font-bold py-4 rounded-t-[20px] text-center relative flex items-center justify-center">
+          <h2 className="text-base font-bold m-glass-text">
             {mode === 'map' ? 'Фильтры и настройки' : 'Настройки маршрута'}
             </h2>
           <button
               onClick={onClose}
-            className="absolute top-1/2 right-4 transform -translate-y-1/2 bg-none border-none text-white cursor-pointer p-1 w-6 h-6 rounded-full transition-all hover:bg-white/20 flex items-center justify-center text-lg font-bold leading-none"
+            className="absolute top-1/2 right-4 transform -translate-y-1/2 bg-none border-none m-glass-text cursor-pointer p-1 w-6 h-6 rounded-full transition-all hover:bg-white/20 flex items-center justify-center text-lg font-bold leading-none"
             title="Закрыть"
           >
             ×
@@ -263,16 +263,16 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
           )
         )}
 
-        {/* Tabs - белый фон с зелеными активными */}
+        {/* Tabs */}
         {mode === 'planner' ? (
-          <div className="flex gap-2 px-4 py-2 border-b border-gray-200 bg-white">
+          <div className="flex gap-2 px-4 py-2 m-glass-divider border-b">
             <button
               onClick={() => setActiveTab('filters')}
               className={cn(
                 "flex-1 px-3 py-2 text-sm font-semibold transition-all rounded-lg",
                 activeTab === 'filters'
-                  ? "bg-[#22c55e] text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "m-glass-tab-active"
+                  : "m-glass-tab"
               )}
             >
               <Navigation className="w-4 h-4 inline mr-2" />
@@ -283,8 +283,8 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
               className={cn(
                 "flex-1 px-3 py-2 text-sm font-semibold transition-all rounded-lg",
                 activeTab === 'settings'
-                  ? "bg-[#22c55e] text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "m-glass-tab-active"
+                  : "m-glass-tab"
               )}
             >
               <Settings2 className="w-4 h-4 inline mr-2" />
@@ -292,14 +292,14 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
             </button>
           </div>
         ) : (
-          <div className="flex gap-2 px-4 py-2 border-b border-gray-200 bg-white">
+          <div className="flex gap-2 px-4 py-2 m-glass-divider border-b">
             <button
               onClick={() => setActiveTab('filters')}
               className={cn(
                 "flex-1 px-3 py-2 text-sm font-semibold transition-all rounded-lg",
                 activeTab === 'filters'
-                  ? "bg-[#22c55e] text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "m-glass-tab-active"
+                  : "m-glass-tab"
               )}
             >
               <Filter className="w-4 h-4 inline mr-2" />
@@ -310,8 +310,8 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
               className={cn(
                 "flex-1 px-3 py-2 text-sm font-semibold transition-all rounded-lg",
                 activeTab === 'settings'
-                  ? "bg-[#22c55e] text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "m-glass-tab-active"
+                  : "m-glass-tab"
               )}
             >
               <Settings2 className="w-4 h-4 inline mr-2" />
@@ -320,19 +320,19 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
           </div>
         )}
 
-        {/* Content - аккордеон с белым фоном и зелеными активными разделами */}
-        <div className="flex-1 overflow-y-auto bg-white">
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto">
             {/* Для режима planner показываем настройки маршрута (транспорт, оптимизация, опции) */}
             {activeTab === 'filters' && mode === 'planner' && (
               <div>
                 {/* Тип транспорта */}
-                <div className="px-7 pb-4.5 border-b border-gray-200">
+                <div className="px-7 pb-4.5 m-glass-accordion-section">
                   <div
                     className={cn(
                       "text-base font-semibold cursor-pointer py-2.5 rounded-lg flex items-center transition-colors",
                       openSection === 'transport' 
-                        ? "bg-[#22c55e] text-white" 
-                        : "bg-white text-gray-800 hover:bg-gray-100"
+                        ? "m-glass-accordion-header open" 
+                        : "m-glass-accordion-header"
                     )}
                     onClick={() => setOpenSection(openSection === 'transport' ? '' : 'transport')}
                   >
@@ -350,14 +350,14 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                             className={cn(
                               "w-full p-2 rounded-lg border-2 transition-colors text-left flex items-center gap-2",
                               currentRouteSettings.transportType === key
-                                ? "border-[#22c55e] bg-green-50"
-                                : "border-gray-200 hover:border-gray-300"
+                                ? "m-glass-chip selected"
+                                : "m-glass-chip"
                             )}
                           >
                             <span className="text-lg">{config.icon}</span>
                             <div className="flex-1">
-                              <div className="font-medium text-sm text-gray-800">{config.name}</div>
-                              <div className="text-xs text-gray-500">{config.speed} {config.unit}</div>
+                              <div className="font-medium text-sm m-glass-text">{config.name}</div>
+                              <div className="text-xs m-glass-text-muted">{config.speed} {config.unit}</div>
                             </div>
                             {currentRouteSettings.transportType === key && (
                               <Check className="w-4 h-4 text-[#22c55e]" />
@@ -370,13 +370,13 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                 </div>
 
                 {/* Оптимизация маршрута */}
-                <div className="px-7 pb-4.5 border-b border-gray-200">
+                <div className="px-7 pb-4.5 m-glass-accordion-section">
                   <div
                     className={cn(
                       "text-base font-semibold cursor-pointer py-2.5 rounded-lg flex items-center transition-colors",
                       openSection === 'optimization' 
-                        ? "bg-[#22c55e] text-white" 
-                        : "bg-white text-gray-800 hover:bg-gray-100"
+                        ? "m-glass-accordion-header open" 
+                        : "m-glass-accordion-header"
                     )}
                     onClick={() => setOpenSection(openSection === 'optimization' ? '' : 'optimization')}
                   >
@@ -389,7 +389,7 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                       <select
                         value={currentRouteSettings.optimization}
                         onChange={e => setRouteSetting('optimization', e.target.value)}
-                        className="w-full rounded-md px-2 py-2 border border-gray-300 bg-white text-gray-900 text-sm"
+                        className="w-full rounded-md px-2 py-2 border m-glass-input text-sm"
                       >
                         <option value="fastest">⚡ Самый быстрый</option>
                         <option value="shortest">📏 Самый короткий</option>
@@ -400,13 +400,13 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                 </div>
 
                 {/* Дополнительные опции */}
-                <div className="px-7 pb-4.5 border-b border-gray-200">
+                <div className="px-7 pb-4.5 m-glass-accordion-section">
                   <div
                     className={cn(
                       "text-base font-semibold cursor-pointer py-2.5 rounded-lg flex items-center transition-colors",
                       openSection === 'routeOptions' 
-                        ? "bg-[#22c55e] text-white" 
-                        : "bg-white text-gray-800 hover:bg-gray-100"
+                        ? "m-glass-accordion-header open" 
+                        : "m-glass-accordion-header"
                     )}
                     onClick={() => setOpenSection(openSection === 'routeOptions' ? '' : 'routeOptions')}
                   >
@@ -416,7 +416,7 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                   </div>
                   {openSection === 'routeOptions' && (
                     <div className="pt-2 pl-8 space-y-2.5">
-                      <label className="flex items-center gap-2 text-sm text-gray-800">
+                      <label className="flex items-center gap-2 text-sm m-glass-text">
                         <input
                           type="checkbox"
                           checked={currentRouteSettings.avoidHighways}
@@ -425,7 +425,7 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                         />
                         Избегать автомагистрали
                       </label>
-                      <label className="flex items-center gap-2 text-sm text-gray-800">
+                      <label className="flex items-center gap-2 text-sm m-glass-text">
                         <input
                           type="checkbox"
                           checked={currentRouteSettings.avoidTolls}
@@ -434,7 +434,7 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                         />
                         Избегать платные дороги
                       </label>
-                      <label className="flex items-center gap-2 text-sm text-gray-800">
+                      <label className="flex items-center gap-2 text-sm m-glass-text">
                         <input
                           type="checkbox"
                           checked={currentRouteSettings.showAlternatives}
@@ -452,13 +452,13 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
             {activeTab === 'filters' && mode === 'map' && (
               <div>
                 {/* Категории и хэштеги */}
-                <div className="px-7 pb-4.5 border-b border-gray-200">
+                <div className="px-7 pb-4.5 m-glass-accordion-section">
                   <div
                     className={cn(
                       "text-base font-semibold cursor-pointer py-2.5 rounded-lg flex items-center transition-colors",
                       openSection === 'categories' 
-                        ? "bg-[#22c55e] text-white" 
-                        : "bg-white text-gray-800 hover:bg-gray-100"
+                        ? "m-glass-accordion-header open" 
+                        : "m-glass-accordion-header"
                     )}
                     onClick={() => setOpenSection(openSection === 'categories' ? '' : 'categories')}
                   >
@@ -485,8 +485,8 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                             className={cn(
                                 "border-none rounded-2xl px-3.5 py-1.5 text-[13px] cursor-pointer transition-all flex items-center gap-1.5",
                               isSelected
-                                  ? "bg-[#22c55e] text-white" 
-                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                  ? "m-glass-chip selected" 
+                                  : "m-glass-chip"
                             )}
                           >
                               <Icon className="category-icon" style={{ width: 14, height: 14, color: isSelected ? 'white' : cat.color }} />
@@ -500,13 +500,13 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                 </div>
 
                 {/* Радиус поиска */}
-                <div className="px-7 pb-4.5 border-b border-gray-200">
+                <div className="px-7 pb-4.5 m-glass-accordion-section">
                   <div
                     className={cn(
                       "text-base font-semibold cursor-pointer py-2.5 rounded-lg flex items-center transition-colors",
                       openSection === 'radius' 
-                        ? "bg-[#22c55e] text-white" 
-                        : "bg-white text-gray-800 hover:bg-gray-100"
+                        ? "m-glass-accordion-header open" 
+                        : "m-glass-accordion-header"
                     )}
                     onClick={() => setOpenSection(openSection === 'radius' ? '' : 'radius')}
                   >
@@ -516,7 +516,7 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                   </div>
                   {openSection === 'radius' && (
                     <div className="pt-2 pl-8">
-                      <label className="flex items-center gap-2 text-sm text-gray-800">
+                      <label className="flex items-center gap-2 text-sm m-glass-text">
                         <input
                           type="checkbox"
                           checked={isRadiusOn}
@@ -536,20 +536,20 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                           style={{ width: 100, opacity: isRadiusOn ? 1 : 0.5 }}
                           className="flex-1 accent-[#22c55e]"
                         />
-                        <span className="min-w-[40px] text-right text-gray-800 text-sm">{radius} км</span>
+                        <span className="min-w-[40px] text-right m-glass-text text-sm">{radius} км</span>
                       </div>
                     </div>
                   )}
                 </div>
 
                 {/* Предустановленные сценарии */}
-                <div className="px-7 pb-4.5 border-b border-gray-200">
+                <div className="px-7 pb-4.5 m-glass-accordion-section">
                   <div
                     className={cn(
                       "text-base font-semibold cursor-pointer py-2.5 rounded-lg flex items-center transition-colors",
                       openSection === 'presets' 
-                        ? "bg-[#22c55e] text-white" 
-                        : "bg-white text-gray-800 hover:bg-gray-100"
+                        ? "m-glass-accordion-header open" 
+                        : "m-glass-accordion-header"
                     )}
                     onClick={() => setOpenSection(openSection === 'presets' ? '' : 'presets')}
                   >
@@ -570,8 +570,8 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                             className={cn(
                                 "border-none rounded-2xl px-3.5 py-1.5 text-[13px] cursor-pointer transition-all flex items-center gap-1.5",
                               isSelected
-                                  ? "bg-[#22c55e] text-white" 
-                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                  ? "m-glass-chip selected" 
+                                  : "m-glass-chip"
                             )}
                           >
                               <Icon className="w-3.5 h-3.5" />
@@ -586,13 +586,13 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
 
                 {/* Режим загрузки маркеров */}
                 {onLoadingModeToggle && (
-                  <div className="px-7 pb-4.5 border-b border-gray-200">
+                  <div className="px-7 pb-4.5 m-glass-accordion-section">
                     <div
                       className={cn(
                         "text-base font-semibold cursor-pointer py-2.5 rounded-lg flex items-center transition-colors",
                         openSection === 'loading' 
-                          ? "bg-[#22c55e] text-white" 
-                          : "bg-white text-gray-800 hover:bg-gray-100"
+                          ? "m-glass-accordion-header open" 
+                          : "m-glass-accordion-header"
                       )}
                       onClick={() => setOpenSection(openSection === 'loading' ? '' : 'loading')}
                     >
@@ -603,7 +603,7 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                     {openSection === 'loading' && (
                       <div className="pt-2 pl-8">
                         <div className="space-y-3">
-                          <label className="flex items-start gap-2 text-sm text-gray-800">
+                          <label className="flex items-start gap-2 text-sm m-glass-text">
                           <input
                             type="radio"
                             name="loadingMode"
@@ -612,13 +612,13 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                               className="w-4 h-4 mt-0.5 accent-[#22c55e]"
                           />
                           <div>
-                              <div className="font-bold text-gray-900">Ленивая загрузка</div>
-                            <div className="text-xs text-gray-600">
+                              <div className="font-bold m-glass-text">Ленивая загрузка</div>
+                            <div className="text-xs m-glass-text-secondary">
                               Загружаем только видимые маркеры (быстрее, меньше трафика)
                             </div>
                           </div>
                         </label>
-                          <label className="flex items-start gap-2 text-sm text-gray-800">
+                          <label className="flex items-start gap-2 text-sm m-glass-text">
                           <input
                             type="radio"
                             name="loadingMode"
@@ -627,8 +627,8 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                               className="w-4 h-4 mt-0.5 accent-[#22c55e]"
                           />
                           <div>
-                              <div className="font-bold text-gray-900">Полная загрузка</div>
-                            <div className="text-xs text-gray-600">
+                              <div className="font-bold m-glass-text">Полная загрузка</div>
+                            <div className="text-xs m-glass-text-secondary">
                               Загружаем все маркеры сразу (быстрый поиск)
                             </div>
                           </div>
@@ -644,13 +644,13 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
             {(activeTab === 'settings' || mode === 'planner') && (
               <div>
                 {/* Настройки карты */}
-                <div className="px-7 pb-4.5 border-b border-gray-200">
+                <div className="px-7 pb-4.5 m-glass-accordion-section">
                   <div
                     className={cn(
                       "text-base font-semibold cursor-pointer py-2.5 rounded-lg flex items-center transition-colors",
                       openSection === 'map' 
-                        ? "bg-[#22c55e] text-white" 
-                        : "bg-white text-gray-800 hover:bg-gray-100"
+                        ? "m-glass-accordion-header open" 
+                        : "m-glass-accordion-header"
                     )}
                     onClick={() => setOpenSection(openSection === 'map' ? '' : 'map')}
                   >
@@ -661,11 +661,11 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                   {openSection === 'map' && (
                     <div className="pt-2 pl-8">
                       <div className="mb-2.5">
-                        <b className="text-gray-900">Вид карты:</b>
+                        <b className="m-glass-text">Вид карты:</b>
                         <select
                           value={mapType}
                           onChange={e => setMapType(e.target.value)}
-                          className="ml-2 rounded-md px-2 py-0.5 border border-gray-300 bg-white text-gray-900"
+                          className="ml-2 rounded-md px-2 py-0.5 border m-glass-input"
                         >
                           <option value="light">Светлая</option>
                           <option value="dark">Тёмная</option>
@@ -673,7 +673,7 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                         </select>
                       </div>
                       <div className="space-y-2.5">
-                        <label className="flex items-center gap-2 text-sm text-gray-800">
+                        <label className="flex items-center gap-2 text-sm m-glass-text">
                           <input
                             type="checkbox"
                             checked={showTraffic}
@@ -682,7 +682,7 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                           />
                           Показывать пробки
                         </label>
-                        <label className="flex items-center gap-2 text-sm text-gray-800">
+                        <label className="flex items-center gap-2 text-sm m-glass-text">
                           <input
                             type="checkbox"
                             checked={showBikeLanes}
@@ -691,7 +691,7 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                           />
                           Показывать велодорожки
                         </label>
-                        <label className="flex items-center gap-2 text-sm text-gray-800">
+                        <label className="flex items-center gap-2 text-sm m-glass-text">
                           <input
                             type="checkbox"
                             checked={showHints}
@@ -702,11 +702,11 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                         </label>
                       </div>
                       <div className="mt-2.5">
-                        <b className="text-gray-900">Цветовая схема:</b>
+                        <b className="m-glass-text">Цветовая схема:</b>
                         <select
                           value={themeColor}
                           onChange={e => setThemeColor(e.target.value)}
-                          className="ml-2 rounded-md px-2 py-0.5 border border-gray-300 bg-white text-gray-900"
+                          className="ml-2 rounded-md px-2 py-0.5 border m-glass-input"
                         >
                           <option value="green">Зелёная</option>
                           <option value="blue">Синяя</option>
@@ -720,11 +720,11 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
             )}
           </div>
 
-        {/* Footer с кнопками действий - стальной градиент, белые кнопки с черным текстом */}
-        <div className="bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 flex flex-col items-center gap-3 py-4 rounded-b-[20px] border-t border-gray-700 shadow-inner">
+        {/* Footer */}
+        <div className="m-glass-panel-ftr flex flex-col items-center gap-3 py-4 rounded-b-[20px]">
             {onShowAllMarkers && (
               <div className="w-full px-5 text-left">
-                <label className="flex items-center cursor-pointer font-medium text-white">
+                <label className="flex items-center cursor-pointer font-medium m-glass-text">
                 <input
                   type="checkbox"
                   onChange={onShowAllMarkers}
@@ -737,13 +737,13 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
             <div className="flex gap-3 px-5 w-full justify-center">
               <button
                 onClick={handleReset}
-                className="flex-1 px-4.5 py-2 border-none rounded-md cursor-pointer font-bold text-[15px] bg-white text-black hover:bg-gray-100 transition-all"
+                className="flex-1 px-4.5 py-2 rounded-md cursor-pointer font-bold text-[15px] m-glass-btn transition-all"
               >
                 Сбросить
               </button>
               <button
                 onClick={handleApply}
-                className="flex-1 px-4.5 py-2 border-none rounded-md cursor-pointer font-bold text-[15px] bg-white text-black hover:bg-gray-100 transition-all"
+                className="flex-1 px-4.5 py-2 rounded-md cursor-pointer font-bold text-[15px] m-glass-tab-active transition-all"
               >
                 Применить
               </button>

@@ -1,44 +1,56 @@
 import { useState, useCallback } from 'react';
 
-interface Toast {
+export type ToastVariant = 'success' | 'error' | 'info' | 'warning';
+
+interface ToastItem {
   id: string;
-  title: string;
+  title?: string;
   description?: string;
-  variant?: 'default' | 'destructive';
+  variant: ToastVariant;
+  duration: number; // ms, 0 = sticky
 }
 
 interface UseToastReturn {
-  toast: (toast: Omit<Toast, 'id'>) => void;
-  toasts: Toast[];
+  toast: (data: Omit<ToastItem, 'id'>) => string;
+  toasts: ToastItem[];
   dismiss: (id: string) => void;
 }
 
-export const useToast = (): UseToastReturn => {
-  const [toasts, setToasts] = useState<Toast[]>([]);
+// queue limit constant
+const MAX_TOASTS = 3;
 
-  const toast = useCallback((toastData: Omit<Toast, 'id'>) => {
-    const id = Math.random().toString(36).substr(2, 9);
-    const newToast: Toast = { ...toastData, id };
-    
-    setToasts(prev => [...prev, newToast]);
-    
-    // Автоматически убираем toast через 5 секунд
-    setTimeout(() => {
-      dismiss(id);
-    }, 5000);
-  }, []);
+export const useToast = (): UseToastReturn => {
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const dismiss = useCallback((id: string) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
+
+  const toast = useCallback(
+    (data: Omit<ToastItem, 'id'>) => {
+      const id = Math.random().toString(36).substr(2, 9);
+      const durationDefault =
+        data.variant === 'warning' ? 5000 : data.variant === 'error' ? 0 : 3000;
+      const newToast: ToastItem = {
+        id,
+        variant: data.variant || 'info',
+        title: data.title,
+        description: data.description,
+        duration: data.duration ?? durationDefault,
+      };
+      setToasts((prev) => {
+        const arr = [...prev, newToast];
+        if (arr.length > MAX_TOASTS) arr.shift();
+        return arr;
+      });
+      if (newToast.duration > 0) {
+        setTimeout(() => dismiss(id), newToast.duration);
+      }
+      return id;
+    },
+    [dismiss]
+  );
 
   return { toast, toasts, dismiss };
 };
-
-// Экспортируем функцию toast из хука
-export const toast = useToast().toast;
-
-
-
-
 

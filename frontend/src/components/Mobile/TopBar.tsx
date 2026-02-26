@@ -1,9 +1,10 @@
-import { Bell, Search, HelpCircle, Settings, Star } from "lucide-react";
+import { Bell, Search, HelpCircle, Settings, Star, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
+import { useThemeStore } from "@/stores/themeStore";
 import { cn } from "@/lib/utils";
 
 interface TopBarProps {
@@ -30,6 +31,7 @@ const TopBar = ({
   const navigate = useNavigate();
   const { user } = useAuth();
   const favorites = useFavorites();
+  const { theme, toggleTheme } = useThemeStore();
   
   const favoritesCount = (favorites?.favoritePlaces?.length || 0) + 
                         (favorites?.favoriteRoutes?.length || 0) + 
@@ -46,17 +48,25 @@ const TopBar = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-border shadow-sm">
+    <header className="sticky top-0 z-40 m-glass-topbar" style={{ pointerEvents: 'auto' }}>
       <div className="flex items-center justify-between h-nav px-4">
-        <h1 className="text-lg font-bold text-foreground">{title}</h1>
+        <h1 className="text-lg font-bold m-glass-text">{title}</h1>
 
                 <div className="flex items-center gap-2">
+                  {/* Кнопка переключения темы */}
+                  <button
+                    className="m-theme-toggle"
+                    onClick={toggleTheme}
+                    title={theme === 'light' ? 'Переключить на тёмную тему' : 'Переключить на светлую тему'}
+                  >
+                    {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                  </button>
                   {showSearch && (
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={onSearchClick}
-                      className="text-muted-foreground hover:text-foreground hover:bg-muted"
+                      className="m-glass-text-secondary hover:m-glass-text"
                     >
                       <Search className="w-5 h-5" />
                     </Button>
@@ -66,7 +76,7 @@ const TopBar = ({
                       variant="ghost"
                       size="icon"
                       onClick={onSettingsClick}
-                      className="text-muted-foreground hover:text-foreground hover:bg-muted"
+                      className="m-glass-text-secondary hover:m-glass-text"
                     >
                       <Settings className="w-5 h-5" />
                     </Button>
@@ -76,7 +86,7 @@ const TopBar = ({
                       variant="ghost"
                       size="icon"
                       onClick={onHelpClick}
-                      className="text-muted-foreground hover:text-foreground hover:bg-muted"
+                      className="m-glass-text-secondary hover:m-glass-text"
                     >
                       <HelpCircle className="w-5 h-5" />
                     </Button>
@@ -86,11 +96,11 @@ const TopBar = ({
                     variant="ghost"
                     size="icon"
                     onClick={onFavoritesClick}
-                    className="text-muted-foreground hover:text-foreground hover:bg-muted relative"
+                    className="m-glass-text-secondary hover:m-glass-text relative"
                   >
                     <Star className={cn("w-5 h-5", favoritesCount > 0 && "fill-yellow-500 text-yellow-500")} />
                     {favoritesCount > 0 && (
-                      <span className="absolute top-1 right-1 w-4 h-4 bg-yellow-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                      <span className="absolute top-1 right-1 w-4 h-4 m-glass-badge text-[10px] rounded-full flex items-center justify-center">
                         {favoritesCount > 99 ? '99+' : favoritesCount}
                       </span>
                     )}
@@ -98,18 +108,18 @@ const TopBar = ({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-muted-foreground hover:text-foreground hover:bg-muted relative"
+                    className="m-glass-text-secondary hover:m-glass-text relative"
                   >
                     <Bell className="w-5 h-5" />
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"></span>
+                    <span className="absolute top-1 right-1 w-2 h-2 m-glass-badge rounded-full"></span>
                   </Button>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate('/profile')}
-            className="text-muted-foreground hover:text-foreground hover:bg-muted p-0"
+            className="m-glass-text-secondary hover:m-glass-text p-0"
           >
-            <Avatar className="w-8 h-8 border-2 border-border">
+            <Avatar className="w-8 h-8 border-2 border-white/30">
               <AvatarImage src={user?.avatar_url} alt={user?.username || 'Profile'} />
               <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                 {getInitials()}

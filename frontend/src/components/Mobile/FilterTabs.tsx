@@ -22,7 +22,7 @@ const FilterTabs = ({ tabs, defaultTab, onTabChange }: FilterTabsProps) => {
   };
 
   return (
-    <div className="sticky top-nav bg-background border-b border-border z-30">
+    <div className="sticky top-nav m-glass-topbar z-30">
       <div className="flex gap-1 px-2 py-2 overflow-x-auto scrollbar-hide">
         {tabs.map((tab) => (
           <button
@@ -31,8 +31,8 @@ const FilterTabs = ({ tabs, defaultTab, onTabChange }: FilterTabsProps) => {
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap flex-shrink-0",
               activeTab === tab.id
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
+                ? "m-glass-tab-active"
+                : "m-glass-tab"
             )}
           >
             {tab.icon && <span className="flex-shrink-0">{tab.icon}</span>}

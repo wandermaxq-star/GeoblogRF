@@ -24,7 +24,7 @@ const BottomNavigation = () => {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-bottom shadow-lg">
+    <nav className="fixed bottom-0 left-0 right-0 m-glass-nav z-50 safe-area-bottom" style={{ pointerEvents: 'auto' }}>
       <div className="flex justify-around items-center h-16 px-1 gap-1">
         {navItems.map((item) => {
           const active = isActive(item.to);
@@ -33,15 +33,14 @@ const BottomNavigation = () => {
               key={item.to}
               to={item.to}
               className={cn(
-                "bg-white text-gray-800 shadow-lg hover:shadow-xl hover:-translate-y-1",
+                "m-glass-btn",
                 "transition-all duration-300 rounded-xl p-2 flex flex-col items-center justify-center gap-1",
-                "border border-gray-300 flex-1 max-w-[60px] min-h-[60px]",
-                active && "shadow-xl -translate-y-1 border-gray-400",
-                "active:scale-95"
+                "flex-1 max-w-[60px] min-h-[60px]",
+                active && "active"
               )}
             >
-              <item.icon className={cn("w-5 h-5 text-gray-800 transition-transform", active && "scale-110")} />
-              <span className="text-[9px] font-medium leading-tight text-gray-800 text-center">{item.label}</span>
+              <item.icon className={cn("w-5 h-5 m-glass-icon transition-transform", active && "scale-110")} />
+              <span className="text-[9px] font-medium leading-tight m-glass-text text-center">{item.label}</span>
             </NavLink>
           );
         })}

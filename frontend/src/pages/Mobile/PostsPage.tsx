@@ -217,7 +217,7 @@ const PostsPage: React.FC = () => {
         onTabChange={(value) => setSortFilter(value as SortFilter)}
       />
       
-      <div className="flex-1 overflow-y-auto pb-bottom-nav bg-background">
+      <div className="flex-1 overflow-y-auto pb-bottom-nav m-glass-page">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-muted-foreground">Загрузка...</div>
@@ -237,7 +237,7 @@ const PostsPage: React.FC = () => {
               return (
                 <Card 
                   key={post.id} 
-                  className="overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+                  className="m-glass-card overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
                   onClick={() => handlePostClick(post)}
                 >
                   {/* Post Image */}

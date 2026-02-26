@@ -15,7 +15,7 @@ import { GeoBadgeList, GeoRef, GeoRefType } from '../Geo/GeoBadge';
 import { useGeoFocusStore } from '../../stores/geoFocusStore';
 import { useContentStore } from '../../stores/contentStore';
 
-const CardContainer = styled.div<{ isRead: boolean }>`
+const CardContainer = styled.div<{ $isRead: boolean }>`
   /* Transparent glass card similar to Favorites/Posts */
   background: rgba(255,255,255,0.06);
   background-image: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
@@ -25,7 +25,7 @@ const CardContainer = styled.div<{ isRead: boolean }>`
   padding: 16px;
   box-shadow: 0 6px 20px rgba(0,0,0,0.12);
   border: 1px solid rgba(255,255,255,0.08);
-  border-left: 4px solid ${props => props.isRead ? 'rgba(255,255,255,0.08)' : 'rgba(52,152,219,0.9)'};
+  border-left: 4px solid ${props => props.$isRead ? 'rgba(255,255,255,0.08)' : 'rgba(52,152,219,0.9)'};
   transition: all 0.2s ease;
   cursor: pointer;
   position: relative;
@@ -44,12 +44,12 @@ const CardHeader = styled.div`
   margin-bottom: 12px;
 `;
 
-const UserAvatar = styled.div<{ avatarUrl?: string }>`
+const UserAvatar = styled.div<{ $avatarUrl?: string }>`
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: ${props => props.avatarUrl 
-    ? `url(${props.avatarUrl}) center/cover` 
+  background: ${props => props.$avatarUrl 
+    ? `url(${props.$avatarUrl}) center/cover` 
     : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
   };
   display: flex;
@@ -307,13 +307,13 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onMarkAsRead }) =
 
   return (
     <CardContainer 
-      isRead={activity.is_read} 
+      $isRead={activity.is_read} 
       onClick={handleCardClick}
     >
       {!activity.is_read && <UnreadIndicator />}
       
       <CardHeader>
-        <UserAvatar avatarUrl={activity.avatar_url}>
+        <UserAvatar $avatarUrl={activity.avatar_url}>
           {!activity.avatar_url && getUserInitials()}
         </UserAvatar>
         

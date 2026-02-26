@@ -211,6 +211,8 @@ app.get('/api/test', (req, res) => {
     app.use('/api/blogs', blogRoutesModule.default || blogRoutesModule);
     app.use('/api/books', bookRoutesModule.default || bookRoutesModule);
     app.use('/api/activities', activityRoutesModule.default || activityRoutesModule);
+    // Alias: frontend обращается к /api/activity (singular)
+    app.use('/api/activity', activityRoutesModule.default || activityRoutesModule);
     app.use('/api/zones', zonesRoutesModule.default || zonesRoutesModule);
     app.use('/api/ratings', ratingsRoutesModule.default || ratingsRoutesModule);
     app.use('/api/route-ratings', routeRatingsRoutesModule.default || routeRatingsRoutesModule);

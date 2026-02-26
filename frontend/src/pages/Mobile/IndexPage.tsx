@@ -94,9 +94,9 @@ const IndexPage: React.FC = () => {
   return (
     <div className="flex flex-col h-full">
       {/* Лента активности */}
-      <div className="px-4 py-3 border-b border-border bg-background">
+      <div className="px-4 py-3 m-glass-accordion-section m-glass-topbar">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold text-foreground">Лента активности</h2>
+          <h2 className="text-lg font-bold m-glass-text">Лента активности</h2>
           <Button
             variant="ghost"
             size="sm"
@@ -161,7 +161,7 @@ const IndexPage: React.FC = () => {
       </div>
 
       {/* Посты */}
-      <div className="flex-1 overflow-y-auto pb-bottom-nav bg-background">
+      <div className="flex-1 overflow-y-auto pb-bottom-nav m-glass-page">
         {postsLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
@@ -183,7 +183,7 @@ const IndexPage: React.FC = () => {
               return (
                 <Card
                   key={post.id}
-                  className="overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+                  className="m-glass-card overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
                   onClick={() => navigate(`/posts/${post.id}`)}
                 >
                   {/* Post Header */}

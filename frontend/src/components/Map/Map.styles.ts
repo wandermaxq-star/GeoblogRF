@@ -20,10 +20,14 @@ export const MapContainer = styled.div<MapContainerProps>`
   padding: 0 !important;
   background: transparent !important;
   z-index: 0;
-  will-change: transform;
   pointer-events: auto;
   max-width: none !important;
   overflow: visible !important;
+
+  /* На десктопе will-change: transform для производительности */
+  @media (min-width: 768px) {
+    will-change: transform;
+  }
 
   /* Двухоконный режим - карта всё равно на полный viewport */
   ${props => props.$isTwoPanel && css`

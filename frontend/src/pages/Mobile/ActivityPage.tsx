@@ -126,7 +126,7 @@ const ActivityPage: React.FC = () => {
         onTabChange={(value) => setFilter(value as ActivityFilter)}
       />
       
-      <div className="flex-1 overflow-y-auto pb-bottom-nav bg-background">
+      <div className="flex-1 overflow-y-auto pb-bottom-nav m-glass-page">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-muted-foreground">Загрузка...</div>
@@ -150,7 +150,7 @@ const ActivityPage: React.FC = () => {
                 .slice(0, 2) || 'U';
 
               return (
-                <Card key={activity.id} className="p-4 shadow-sm hover:shadow-md transition-shadow">
+                <Card key={activity.id} className="m-glass-card p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-start gap-3">
                     <Avatar className="w-12 h-12">
                       <AvatarFallback className={getActivityColor(activityType)}>

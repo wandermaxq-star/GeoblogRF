@@ -455,16 +455,20 @@
 }
 
 /* Ensure interactive map container fills viewport and sits behind topbar/sidebar */
-/* ИСПРАВЛЕНО: убрали z-index: 0 !important, чтобы MapContainer мог управлять своим z-index */
-.map-container,
-.leaflet-container,
-#map,
-.map-root {
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  /* z-index управляется через Map.styles.ts (MapContainer имеет z-index: 1) */
+/* Только для десктопа (>= 768px). В мобильной версии MapContainer styled-component
+   уже обеспечивает position:fixed; inset:0. Дублирование на #map и .leaflet-container
+   ломает stacking-context в MobileLayout (UI элементы пропадают за тайлами). */
+@media (min-width: 768px) {
+  .map-container,
+  .leaflet-container,
+  #map,
+  .map-root {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    /* z-index управляется через Map.styles.ts (MapContainer имеет z-index: 1) */
+  }
 }
 
 /* КРИТИЧНО: Явно задаём z-index для Leaflet panes, чтобы маркеры были видны */

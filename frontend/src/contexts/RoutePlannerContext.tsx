@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 import { RouteBuilderState, RouteOptimizationOptions, EnhancedRouteData } from '../types/route';
 
 export interface RoutePoint {
@@ -53,14 +53,14 @@ export const RoutePlannerProvider = ({ children }: { children: ReactNode }) => {
     currentStep: 'select'
   });
 
-  // Базовые функции
-  const setRoutePoints = (points: RoutePoint[]) => setRoutePointsState(points);
-  const clearRoutePoints = () => setRoutePointsState([]);
-  const addRoutePoint = (point: RoutePoint) => setRoutePointsState(prev => [...prev, point]);
-  const removeRoutePoint = (id: string) => setRoutePointsState(prev => prev.filter(p => p.id !== id));
+  // Базовые функции (мемоизированы для стабильных ссылок)
+  const setRoutePoints = useCallback((points: RoutePoint[]) => setRoutePointsState(points), []);
+  const clearRoutePoints = useCallback(() => setRoutePointsState([]), []);
+  const addRoutePoint = useCallback((point: RoutePoint) => setRoutePointsState(prev => [...prev, point]), []);
+  const removeRoutePoint = useCallback((id: string) => setRoutePointsState(prev => prev.filter(p => p.id !== id)), []);
 
   // Функции построения маршрута
-  const startRouteBuilding = () => {
+  const startRouteBuilding = useCallback(() => {
     setRouteBuilderState(prev => ({
       ...prev,
       isBuilding: true,
@@ -68,9 +68,9 @@ export const RoutePlannerProvider = ({ children }: { children: ReactNode }) => {
       selectedPoints: [],
       routeOrder: []
     }));
-  };
+  }, []);
 
-  const stopRouteBuilding = () => {
+  const stopRouteBuilding = useCallback(() => {
     setRouteBuilderState(prev => ({
       ...prev,
       isBuilding: false,
@@ -78,25 +78,25 @@ export const RoutePlannerProvider = ({ children }: { children: ReactNode }) => {
       selectedPoints: [],
       routeOrder: []
     }));
-  };
+  }, []);
 
-  const addPointToRoute = (point: RoutePoint) => {
+  const addPointToRoute = useCallback((point: RoutePoint) => {
     setRouteBuilderState(prev => ({
       ...prev,
       selectedPoints: [...prev.selectedPoints, point],
       routeOrder: [...prev.routeOrder, point.id]
     }));
-  };
+  }, []);
 
-  const removePointFromRoute = (pointId: string) => {
+  const removePointFromRoute = useCallback((pointId: string) => {
     setRouteBuilderState(prev => ({
       ...prev,
       selectedPoints: prev.selectedPoints.filter(p => p.id !== pointId),
       routeOrder: prev.routeOrder.filter(id => id !== pointId)
     }));
-  };
+  }, []);
 
-  const reorderRoutePoints = (newOrder: string[]) => {
+  const reorderRoutePoints = useCallback((newOrder: string[]) => {
     setRouteBuilderState(prev => ({
       ...prev,
       routeOrder: newOrder,
@@ -104,15 +104,15 @@ export const RoutePlannerProvider = ({ children }: { children: ReactNode }) => {
         prev.selectedPoints.find(p => p.id === id)!
       ).filter(Boolean)
     }));
-  };
+  }, []);
 
-  const optimizeRoute = async (options: RouteOptimizationOptions): Promise<void> => {
+  const optimizeRoute = useCallback(async (options: RouteOptimizationOptions): Promise<void> => {
     // Здесь будет логика оптимизации маршрута
     // Пока заглушка
-    };
+  }, []);
 
   // Функции сохранения маршрута
-  const saveRoute = async (routeData: Partial<EnhancedRouteData>): Promise<EnhancedRouteData> => {
+  const saveRoute = useCallback(async (routeData: Partial<EnhancedRouteData>): Promise<EnhancedRouteData> => {
     // Здесь будет API вызов для сохранения
     // Пока заглушка
     const newRoute: EnhancedRouteData = {
@@ -144,9 +144,9 @@ export const RoutePlannerProvider = ({ children }: { children: ReactNode }) => {
     
     setCurrentRoute(newRoute);
     return newRoute;
-  };
+  }, []);
 
-  const updateRoute = async (routeId: string, updates: Partial<EnhancedRouteData>): Promise<EnhancedRouteData> => {
+  const updateRoute = useCallback(async (routeId: string, updates: Partial<EnhancedRouteData>): Promise<EnhancedRouteData> => {
     // Здесь будет API вызов для обновления
     // Пока заглушка
     if (currentRoute && currentRoute.id === routeId) {
@@ -155,37 +155,59 @@ export const RoutePlannerProvider = ({ children }: { children: ReactNode }) => {
       return updatedRoute;
     }
     throw new Error('Route not found');
-  };
+  }, [currentRoute]);
 
-  const deleteRoute = async (routeId: string): Promise<void> => {
+  const deleteRoute = useCallback(async (routeId: string): Promise<void> => {
     // Здесь будет API вызов для удаления
     // Пока заглушка
     if (currentRoute && currentRoute.id === routeId) {
       setCurrentRoute(null);
     }
-  };
+  }, [currentRoute]);
+
+  // Мемоизация value для предотвращения лишних ре-рендеров потребителей
+  const value = useMemo(() => ({
+    routePoints, 
+    setRoutePoints, 
+    clearRoutePoints, 
+    addRoutePoint, 
+    removeRoutePoint,
+    routeBuilderState,
+    setRouteBuilderState,
+    startRouteBuilding,
+    stopRouteBuilding,
+    addPointToRoute,
+    removePointFromRoute,
+    reorderRoutePoints,
+    optimizeRoute,
+    saveRoute,
+    updateRoute,
+    deleteRoute,
+    currentRoute,
+    setCurrentRoute
+  }), [
+    routePoints,
+    setRoutePoints,
+    clearRoutePoints,
+    addRoutePoint,
+    removeRoutePoint,
+    routeBuilderState,
+    setRouteBuilderState,
+    startRouteBuilding,
+    stopRouteBuilding,
+    addPointToRoute,
+    removePointFromRoute,
+    reorderRoutePoints,
+    optimizeRoute,
+    saveRoute,
+    updateRoute,
+    deleteRoute,
+    currentRoute,
+    setCurrentRoute
+  ]);
 
   return (
-    <RoutePlannerContext.Provider value={{ 
-      routePoints, 
-      setRoutePoints, 
-      clearRoutePoints, 
-      addRoutePoint, 
-      removeRoutePoint,
-      routeBuilderState,
-      setRouteBuilderState,
-      startRouteBuilding,
-      stopRouteBuilding,
-      addPointToRoute,
-      removePointFromRoute,
-      reorderRoutePoints,
-      optimizeRoute,
-      saveRoute,
-      updateRoute,
-      deleteRoute,
-      currentRoute,
-      setCurrentRoute
-    }}>
+    <RoutePlannerContext.Provider value={value}>
       {children}
     </RoutePlannerContext.Provider>
   );

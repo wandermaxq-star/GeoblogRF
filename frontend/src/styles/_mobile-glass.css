@@ -1,0 +1,561 @@
+/* ============================================
+   MOBILE GLASS THEME
+   
+   Glassmorphism стили для мобильной версии.
+   Использует CSS-переменные из _glass-theme.css,
+   автоматически переключается при data-theme="light"|"dark".
+
+   КРИТИЧНО: #global-map-root — портал карты (Map.tsx createPortal),
+   рендерится прямо в document.body. Нужен низкий z-index
+   чтобы UI-элементы лейаута оставались поверх карты.
+   ============================================ */
+
+/* Портал карты — самый низкий слой, под всеми UI-элементами */
+@media (max-width: 767px) {
+  #global-map-root {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 1 !important;
+    pointer-events: auto;
+  }
+}
+
+/* Контейнер UI-контролей карты (настройки, поиск) — поверх портала карты */
+@media (max-width: 767px) {
+  .mobile-map-controls {
+    position: fixed !important;
+    z-index: 1100 !important;
+    pointer-events: auto;
+  }
+}
+
+/* ============================================
+   Классы:
+     .m-glass-nav      — нижняя навигация
+     .m-glass-topbar    — верхняя панель
+     .m-glass-actions   — контейнер кнопок действий
+     .m-glass-btn       — кнопка (action button, nav item)
+     .m-glass-panel     — модальные панели / bottom sheets
+     .m-glass-panel-hdr — заголовок панели
+     .m-glass-panel-ftr — футер панели
+     .m-glass-tab       — таб-кнопка (фильтр, аккордеон)
+     .m-glass-tab.active— активный таб
+     .m-glass-input     — инпуты, селекты
+     .m-glass-overlay   — фоновый overlay
+     .m-glass-card      — карточки контента
+     .m-glass-badge     — бейджи / счётчики
+     .m-glass-page      — фон страницы
+   ============================================ */
+
+/* === Фон страницы === */
+.m-glass-page {
+  background: linear-gradient(135deg,
+    rgba(240, 245, 255, 0.95) 0%,
+    rgba(230, 240, 250, 0.9) 50%,
+    rgba(245, 248, 255, 0.95) 100%);
+  min-height: 100vh;
+}
+
+[data-theme="dark"] .m-glass-page {
+  background: linear-gradient(135deg,
+    rgba(15, 20, 30, 0.98) 0%,
+    rgba(20, 25, 40, 0.95) 50%,
+    rgba(10, 15, 25, 0.98) 100%);
+}
+
+/* === Нижняя навигация === */
+.m-glass-nav {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(255, 255, 255, 0.55) 100%);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .m-glass-nav {
+  background: linear-gradient(135deg,
+    rgba(20, 25, 40, 0.82) 0%,
+    rgba(15, 20, 35, 0.75) 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.25);
+}
+
+/* === Верхняя панель (TopBar) === */
+.m-glass-topbar {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(255, 255, 255, 0.55) 100%);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] .m-glass-topbar {
+  background: linear-gradient(135deg,
+    rgba(20, 25, 40, 0.82) 0%,
+    rgba(15, 20, 35, 0.75) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* === Контейнер кнопок действий === */
+.m-glass-actions {
+  background: transparent;
+}
+
+/* === Кнопка (action, nav item) === */
+.m-glass-btn {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.65) 0%,
+    rgba(255, 255, 255, 0.45) 100%);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08),
+              inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  color: var(--glass-text);
+  transition: all 0.25s ease;
+}
+
+.m-glass-btn:hover {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.78) 0%,
+    rgba(255, 255, 255, 0.6) 100%);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12),
+              inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.m-glass-btn:active {
+  transform: scale(0.96) translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.m-glass-btn.active {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.8) 0%,
+    rgba(255, 255, 255, 0.65) 100%);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1),
+              inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+[data-theme="dark"] .m-glass-btn {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.04) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2),
+              inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="dark"] .m-glass-btn:hover {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0.08) 100%);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .m-glass-btn:active {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .m-glass-btn.active {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(255, 255, 255, 0.1) 100%);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* === Модальные панели / bottom sheets === */
+.m-glass-panel {
+  background: linear-gradient(160deg,
+    rgba(255, 255, 255, 0.78) 0%,
+    rgba(255, 255, 255, 0.6) 100%);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12);
+  color: var(--glass-text);
+}
+
+[data-theme="dark"] .m-glass-panel {
+  background: linear-gradient(160deg,
+    rgba(25, 30, 50, 0.88) 0%,
+    rgba(20, 25, 40, 0.82) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* === Заголовок панели === */
+.m-glass-panel-hdr {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(255, 255, 255, 0.3) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+  color: var(--glass-text);
+}
+
+[data-theme="dark"] .m-glass-panel-hdr {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.03) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* === Футер панели === */
+.m-glass-panel-ftr {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(255, 255, 255, 0.3) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+[data-theme="dark"] .m-glass-panel-ftr {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.03) 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* === Таб-кнопка (фильтры, табы аккордеона) === */
+.m-glass-tab {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.45) 0%,
+    rgba(255, 255, 255, 0.3) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: var(--glass-text);
+  transition: all 0.2s ease;
+}
+
+.m-glass-tab:hover {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.6) 0%,
+    rgba(255, 255, 255, 0.42) 100%);
+}
+
+.m-glass-tab.active,
+.m-glass-tab-active {
+  background: linear-gradient(135deg,
+    rgba(34, 197, 94, 0.85) 0%,
+    rgba(22, 163, 74, 0.9) 100%);
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.25);
+}
+
+[data-theme="dark"] .m-glass-tab {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.03) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+[data-theme="dark"] .m-glass-tab:hover {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.06) 100%);
+}
+
+[data-theme="dark"] .m-glass-tab.active,
+[data-theme="dark"] .m-glass-tab-active {
+  background: linear-gradient(135deg,
+    rgba(34, 197, 94, 0.7) 0%,
+    rgba(22, 163, 74, 0.8) 100%);
+  border-color: rgba(34, 197, 94, 0.3);
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.2);
+}
+
+/* === Инпуты, селекты === */
+.m-glass-input {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.6) 0%,
+    rgba(255, 255, 255, 0.4) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: var(--glass-text);
+  transition: all 0.2s ease;
+}
+
+.m-glass-input:focus {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.75) 0%,
+    rgba(255, 255, 255, 0.55) 100%);
+  border-color: rgba(34, 197, 94, 0.5);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+  outline: none;
+}
+
+.m-glass-input::placeholder {
+  color: var(--glass-text-muted);
+}
+
+[data-theme="dark"] .m-glass-input {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.03) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="dark"] .m-glass-input:focus {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.06) 100%);
+  border-color: rgba(34, 197, 94, 0.4);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+[data-theme="dark"] .m-glass-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* === Card (карточки контента) === */
+.m-glass-card {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.68) 0%,
+    rgba(255, 255, 255, 0.5) 100%);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  color: var(--glass-text);
+  transition: all 0.25s ease;
+}
+
+.m-glass-card:hover {
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+[data-theme="dark"] .m-glass-card {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.07) 0%,
+    rgba(255, 255, 255, 0.03) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="dark"] .m-glass-card:hover {
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.3);
+}
+
+/* === Overlay === */
+.m-glass-overlay {
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+[data-theme="dark"] .m-glass-overlay {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* === Badge / Counter === */
+.m-glass-badge {
+  background: linear-gradient(135deg,
+    rgba(34, 197, 94, 0.9) 0%,
+    rgba(22, 163, 74, 0.95) 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+}
+
+/* === Текстовые утилиты для стекла === */
+.m-glass-text {
+  color: var(--glass-text);
+}
+
+.m-glass-text-secondary {
+  color: var(--glass-text-secondary);
+}
+
+.m-glass-text-muted {
+  color: var(--glass-text-muted);
+}
+
+[data-theme="dark"] .m-glass-text {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+[data-theme="dark"] .m-glass-text-secondary {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+[data-theme="dark"] .m-glass-text-muted {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* === Секция аккордеона === */
+.m-glass-accordion-section {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .m-glass-accordion-section {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* === Кнопка переключения темы (мобильная) === */
+.m-theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.35) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: var(--glass-text);
+  font-size: 16px;
+  padding: 0;
+  outline: none;
+}
+
+.m-theme-toggle:hover {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.7) 0%,
+    rgba(255, 255, 255, 0.5) 100%);
+  transform: scale(1.08);
+}
+
+.m-theme-toggle:active {
+  transform: scale(0.95);
+}
+
+[data-theme="dark"] .m-theme-toggle {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.05) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="dark"] .m-theme-toggle:hover {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(255, 255, 255, 0.1) 100%);
+}
+
+/* === Divider === */
+.m-glass-divider {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .m-glass-divider {
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+/* === Аккордеон-хедер (секция в панели) === */
+.m-glass-accordion-header {
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.m-glass-accordion-header:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.m-glass-accordion-header.open {
+  background: linear-gradient(135deg,
+    rgba(34, 197, 94, 0.85) 0%,
+    rgba(22, 163, 74, 0.9) 100%);
+  color: #ffffff;
+}
+
+[data-theme="dark"] .m-glass-accordion-header:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .m-glass-accordion-header.open {
+  background: linear-gradient(135deg,
+    rgba(34, 197, 94, 0.7) 0%,
+    rgba(22, 163, 74, 0.8) 100%);
+}
+
+/* === Chip / tag button === */
+.m-glass-chip {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(255, 255, 255, 0.3) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: var(--glass-text);
+  transition: all 0.2s ease;
+}
+
+.m-glass-chip:hover {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.65) 0%,
+    rgba(255, 255, 255, 0.45) 100%);
+}
+
+.m-glass-chip.selected {
+  background: linear-gradient(135deg,
+    rgba(34, 197, 94, 0.85) 0%,
+    rgba(22, 163, 74, 0.9) 100%);
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #ffffff;
+}
+
+[data-theme="dark"] .m-glass-chip {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.04) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+[data-theme="dark"] .m-glass-chip:hover {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.06) 100%);
+}
+
+[data-theme="dark"] .m-glass-chip.selected {
+  background: linear-gradient(135deg,
+    rgba(34, 197, 94, 0.7) 0%,
+    rgba(22, 163, 74, 0.8) 100%);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+/* === Иконки в стекле === */
+.m-glass-icon {
+  color: var(--glass-text);
+}
+
+[data-theme="dark"] .m-glass-icon {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.m-glass-icon-accent {
+  color: #22c55e;
+}
+
+[data-theme="dark"] .m-glass-icon-accent {
+  color: #4ade80;
+}

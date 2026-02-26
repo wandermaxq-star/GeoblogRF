@@ -19,4 +19,7 @@
 /* 4. Content-specific styles (posts/blogs) — подключаем последним, чтобы гарантировать переопределение */
 @import './_content.css';
 
+/* 5. Mobile glassmorphism — стили для мобильной версии */
+@import './_mobile-glass.css';
+
 /* Dark-overrides больше не нужны — всё через CSS vars (--glass-l1-*, --glass-l2-*) в _glass-theme.css */

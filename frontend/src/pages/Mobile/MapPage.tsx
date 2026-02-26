@@ -7,6 +7,7 @@ import { projectManager } from '../../services/projectManager';
 import { MarkerData } from '../../types/marker';
 import { useFavorites } from '../../contexts/FavoritesContext';
 import { useLocation } from 'react-router-dom';
+import { useContentStore } from '../../stores/contentStore';
 
 // Прямой импорт MapComponent (как в десктопной версии) - убираем двойную lazy загрузку
 import MapComponent from '../../components/Map/Map';
@@ -24,7 +25,7 @@ const MapPage: React.FC = () => {
 
   // Фильтры и настройки карты (как в десктопной версии)
   const [draftFilters, setDraftFilters] = useState({
-    categories: ['attraction'] as string[],
+    categories: [] as string[],
     radiusOn: false,
     radius: 10,
     preset: null as string | null,
@@ -42,6 +43,19 @@ const MapPage: React.FC = () => {
   const [appliedMapSettings, setAppliedMapSettings] = useState(draftMapSettings);
 
   useEffect(() => {
+    // КРИТИЧНО: устанавливаем leftContent = 'map' чтобы Map.tsx считал карту интерактивной
+    // (isMapInteractive = leftContent === 'map') — без этого клики, маркеры и попапы не работают
+    useContentStore.getState().setLeftContent('map');
+    return () => {
+      // При уходе со страницы карты сбрасываем leftContent
+      const current = useContentStore.getState().leftContent;
+      if (current === 'map') {
+        useContentStore.getState().setLeftContent(null);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     // Инициализация компонента
   }, [location.pathname]);
 
@@ -52,7 +66,7 @@ const MapPage: React.FC = () => {
     const loadMarkers = async () => {
       try {
         setLoading(true);
-        const response = await projectManager.getMarkers();
+        const response = await projectManager.loadAllMarkers();
         if (!cancelled) {
           setMarkers(response || []);
         }
@@ -110,6 +124,20 @@ const MapPage: React.FC = () => {
     }
   }, [favorites]);
 
+  // Состояние режима добавления метки
+  const [isAddingMarkerMode, setIsAddingMarkerMode] = useState(false);
+
+  // Обработка query-параметра addMarker=true (из ActionButtons)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('addMarker') === 'true') {
+      setIsAddingMarkerMode(true);
+      // Убираем параметр из URL, чтобы не срабатывал повторно
+      params.delete('addMarker');
+      window.history.replaceState({}, '', `${location.pathname}${params.toString() ? '?' + params.toString() : ''}`);
+    }
+  }, [location.search, location.pathname]);
+
   const handleMapClick = useCallback((coords: [number, number]) => {
     // Обработка клика по карте
   }, []);
@@ -143,10 +171,10 @@ const MapPage: React.FC = () => {
 
   const handleReset = () => {
     const defaultFilters = {
-      categories: ['attraction'],
+      categories: [] as string[],
       radiusOn: false,
       radius: 10,
-      preset: null,
+      preset: null as string | null,
     };
     const defaultMapSettings = {
       mapType: 'light',
@@ -193,17 +221,23 @@ const MapPage: React.FC = () => {
   }, [location.search, allMarkers]);
 
   return (
-    <div className="relative w-full h-full" style={{ position: 'fixed', inset: 0, pointerEvents: 'none' }}>
-      {/* Карта занимает весь экран - должна быть ПОЗАДИ UI элементов */}
-      <div className="absolute inset-0 w-full h-full" style={{ zIndex: 100, pointerEvents: 'auto' }}>
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10" style={{ pointerEvents: 'auto' }}>
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Загрузка карты...</p>
-            </div>
+    <div className="relative w-full h-full">
+      {/* MapComponent рендерится через createPortal в #global-map-root (body),
+          поэтому здесь не нужен position:fixed — карта уже на уровне body с z-index: 1.
+          UI-контроли ниже находятся в MobileLayout (z-index: 2), т.е. ВЫШЕ портала карты. */}
+      
+      {/* Индикатор загрузки — поверх всего */}
+      {loading && (
+        <div className="fixed inset-0 flex items-center justify-center bg-background/80" style={{ zIndex: 3, pointerEvents: 'auto' }}>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Загрузка карты...</p>
           </div>
-        )}
+        </div>
+      )}
+      
+      {/* Невидимый контейнер — MapComponent сам рисует через portal в body */}
+      <div style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
         <MapComponent
           center={[55.7558, 37.6173]}
           zoom={10}
@@ -227,39 +261,37 @@ const MapPage: React.FC = () => {
           favoritesCount={favorites?.favoritePlaces?.length || 0}
           selectedMarkerIds={[]}
           zones={[]}
+          isAddingMarkerMode={isAddingMarkerMode}
+          onAddMarkerModeChange={setIsAddingMarkerMode}
         />
       </div>
       
-      {/* UI элементы: поиск и кнопки (ПОВЕРХ карты, только на нужной площади) */}
+      {/* UI элементы: поиск и кнопки (ПОВЕРХ портала карты) */}
       <div 
-        className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2 pointer-events-auto"
+        className="mobile-map-controls left-1/2 transform -translate-x-1/2 flex items-center gap-2"
         style={{ 
           top: 'calc(var(--action-buttons-height, 60px) + 3px)',
-          zIndex: 1200,
-          pointerEvents: 'auto'
         }}
       >
         {/* Кнопка настроек */}
         <button
           onClick={() => setSettingsOpen(true)}
-          className="bg-gray-100 text-gray-800 border border-gray-200 shadow-lg hover:shadow-xl hover:bg-gray-200 transition-all duration-300 rounded-xl p-3 flex flex-col items-center justify-center gap-2 min-w-[70px] max-w-[70px] h-[70px] relative active:scale-95"
+          className="m-glass-btn transition-all duration-300 rounded-xl p-3 flex flex-col items-center justify-center gap-2 min-w-[70px] max-w-[70px] h-[70px] relative"
           title="Настройки карты"
-          style={{ pointerEvents: 'auto' }}
         >
-          <Settings className="w-5 h-5 text-gray-800" />
-          <span className="text-[10px] font-medium leading-tight text-center text-gray-800">Настройки</span>
+          <Settings className="w-5 h-5 m-glass-icon" />
+          <span className="text-[10px] font-medium leading-tight text-center m-glass-text">Настройки</span>
         </button>
         
         {/* Поисковая строка */}
-        <div className="relative" style={{ pointerEvents: 'auto' }}>
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 m-glass-text-muted" size={16} />
           <input
             type="text"
             placeholder="Поиск мест или меток..."
-            className="bg-white rounded-full pl-10 pr-4 py-2 shadow-lg border-2 border-gray-300 min-w-[200px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="m-glass-input rounded-full pl-10 pr-4 py-2 min-w-[200px]"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            style={{ pointerEvents: 'auto' }}
           />
         </div>
       </div>

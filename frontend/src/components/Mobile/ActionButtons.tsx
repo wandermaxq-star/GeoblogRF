@@ -220,33 +220,32 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({ onFavoritesClick }) => {
   const actions = getActionsForPage();
 
   return (
-    <div className="px-4 py-3 bg-transparent">
+    <div className="px-4 py-3 m-glass-actions">
       <div className="flex justify-between items-center gap-2">
         {actions.map((action) => (
           <button
             key={action.id}
             onClick={action.onClick}
             className={cn(
-              "bg-gray-100 text-gray-800 border border-gray-200 shadow-lg hover:shadow-xl hover:bg-gray-200",
+              "m-glass-btn",
               "transition-all duration-300 rounded-xl p-3 flex flex-col items-center justify-center gap-2",
-              "min-w-[70px] max-w-[70px] h-[70px] relative",
-              "active:scale-95"
+              "min-w-[70px] max-w-[70px] h-[70px] relative"
             )}
             title={action.label}
           >
             <div className="relative">
-              <div className="text-gray-800">
+              <div className="m-glass-icon">
                 {React.cloneElement(action.icon as React.ReactElement, {
-                  className: "w-5 h-5 text-gray-800"
+                  className: "w-5 h-5 m-glass-icon"
                 })}
               </div>
               {action.badge && action.badge > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 text-white text-[9px] rounded-full flex items-center justify-center font-bold">
+                <span className="absolute -top-1 -right-1 w-4 h-4 m-glass-badge text-[9px] rounded-full flex items-center justify-center font-bold">
                   {action.badge > 99 ? '99+' : action.badge}
                 </span>
               )}
             </div>
-            <span className="text-[10px] font-medium leading-tight text-center text-gray-800">
+            <span className="text-[10px] font-medium leading-tight text-center m-glass-text">
               {action.label}
             </span>
           </button>

@@ -32,7 +32,7 @@ const validateRouteBounds = (routeData) => {
 const router = express.Router();
 
 // GET /api/routes/:id - Получить маршрут по ID
-router.get('/routes/:id', async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -99,7 +99,7 @@ router.get('/routes/:id', async (req, res) => {
 });
 
 // Получить все маршруты пользователя
-router.get('/routes', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   const userId = req.user.id;
   try {
     // Получаем маршруты с их точками
@@ -153,7 +153,7 @@ router.get('/routes', authenticateToken, async (req, res) => {
 });
 
 // Создать новый маршрут
-router.post('/routes', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   const userId = req.user.id;
   const {
     title,
@@ -316,7 +316,7 @@ router.post('/routes', authenticateToken, async (req, res) => {
 });
 
 // Удалить маршрут (и все его точки)
-router.delete('/routes/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   const userId = req.user.id;
   const routeId = req.params.id;
   try {
