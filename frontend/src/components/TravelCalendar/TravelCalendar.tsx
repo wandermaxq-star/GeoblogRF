@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CalendarPlus, Settings, HelpCircle, Plane, Bed, Camera, Utensils, Bus, Music, Trophy, Image, Megaphone, Flag } from 'lucide-react';
 import { mockEvents, MockEvent } from './mockEvents';
 import { ExternalEvent } from '../../services/externalEventsService';
@@ -8,6 +9,7 @@ import { useEventsStore } from '../../stores/eventsStore';
 import { useRegionsStore, getRegionIdByName } from '../../stores/regionsStore';
 import { offlineContentStorage, OfflineEventDraft } from '../../services/offlineContentStorage';
 import { useAuth } from '../../contexts/AuthContext';
+import { useIsMobile } from '../../hooks/use-mobile';
 import './TravelCalendar.css';
 import './CircularCalendar.css';
 import CircularCalendar from './CircularCalendar';
@@ -78,6 +80,8 @@ const TravelCalendar: React.FC<TravelCalendarProps> = ({
 }) => {
   const { selectedRegions } = useRegionsStore();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [internalSelectedDate, setInternalSelectedDate] = useState<Date | null>(null);
   
@@ -297,6 +301,10 @@ const TravelCalendar: React.FC<TravelCalendarProps> = ({
     setSelectedEventInStore(mockEvent);
     // Фокус карты на событии
     setFocusEvent(mockEvent);
+    // На мобильном — переходим на страницу карты
+    if (isMobile) {
+      navigate('/map');
+    }
   };
 
   const adaptMockEventToExternal = (event: MockEvent): ExternalEvent => ({

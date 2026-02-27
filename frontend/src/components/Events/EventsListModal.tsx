@@ -24,6 +24,7 @@ export const EventsListModal: React.FC<EventsListModalProps> = ({
   onEventClick
 }) => {
   const { isModalOpen, currentItem, openModal, closeModal, handleConfirm } = useAddToFavorites();
+  const favorites = useFavorites();
 
   if (!isOpen) return null;
 
@@ -35,8 +36,6 @@ export const EventsListModal: React.FC<EventsListModalProps> = ({
       </div>
     );
   };
-
-  const favorites = useFavorites();
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ru-RU', {

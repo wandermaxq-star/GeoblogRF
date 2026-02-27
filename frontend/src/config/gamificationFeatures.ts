@@ -47,10 +47,10 @@ export function getActiveFeatures(stage: number): GamificationFeatures {
     basicXP: true,
     basicAchievements: true,
     
-    // Этап 2
-    dailyGoals: stage >= 2,
+    // Базовые функции Центра Влияния — включены всегда
+    dailyGoals: true,
     qualityAchievements: stage >= 2,
-    streak: stage >= 2,
+    streak: true,
     
     // Этап 3
     leaderboards: stage >= 3,

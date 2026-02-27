@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import { 
   FaTrophy, FaStar, FaMedal, FaCrown, FaRocket, FaFire, 
@@ -7,6 +7,8 @@ import {
   FaMagic, FaLightbulb, FaGem, FaInfinity, FaAward, FaCamera
 } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
+import { useGamification } from '../../contexts/GamificationContext';
+import { useLevelProgress } from '../../hooks/useLevelProgress';
 import { useAchievements, type Achievement as NewAchievement } from '../../hooks/useAchievements';
 
 // Простые анимации - все крутящиеся
@@ -366,12 +368,15 @@ interface AchievementsDashboardProps {
 const AchievementsDashboard: React.FC<AchievementsDashboardProps> = ({ isOwnProfile = true }) => {
   const auth = useAuth();
   const { achievements: newAchievements, getAchievementProgress } = useAchievements();
+  const { userLevel } = useLevelProgress();
+  const { stats } = useGamification();
   
-  // Моковые данные для демонстрации
-  const [userXP] = useState(2847);
-  const [userLevel] = useState(15);
-  const [xpToNextLevel] = useState(3000);
-  const [currentLevelXP] = useState(153);
+  // Реальные данные из GamificationContext
+  const realLevel = userLevel?.level ?? 1;
+  const realTotalXP = userLevel?.totalXP ?? 0;
+  const realCurrentXP = userLevel?.currentXP ?? 0;
+  const realRequiredXP = userLevel?.requiredXP ?? 100;
+  const realProgress = userLevel?.progress ?? 0;
 
   // Функция для преобразования новых достижений в формат карточек
   const convertNewAchievementToCard = (newAchievement: NewAchievement): Achievement => {
@@ -433,14 +438,15 @@ const AchievementsDashboard: React.FC<AchievementsDashboardProps> = ({ isOwnProf
   const achievements: Achievement[] = convertedAchievements;
 
   const earnedAchievements = achievements.filter(a => a.earned);
-  const totalXP = earnedAchievements.reduce((sum, a) => sum + a.xpReward, 0);
-  const progressPercentage = (currentLevelXP / (xpToNextLevel - (userLevel - 1) * 200)) * 100;
+  const totalXP = realTotalXP || earnedAchievements.reduce((sum, a) => sum + a.xpReward, 0);
+  const progressPercentage = realProgress;
 
-  const qualityMetrics = {
-    markersQuality: 76,
-    routesQuality: 89,
-    eventsQuality: 92,
-    overallCompletion: 84
+  // Статистика достижений из реального контекста
+  const achievementStats = {
+    totalEarned: earnedAchievements.length,
+    totalAchievements: achievements.length,
+    completionPercent: achievements.length > 0 ? Math.round((earnedAchievements.length / achievements.length) * 100) : 0,
+    streak: stats?.dailyGoals?.streak ?? 0,
   };
 
   return (
@@ -448,7 +454,7 @@ const AchievementsDashboard: React.FC<AchievementsDashboardProps> = ({ isOwnProf
       {/* Заголовок с уровнем и XP */}
       <HeaderSection>
         <UserLevel>
-          <h2>Уровень {userLevel}</h2>
+          <h2>Уровень {realLevel}</h2>
           <p>{auth?.user?.username || 'Путешественник'}</p>
         </UserLevel>
         
@@ -465,30 +471,33 @@ const AchievementsDashboard: React.FC<AchievementsDashboardProps> = ({ isOwnProf
         </XPSection>
       </HeaderSection>
 
-      {/* Метрики качества */}
+      {/* Метрики достижений */}
       <QualityMetrics>
         <QualityCard>
-          <QualityTitle>Качество меток</QualityTitle>
-          <QualityValue high={qualityMetrics.markersQuality > 80}>
-            {qualityMetrics.markersQuality}%
+          <QualityTitle>Получено</QualityTitle>
+          <QualityValue high={achievementStats.totalEarned > 0}>
+            {achievementStats.totalEarned}/{achievementStats.totalAchievements}
           </QualityValue>
         </QualityCard>
         <QualityCard>
-          <QualityTitle>Качество маршрутов</QualityTitle>
-          <QualityValue high={qualityMetrics.routesQuality > 80}>
-            {qualityMetrics.routesQuality}%
+          <QualityTitle>Прогресс</QualityTitle>
+          <QualityValue high={achievementStats.completionPercent > 50}>
+            {achievementStats.completionPercent}%
           </QualityValue>
         </QualityCard>
         <QualityCard>
-          <QualityTitle>Качество событий</QualityTitle>
-          <QualityValue high={qualityMetrics.eventsQuality > 80}>
-            {qualityMetrics.eventsQuality}%
+          <QualityTitle>Всего XP</QualityTitle>
+          <QualityValue high={totalXP > 500}>
+            {totalXP.toLocaleString()}
           </QualityValue>
         </QualityCard>
         <QualityCard>
-          <QualityTitle>Общая полнота</QualityTitle>
-          <QualityValue high={qualityMetrics.overallCompletion > 80}>
-            {qualityMetrics.overallCompletion}%
+          <QualityTitle>Стрик</QualityTitle>
+          <QualityValue high={achievementStats.streak > 3}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              {achievementStats.streak}
+              <FaFire style={{ color: '#f97316', fontSize: '0.85em' }} />
+            </span>
           </QualityValue>
         </QualityCard>
       </QualityMetrics>
@@ -575,7 +584,7 @@ const AchievementsDashboard: React.FC<AchievementsDashboardProps> = ({ isOwnProf
                         borderRadius: '12px',
                         fontWeight: '600'
                       }}>
-                        🏆 ДИНАМИЧНОЕ
+                        <FaTrophy style={{ display: 'inline', marginRight: '4px', fontSize: '0.8em' }} /> ДИНАМИЧНОЕ
                     </div>
                   )}
                 </AchievementCard>

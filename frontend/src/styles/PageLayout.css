@@ -1901,6 +1901,7 @@ body.solo-page-active .map-action-buttons-container,
 body.solo-page-active .page-side-buttons,
 body.solo-page-active .map-side-buttons,
 body.solo-page-active .category-quick-filter,
+body.solo-page-active .category-quick-filter-panel,
 body.solo-page-active .leaflet-control-zoom,
 body.solo-page-active .leaflet-control-attribution,
 body.solo-page-active .map-search-toolbar,
@@ -1909,4 +1910,25 @@ body.solo-page-active .region-selector-dropdown {
   display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;
+}
+
+/* Скрываем маркеры, попапы, тени, кластеры и тултипы на фоновой карте solo-страниц */
+body.solo-page-active .leaflet-marker-pane,
+body.solo-page-active .leaflet-shadow-pane,
+body.solo-page-active .leaflet-popup-pane,
+body.solo-page-active .leaflet-tooltip-pane,
+body.solo-page-active .leaflet-overlay-pane,
+body.solo-page-active .marker-cluster-custom,
+body.solo-page-active .leaflet-marker-icon,
+body.solo-page-active .leaflet-marker-shadow,
+body.solo-page-active .leaflet-popup {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Оставляем только тайловый слой (саму карту) */
+body.solo-page-active .leaflet-tile-pane {
+  opacity: 1 !important;
+  filter: saturate(0.6) brightness(1.05);
 }

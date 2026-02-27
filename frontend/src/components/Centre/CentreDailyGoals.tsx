@@ -4,28 +4,21 @@
  */
 
 import React from 'react';
-import { Check, Gift, Zap } from 'lucide-react';
+import { Check, Gift, Zap, PenLine, MapPin, Camera, Sparkles, BadgeCheck, Target, ClipboardList } from 'lucide-react';
 import { useGamification } from '../../contexts/GamificationContext';
-import { DailyGoal } from '../../types/gamification';
 
-const GOAL_ICONS: Record<string, string> = {
-  create_posts: '✍️',
-  create_markers: '📍',
-  add_photos: '📸',
-  improve_quality: '⭐',
-  get_approval: '✅',
+const GOAL_ICONS: Record<string, React.ReactNode> = {
+  create_posts: <PenLine className="w-4 h-4 text-blue-400" />,
+  create_markers: <MapPin className="w-4 h-4 text-emerald-400" />,
+  add_photos: <Camera className="w-4 h-4 text-pink-400" />,
+  improve_quality: <Sparkles className="w-4 h-4 text-amber-400" />,
+  get_approval: <BadgeCheck className="w-4 h-4 text-green-400" />,
 };
 
-interface CentreDailyGoalsProps {
-  /** Demo-данные — если переданы, контекст игнорируется */
-  demoGoals?: DailyGoal[];
-}
+const DEFAULT_GOAL_ICON = <Target className="w-4 h-4 text-slate-400" />;
 
-const CentreDailyGoals: React.FC<CentreDailyGoalsProps> = ({ demoGoals }) => {
-  const { dailyGoals: ctxGoals, completeGoal, claimDailyReward } = useGamification();
-  const dailyGoals = demoGoals || ctxGoals;
-
-  const isDemo = !!demoGoals;
+const CentreDailyGoals: React.FC = () => {
+  const { dailyGoals, completeGoal, claimDailyReward } = useGamification();
   const allCompleted = dailyGoals.length > 0 && dailyGoals.every(g => g.completed);
   const completedCount = dailyGoals.filter(g => g.completed).length;
 
@@ -33,7 +26,7 @@ const CentreDailyGoals: React.FC<CentreDailyGoalsProps> = ({ demoGoals }) => {
     return (
       <div className="centre-glass-card">
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-lg">📋</span>
+          <ClipboardList className="w-5 h-5 text-indigo-400" />
           <h3 className="text-base font-bold cg-text">Ежедневные задания</h3>
         </div>
         <p className="text-sm font-medium cg-text-muted mt-2">Задания на сегодня ещё не сформированы</p>
@@ -46,7 +39,7 @@ const CentreDailyGoals: React.FC<CentreDailyGoalsProps> = ({ demoGoals }) => {
       {/* Заголовок */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-lg">📋</span>
+          <ClipboardList className="w-5 h-5 text-indigo-400" />
           <h3 className="text-base font-bold cg-text">Ежедневные задания</h3>
         </div>
         <span className="text-sm font-medium cg-text-muted">{completedCount}/{dailyGoals.length}</span>
@@ -55,7 +48,7 @@ const CentreDailyGoals: React.FC<CentreDailyGoalsProps> = ({ demoGoals }) => {
       {/* Список заданий */}
       <div className="space-y-2.5">
         {dailyGoals.map((goal) => (
-          <GoalItem key={goal.id} goal={goal} onComplete={isDemo ? async () => {} : completeGoal} />
+          <GoalItem key={goal.id} goal={goal} onComplete={completeGoal} />
         ))}
       </div>
 
@@ -68,7 +61,7 @@ const CentreDailyGoals: React.FC<CentreDailyGoalsProps> = ({ demoGoals }) => {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-yellow-500">+50 XP</span>
-          {allCompleted && !isDemo && (
+          {allCompleted && (
             <button
               onClick={() => claimDailyReward()}
               className="px-3 py-1 text-xs font-medium bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full hover:opacity-90 transition-opacity"
@@ -89,7 +82,7 @@ interface GoalItemProps {
 
 const GoalItem: React.FC<GoalItemProps> = ({ goal, onComplete }) => {
   const progress = goal.target > 0 ? Math.min(100, (goal.current / goal.target) * 100) : 0;
-  const icon = GOAL_ICONS[goal.type] || '📌';
+  const icon = GOAL_ICONS[goal.type] || DEFAULT_GOAL_ICON;
 
   return (
     <div className="flex items-center gap-3">
@@ -109,7 +102,7 @@ const GoalItem: React.FC<GoalItemProps> = ({ goal, onComplete }) => {
       {/* Содержимое */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-sm">{icon}</span>
+          <span className="flex-shrink-0">{icon}</span>
           <span className={`text-sm font-medium ${goal.completed ? 'cg-text-muted line-through' : 'cg-text'}`}>
             {goal.title}
           </span>

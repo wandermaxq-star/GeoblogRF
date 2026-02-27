@@ -5,35 +5,24 @@
 
 import React from 'react';
 import { Avatar, AvatarFallback } from '../ui/avatar';
-import { Flame, Zap } from 'lucide-react';
+import { Flame, Zap, Sprout, Search, Compass, Crown, Star } from 'lucide-react';
 import { useLevelProgress } from '../../hooks/useLevelProgress';
 import { useAuth } from '../../contexts/AuthContext';
 import { useGamification } from '../../contexts/GamificationContext';
-import { UserLevel, RankInfo } from '../../types/gamification';
+import { RankInfo } from '../../types/gamification';
 import { getRankInfo } from '../../utils/xpCalculator';
 
-interface CentreLevelCardProps {
-  /** Если передан — показываем чужой профиль */
-  externalData?: {
-    userLevel: UserLevel;
-    username: string;
-    streak?: number;
-  };
-}
-
-const CentreLevelCard: React.FC<CentreLevelCardProps> = ({ externalData }) => {
-  const { userLevel: ownLevel, rankInfo: ownRankInfo, progressPercentage: ownProgress, loading } = useLevelProgress();
+const CentreLevelCard: React.FC = () => {
+  const { userLevel, rankInfo: ownRankInfo, progressPercentage: ownProgress, loading } = useLevelProgress();
   const auth = useAuth();
   const { stats } = useGamification();
 
-  // Определяем данные — свои или чужие
-  const userLevel = externalData?.userLevel || ownLevel;
-  const username = externalData?.username || auth?.user?.username || auth?.user?.email?.split('@')[0] || 'Пользователь';
-  const streak = externalData?.streak ?? stats?.dailyGoals?.streak ?? 0;
+  const username = auth?.user?.username || auth?.user?.email?.split('@')[0] || 'Пользователь';
+  const streak = stats?.dailyGoals?.streak ?? 0;
   const rankInfo: RankInfo | null = userLevel ? getRankInfo(userLevel.rank) : ownRankInfo;
-  const progressPercentage = externalData ? userLevel?.progress ?? 0 : ownProgress;
+  const progressPercentage = ownProgress;
 
-  if (loading && !externalData) {
+  if (loading) {
     return (
       <div className="centre-glass-card animate-pulse">
         <div className="flex items-center gap-4">
@@ -48,6 +37,16 @@ const CentreLevelCard: React.FC<CentreLevelCardProps> = ({ externalData }) => {
   }
 
   if (!userLevel) return null;
+
+  // React-иконка ранга вместо эмодзи
+  const RANK_ICONS: Record<string, React.ReactNode> = {
+    novice: <Sprout className="w-6 h-6 text-green-400" />,
+    explorer: <Search className="w-6 h-6 text-yellow-400" />,
+    traveler: <Compass className="w-6 h-6 text-blue-400" />,
+    legend: <Star className="w-6 h-6 text-purple-400" />,
+    geoblogger: <Crown className="w-6 h-6 text-amber-400" />,
+  };
+  const rankIcon = userLevel ? RANK_ICONS[userLevel.rank] : RANK_ICONS.novice;
 
   const level = userLevel.level;
   const radius = 40;
@@ -125,7 +124,7 @@ const CentreLevelCard: React.FC<CentreLevelCardProps> = ({ externalData }) => {
             <span className="text-xl font-bold cg-text truncate">{username}</span>
           </div>
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-2xl">{rankInfo?.emoji || '🌱'}</span>
+            {rankIcon}
             <span className="text-base font-semibold cg-text-dim">{rankInfo?.name || 'Новичок'}</span>
           </div>
           {/* Линейный прогресс-бар */}
@@ -152,7 +151,7 @@ const CentreLevelCard: React.FC<CentreLevelCardProps> = ({ externalData }) => {
           {streak > 0 && (
             <div className="flex items-center gap-1.5 mt-2">
               <Flame className="w-4 h-4 text-orange-500" />
-              <span className="text-sm font-bold text-orange-600">{streak} {getDayWord(streak)} подряд 🔥</span>
+              <span className="text-sm font-bold text-orange-600">{streak} {getDayWord(streak)} подряд</span>
             </div>
           )}
         </div>

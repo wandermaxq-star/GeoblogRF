@@ -1,12 +1,30 @@
 /**
- * Горизонтальный скролл достижений для Центра Влияния
- * Круглые иконки по категориям, незаработанные — размыты
+ * Достижения для Центра Влияния
+ * Компактный превью + раскрывающийся полный AchievementsDashboard при клике
  */
 
-import React from 'react';
-import { Lock } from 'lucide-react';
+import React, { useState } from 'react';
+import { Lock, ChevronDown, ChevronUp, Award, Map, Camera, PenLine, MessageCircle, Flame, Zap, Star, Crown, Trophy } from 'lucide-react';
 import { useGamification } from '../../contexts/GamificationContext';
+import { useAchievements } from '../../hooks/useAchievements';
 import { Achievement } from '../../types/gamification';
+import AchievementsDashboard from '../Achievements/AchievementsDashboard';
+
+/** Маппинг эмодзи-строк из бэкенда в React-иконки */
+const ICON_MAP: Record<string, React.ReactNode> = {
+  '🗺️': <Map className="w-6 h-6" />,
+  '📸': <Camera className="w-6 h-6" />,
+  '✍️': <PenLine className="w-6 h-6" />,
+  '💬': <MessageCircle className="w-6 h-6" />,
+  '🔥': <Flame className="w-6 h-6" />,
+  '⚡': <Zap className="w-6 h-6" />,
+  '⭐': <Star className="w-6 h-6" />,
+  '👑': <Crown className="w-6 h-6" />,
+};
+
+const getAchievementIcon = (iconStr: string): React.ReactNode => {
+  return ICON_MAP[iconStr] || <Trophy className="w-6 h-6" />;
+};
 
 const RARITY_COLORS: Record<string, string> = {
   common: 'ring-gray-400/40',
@@ -25,20 +43,39 @@ const RARITY_GLOW: Record<string, string> = {
 interface CentreAchievementsRowProps {
   /** Если передан — показываем чужие достижения */
   externalAchievements?: Achievement[];
+  /** Колбэк при смене состояния развёрнутости */
+  onExpandChange?: (expanded: boolean) => void;
 }
 
-const CentreAchievementsRow: React.FC<CentreAchievementsRowProps> = ({ externalAchievements }) => {
-  const { achievements: ownAchievements } = useGamification();
+const CentreAchievementsRow: React.FC<CentreAchievementsRowProps> = ({ externalAchievements, onExpandChange }) => {
+  const { achievements: ctxAchievements } = useGamification();
+  const { achievements: hookAchievements } = useAchievements();
+  const [expanded, setExpanded] = useState(false);
 
-  const achievements = externalAchievements || ownAchievements;
-  const unlockedCount = achievements.filter(a => a.unlocked).length;
-  const totalCount = achievements.length;
+  // Приоритет: external → context (API) → hook (local)
+  const achievements = externalAchievements || (ctxAchievements.length > 0 ? ctxAchievements : []);
+  // useAchievements содержит полную систему с прогрессом — используем для дашборда
+  const hasHookAchievements = hookAchievements.length > 0;
 
-  if (achievements.length === 0) {
+  const unlockedCount = achievements.length > 0
+    ? achievements.filter(a => a.unlocked).length
+    : hookAchievements.filter(a => a.unlocked).length;
+  const totalCount = achievements.length > 0 ? achievements.length : hookAchievements.length;
+
+  // Для превью: покажем топ-6 достижений (заработанные первыми)
+  const previewAchievements = achievements.length > 0
+    ? [...achievements].sort((a, b) => {
+        if (a.unlocked && !b.unlocked) return -1;
+        if (!a.unlocked && b.unlocked) return 1;
+        return 0;
+      }).slice(0, 6)
+    : [];
+
+  if (achievements.length === 0 && !hasHookAchievements) {
     return (
       <div className="centre-glass-card">
         <div className="flex items-center gap-2">
-          <span className="text-lg">🏆</span>
+          <Award className="w-5 h-5 text-amber-400" />
           <h3 className="text-base font-bold cg-text">Достижения</h3>
         </div>
         <p className="text-sm font-medium cg-text-muted mt-2">Достижения пока недоступны</p>
@@ -46,33 +83,62 @@ const CentreAchievementsRow: React.FC<CentreAchievementsRowProps> = ({ externalA
     );
   }
 
-  // Группируем по категориям, заработанные сначала
-  const sorted = [...achievements].sort((a, b) => {
-    if (a.unlocked && !b.unlocked) return -1;
-    if (!a.unlocked && b.unlocked) return 1;
-    return 0;
-  });
-
   return (
     <div className="centre-glass-card h-full flex flex-col">
-      {/* Заголовок */}
-      <div className="flex items-center justify-between mb-3">
+      {/* Заголовок — кликабельный */}
+      <button
+        onClick={() => {
+          const next = !expanded;
+          setExpanded(next);
+          onExpandChange?.(next);
+        }}
+        className="flex items-center justify-between mb-3 w-full text-left group"
+      >
         <div className="flex items-center gap-2">
-          <span className="text-lg">🏆</span>
+          <Award className="w-5 h-5 text-amber-400" />
           <h3 className="text-base font-bold cg-text">Достижения</h3>
           <span className="text-sm font-medium cg-text-muted">{unlockedCount}/{totalCount}</span>
         </div>
-      </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-medium cg-text-muted group-hover:cg-text transition-colors">
+            {expanded ? 'Свернуть' : 'Подробнее'}
+          </span>
+          {expanded
+            ? <ChevronUp className="w-4 h-4 cg-text-muted group-hover:cg-text transition-colors" />
+            : <ChevronDown className="w-4 h-4 cg-text-muted group-hover:cg-text transition-colors" />
+          }
+        </div>
+      </button>
 
-      {/* Сетка достижений (wrap) */}
-      <div
-        className="flex flex-wrap gap-3 overflow-y-auto flex-1"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-      >
-        {sorted.map((achievement) => (
-          <AchievementBadge key={achievement.id} achievement={achievement} />
-        ))}
-      </div>
+      {expanded ? (
+        /* Полный AchievementsDashboard */
+        <div className="flex-1 -mx-4 -mb-4 overflow-auto rounded-b-[inherit]"
+             style={{ scrollbarWidth: 'thin' }}>
+          <AchievementsDashboard isOwnProfile={true} />
+        </div>
+      ) : (
+        /* Компактные бейджи */
+        <div
+          className="flex flex-wrap gap-3 overflow-y-auto flex-1"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {previewAchievements.map((achievement) => (
+            <AchievementBadge key={achievement.id} achievement={achievement} />
+          ))}
+          {achievements.length > 6 && (
+            <button
+              onClick={() => setExpanded(true)}
+              className="flex flex-col items-center gap-1.5 flex-shrink-0 group"
+            >
+              <div className="w-14 h-14 rounded-full ring-2 ring-white/20 flex items-center justify-center
+                bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
+                <span className="text-sm font-bold cg-text-muted">+{achievements.length - 6}</span>
+              </div>
+              <span className="text-[10px] cg-text-muted">Ещё</span>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -96,7 +162,7 @@ const AchievementBadge: React.FC<AchievementBadgeProps> = ({ achievement }) => {
           transition-transform group-hover:scale-110`}
       >
         {achievement.unlocked ? (
-          <span>{achievement.icon}</span>
+          <span className="text-current">{getAchievementIcon(achievement.icon)}</span>
         ) : (
           <Lock className="w-5 h-5 cg-text-muted" />
         )}

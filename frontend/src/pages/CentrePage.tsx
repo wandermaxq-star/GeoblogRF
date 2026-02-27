@@ -1,9 +1,10 @@
 /**
  * CentrePage — Центр Влияния
- * Desktop: glass-панель поверх SVG-фона карты (как posts/activity)
+ * Desktop: glass-панель поверх анимированного gradient-фона (orbs)
  * Mobile: m-glass-page + m-glass-card (отдельная страница)
  *
- * DEMO MODE: если пользователь не авторизован — показываем mock-данные
+ * Все данные загружаются из GamificationContext (реальный бэкенд).
+ * Для гостей — CTA с приглашением войти.
  */
 
 import React, { useState } from 'react';
@@ -12,130 +13,9 @@ import { MirrorGradientContainer, usePanelRegistration } from '../components/Mir
 import { useEffect } from 'react';
 import { useIsMobile } from '../hooks/use-mobile';
 import { CentreLevelCard, CentreDailyGoals, CentreAchievementsRow, UserProfileCard } from '../components/Centre';
-import { Trophy, Flame, Star, Eye } from 'lucide-react';
-import { UserLevel, DailyGoal, Achievement } from '../types/gamification';
-
-/* ──────────────── DEMO MOCK DATA ──────────────── */
-
-const DEMO_USER_LEVEL: UserLevel = {
-  level: 12,
-  currentXP: 680,
-  requiredXP: 1200,
-  totalXP: 4680,
-  rank: 'explorer',
-  progress: 57,
-};
-
-const DEMO_DAILY_GOALS: DailyGoal[] = [
-  {
-    id: 'demo_1',
-    type: 'create_posts',
-    title: 'Написать 2 поста',
-    description: 'Опубликуй 2 публикации',
-    target: 2,
-    current: 1,
-    completed: false,
-    xpReward: 30,
-    difficulty: 'easy',
-    icon: '✍️',
-  },
-  {
-    id: 'demo_2',
-    type: 'create_markers',
-    title: 'Добавить маркер на карту',
-    description: 'Поставь 1 маркер',
-    target: 1,
-    current: 1,
-    completed: true,
-    xpReward: 25,
-    difficulty: 'easy',
-    icon: '📍',
-  },
-  {
-    id: 'demo_3',
-    type: 'add_photos',
-    title: 'Загрузить 3 фото',
-    description: 'Добавь фото к своим публикациям',
-    target: 3,
-    current: 0,
-    completed: false,
-    xpReward: 40,
-    difficulty: 'medium',
-    icon: '📸',
-  },
-];
-
-const DEMO_ACHIEVEMENTS: Achievement[] = [
-  {
-    id: 'first_post',
-    title: 'Первый пост',
-    description: 'Опубликуй свою первую запись',
-    icon: '✍️',
-    category: 'posts',
-    rarity: 'common',
-    progress: { current: 1, target: 1 },
-    unlocked: true,
-    unlockedAt: '2025-01-10T12:00:00Z',
-    xpReward: 50,
-  },
-  {
-    id: 'explorer_10',
-    title: 'Картограф',
-    description: 'Добавь 10 маркеров на карту',
-    icon: '🗺️',
-    category: 'places',
-    rarity: 'rare',
-    progress: { current: 10, target: 10 },
-    unlocked: true,
-    unlockedAt: '2025-02-15T14:30:00Z',
-    xpReward: 100,
-  },
-  {
-    id: 'streak_7',
-    title: 'Неделя огня',
-    description: '7 дней подряд выполняй задания',
-    icon: '🔥',
-    category: 'activity',
-    rarity: 'rare',
-    progress: { current: 7, target: 7 },
-    unlocked: true,
-    unlockedAt: '2025-03-01T18:00:00Z',
-    xpReward: 150,
-  },
-  {
-    id: 'quality_master',
-    title: 'Мастер качества',
-    description: 'Получи 5 оценок «Отлично»',
-    icon: '⭐',
-    category: 'quality',
-    rarity: 'epic',
-    progress: { current: 3, target: 5 },
-    unlocked: false,
-    xpReward: 200,
-  },
-  {
-    id: 'legend_100',
-    title: 'Легенда GeoBlog',
-    description: 'Достигни 100 уровня',
-    icon: '👑',
-    category: 'special',
-    rarity: 'legendary',
-    progress: { current: 12, target: 100 },
-    unlocked: false,
-    xpReward: 1000,
-  },
-  {
-    id: 'photo_50',
-    title: 'Фотограф',
-    description: 'Загрузи 50 фотографий',
-    icon: '📸',
-    category: 'posts',
-    rarity: 'epic',
-    progress: { current: 22, target: 50 },
-    unlocked: false,
-    xpReward: 250,
-  },
-];
+import CentreBackground from '../components/Centre/CentreBackground';
+import { Trophy, Flame, Star, LogIn, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 /* ──────────────── COMPONENT ──────────────── */
 
@@ -145,7 +25,7 @@ export default function CentrePage() {
   const { registerPanel, unregisterPanel } = usePanelRegistration();
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
-  const isDemo = !user;
+  const isGuest = !user;
 
   useEffect(() => {
     registerPanel();
@@ -155,22 +35,34 @@ export default function CentrePage() {
   }, [registerPanel, unregisterPanel]);
 
   if (isMobile) {
-    return <CentrePageMobile selectedUserId={selectedUserId} setSelectedUserId={setSelectedUserId} isDemo={isDemo} />;
+    return (
+      <>
+        <CentreBackground />
+        <CentrePageMobile selectedUserId={selectedUserId} setSelectedUserId={setSelectedUserId} isGuest={isGuest} />
+      </>
+    );
   }
 
-  return <CentrePageDesktop selectedUserId={selectedUserId} setSelectedUserId={setSelectedUserId} isDemo={isDemo} />;
+  return (
+    <>
+      <CentreBackground />
+      <CentrePageDesktop selectedUserId={selectedUserId} setSelectedUserId={setSelectedUserId} isGuest={isGuest} />
+    </>
+  );
 }
 
 interface CentrePageInnerProps {
   selectedUserId: string | null;
   setSelectedUserId: (id: string | null) => void;
-  isDemo: boolean;
+  isGuest: boolean;
 }
 
 /**
  * Desktop: glass-панель в centre-mode (position: fixed, glassmorphism)
  */
-function CentrePageDesktop({ selectedUserId, setSelectedUserId, isDemo }: CentrePageInnerProps) {
+function CentrePageDesktop({ selectedUserId, setSelectedUserId, isGuest }: CentrePageInnerProps) {
+  const [achievementsExpanded, setAchievementsExpanded] = useState(false);
+
   return (
     <MirrorGradientContainer className="centre-mode">
       {/* Заголовок */}
@@ -182,63 +74,60 @@ function CentrePageDesktop({ selectedUserId, setSelectedUserId, isDemo }: Centre
             </div>
             <h2>Центр Влияния</h2>
           </div>
-          <div className="flex items-center gap-2">
-            {isDemo && <DemoBadge />}
-            <p className="text-xs" style={{ color: 'var(--glass-text-secondary)' }}>Прогресс · Соревнования · Мотивация</p>
-          </div>
+          <p className="text-xs" style={{ color: 'var(--glass-text-secondary)' }}>Прогресс · Соревнования · Мотивация</p>
         </div>
       </div>
 
       {/* Скролльный контент */}
       <div className="centre-scroll-area">
         <div className="centre-content space-y-5">
-          {/* Карточка профиля другого пользователя (overlay) */}
-          {selectedUserId && !isDemo && (
-            <UserProfileCard
-              userId={selectedUserId}
-              onClose={() => setSelectedUserId(null)}
-            />
+          {isGuest ? (
+            <GuestCTA />
+          ) : (
+            <>
+              {/* Карточка профиля другого пользователя (overlay) */}
+              {selectedUserId && (
+                <UserProfileCard
+                  userId={selectedUserId}
+                  onClose={() => setSelectedUserId(null)}
+                />
+              )}
+
+              {/* Верхний ряд: Профиль + Достижения */}
+              {achievementsExpanded ? (
+                <>
+                  <CentreLevelCard />
+                  <CentreAchievementsRow onExpandChange={setAchievementsExpanded} />
+                </>
+              ) : (
+                <div className="grid grid-cols-5 gap-5">
+                  <div className="col-span-3">
+                    <CentreLevelCard />
+                  </div>
+                  <div className="col-span-2">
+                    <CentreAchievementsRow onExpandChange={setAchievementsExpanded} />
+                  </div>
+                </div>
+              )}
+
+              {/* Ежедневные задания — на всю ширину */}
+              <CentreDailyGoals />
+
+              {/* Заглушки в два столбца */}
+              <div className="grid grid-cols-2 gap-5">
+                <ComingSoonSection
+                  icon={<Trophy className="w-5 h-5 text-yellow-500" />}
+                  title="Лидерборд"
+                  description="Рейтинг лучших исследователей — скоро"
+                />
+                <ComingSoonSection
+                  icon={<Flame className="w-5 h-5 text-orange-500" />}
+                  title="Сезонный конкурс"
+                  description="Сезонные соревнования — скоро"
+                />
+              </div>
+            </>
           )}
-
-          {/* Верхний ряд: Профиль + Достижения бок о бок */}
-          <div className="grid grid-cols-5 gap-5">
-            {/* 1. Карточка уровня — занимает 3 колонки */}
-            <div className="col-span-3">
-              <CentreLevelCard
-                externalData={isDemo ? {
-                  userLevel: DEMO_USER_LEVEL,
-                  username: 'Демо Путешественник',
-                  streak: 5,
-                } : undefined}
-              />
-            </div>
-
-            {/* 2. Достижения — занимают 2 колонки, вертикально */}
-            <div className="col-span-2">
-              <CentreAchievementsRow
-                externalAchievements={isDemo ? DEMO_ACHIEVEMENTS : undefined}
-              />
-            </div>
-          </div>
-
-          {/* 3. Ежедневные задания — на всю ширину */}
-          <CentreDailyGoals
-            demoGoals={isDemo ? DEMO_DAILY_GOALS : undefined}
-          />
-
-          {/* 4–5: Заглушки в два столбца */}
-          <div className="grid grid-cols-2 gap-5">
-            <ComingSoonSection
-              icon={<Trophy className="w-5 h-5 text-yellow-500" />}
-              title="Лидерборд"
-              description="Рейтинг лучших исследователей — скоро"
-            />
-            <ComingSoonSection
-              icon={<Flame className="w-5 h-5 text-orange-500" />}
-              title="Сезонный конкурс"
-              description="Сезонные соревнования — скоро"
-            />
-          </div>
         </div>
       </div>
     </MirrorGradientContainer>
@@ -249,64 +138,74 @@ function CentrePageDesktop({ selectedUserId, setSelectedUserId, isDemo }: Centre
  * Mobile: glassmorphism в мобильном стиле
  * Рендерится внутри MobileLayout (TopBar + BottomNav уже есть)
  */
-function CentrePageMobile({ selectedUserId, setSelectedUserId, isDemo }: CentrePageInnerProps) {
+function CentrePageMobile({ selectedUserId, setSelectedUserId, isGuest }: CentrePageInnerProps) {
   return (
-    <div className="h-full overflow-y-auto m-glass-page">
+    <div className="h-full overflow-y-auto centre-mobile-page">
       <div className="p-4 space-y-3">
-        {isDemo && (
-          <div className="mb-2">
-            <DemoBadge />
-          </div>
+        {isGuest ? (
+          <GuestCTA />
+        ) : (
+          <>
+            {/* Карточка профиля другого пользователя */}
+            {selectedUserId && (
+              <UserProfileCard
+                userId={selectedUserId}
+                onClose={() => setSelectedUserId(null)}
+              />
+            )}
+
+            {/* 1. Карточка уровня */}
+            <CentreLevelCard />
+
+            {/* 2. Ежедневные задания */}
+            <CentreDailyGoals />
+
+            {/* 3. Достижения */}
+            <CentreAchievementsRow />
+
+            {/* Заглушки */}
+            <div className="m-glass-card p-4 text-center">
+              <Trophy className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
+              <p className="text-sm font-medium m-glass-text">Лидерборд</p>
+              <p className="text-xs m-glass-text-muted mt-1">Скоро</p>
+            </div>
+          </>
         )}
-
-        {/* Карточка профиля другого пользователя */}
-        {selectedUserId && !isDemo && (
-          <UserProfileCard
-            userId={selectedUserId}
-            onClose={() => setSelectedUserId(null)}
-          />
-        )}
-
-        {/* 1. Карточка уровня */}
-        <CentreLevelCard
-          externalData={isDemo ? {
-            userLevel: DEMO_USER_LEVEL,
-            username: 'Демо Путешественник',
-            streak: 5,
-          } : undefined}
-        />
-
-        {/* 2. Ежедневные задания */}
-        <CentreDailyGoals
-          demoGoals={isDemo ? DEMO_DAILY_GOALS : undefined}
-        />
-
-        {/* 3. Достижения */}
-        <CentreAchievementsRow
-          externalAchievements={isDemo ? DEMO_ACHIEVEMENTS : undefined}
-        />
-
-        {/* Заглушки */}
-        <div className="m-glass-card p-4 text-center">
-          <Trophy className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
-          <p className="text-sm font-medium m-glass-text">Лидерборд</p>
-          <p className="text-xs m-glass-text-muted mt-1">Скоро</p>
-        </div>
       </div>
     </div>
   );
 }
 
 /**
- * Бейдж «Demo» — показывается когда нет авторизации
+ * CTA для неавторизованных пользователей
  */
-function DemoBadge() {
+function GuestCTA() {
+  const navigate = useNavigate();
+
   return (
-    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full
-      bg-gradient-to-r from-amber-500/20 to-orange-500/20
-      border border-amber-500/30 backdrop-blur-sm">
-      <Eye className="w-3 h-3 text-amber-400" />
-      <span className="text-[11px] font-medium text-amber-300">Demo</span>
+    <div className="centre-glass-card text-center py-8 px-6">
+      <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-500/30 to-purple-600/30 flex items-center justify-center border border-white/10">
+        <Sparkles className="w-8 h-8 text-purple-300" />
+      </div>
+      <h3 className="text-xl font-bold cg-text mb-2">Центр Влияния</h3>
+      <p className="text-sm cg-text-muted mb-1">
+        Уровни, достижения, ежедневные задания и рейтинги.
+      </p>
+      <p className="text-sm cg-text-muted mb-5">
+        Войди, чтобы отслеживать свой прогресс исследователя.
+      </p>
+      <button
+        onClick={() => navigate('/login')}
+        className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm text-white transition-all hover:scale-105"
+        style={{
+          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.7), rgba(139, 92, 246, 0.7))',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 20px rgba(99, 102, 241, 0.3)',
+        }}
+      >
+        <LogIn className="w-4 h-4" />
+        Войти
+      </button>
     </div>
   );
 }

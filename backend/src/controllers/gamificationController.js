@@ -21,9 +21,9 @@ function getActiveFeatures(stage) {
     basicLevels: true,
     basicXP: true,
     basicAchievements: true,
-    dailyGoals: stage >= 2,
+    dailyGoals: true, // Базовая функция Центра Влияния — включена всегда
     qualityAchievements: stage >= 2,
-    streak: stage >= 2,
+    streak: true, // Стрик — включён всегда (мотивация)
     leaderboards: stage >= 3,
     specialEvents: stage >= 3,
     advancedBoosts: stage >= 4,
@@ -230,7 +230,21 @@ export const getDailyGoals = async (req, res) => {
       }
     }
 
-    res.json({ goals: goals.rows });
+    // Маппим колонки БД в формат фронтенда (camelCase)
+    const mappedGoals = goals.rows.map(row => ({
+      id: row.goal_id,
+      type: row.type,
+      title: row.title,
+      description: row.description,
+      target: row.target,
+      current: row.current,
+      completed: row.completed,
+      xpReward: row.xp_reward,
+      difficulty: row.difficulty,
+      icon: row.icon,
+    }));
+
+    res.json({ goals: mappedGoals });
   } catch (error) {
     logger.error('getDailyGoals error:', error);
     res.status(500).json({ error: 'Failed to get daily goals' });
@@ -392,8 +406,75 @@ export const claimDailyReward = async (req, res) => {
 };
 
 /**
- * Получить достижения
+ * Полный каталог достижений — хранится в коде, прогресс — в БД
  */
+const ACHIEVEMENT_CATALOG = [
+  // Категория: places (Исследователь)
+  { id: 'explorer_10', title: 'Первые шаги', description: 'Добавь 10 маркеров на карту', icon: '🗺️', category: 'places', rarity: 'common', target: 10, xpReward: 50 },
+  { id: 'explorer_50', title: 'Картограф', description: 'Добавь 50 маркеров на карту', icon: '🗺️', category: 'places', rarity: 'rare', target: 50, xpReward: 150 },
+  { id: 'explorer_100', title: 'Мастер карт', description: 'Добавь 100 маркеров на карту', icon: '🗺️', category: 'places', rarity: 'epic', target: 100, xpReward: 300 },
+  // Категория: posts (Фотограф / Блогер)
+  { id: 'photo_5', title: 'Фотолюбитель', description: 'Создай 5 постов с фото', icon: '📸', category: 'posts', rarity: 'common', target: 5, xpReward: 50 },
+  { id: 'photo_20', title: 'Фотограф', description: 'Создай 20 постов с фото', icon: '📸', category: 'posts', rarity: 'rare', target: 20, xpReward: 150 },
+  { id: 'photo_100', title: 'Фотомастер', description: 'Создай 100 постов с фото', icon: '📸', category: 'posts', rarity: 'epic', target: 100, xpReward: 300 },
+  { id: 'blog_5', title: 'Начинающий автор', description: 'Напиши 5 постов', icon: '✍️', category: 'posts', rarity: 'common', target: 5, xpReward: 50 },
+  { id: 'comment_50', title: 'Комментатор', description: 'Оставь 50 комментариев', icon: '💬', category: 'posts', rarity: 'rare', target: 50, xpReward: 100 },
+  // Категория: activity (Активность)
+  { id: 'streak_7', title: 'Неделя огня', description: '7 дней подряд выполняй задания', icon: '🔥', category: 'activity', rarity: 'common', target: 7, xpReward: 100 },
+  { id: 'streak_30', title: 'Месяц огня', description: '30 дней подряд выполняй задания', icon: '🔥', category: 'activity', rarity: 'rare', target: 30, xpReward: 300 },
+  { id: 'streak_100', title: 'Огненная легенда', description: '100 дней подряд выполняй задания', icon: '🔥', category: 'activity', rarity: 'legendary', target: 100, xpReward: 1000 },
+  { id: 'daily_allcomplete_10', title: 'Трудоголик', description: 'Выполни все дневные задания 10 раз', icon: '⚡', category: 'activity', rarity: 'rare', target: 10, xpReward: 200 },
+  // Категория: quality
+  { id: 'quality_5', title: 'Мастер качества', description: 'Получи 5 оценок «Отлично»', icon: '⭐', category: 'quality', rarity: 'epic', target: 5, xpReward: 200 },
+  // Категория: special
+  { id: 'best_user_month', title: 'Лучший пользователь', description: 'Стань топ-1 за месяц', icon: '👑', category: 'special', rarity: 'legendary', target: 1, xpReward: 500 },
+];
+
+/** Подсчитать реальный прогресс пользователя для достижения */
+async function getAchievementProgress(userId, achievementId) {
+  try {
+    switch (achievementId) {
+      case 'explorer_10':
+      case 'explorer_50':
+      case 'explorer_100': {
+        const r = await pool.query('SELECT COUNT(*) as cnt FROM map_markers WHERE creator_id = $1', [userId]);
+        return parseInt(r.rows[0]?.cnt) || 0;
+      }
+      case 'photo_5':
+      case 'photo_20':
+      case 'photo_100':
+      case 'blog_5': {
+        const r = await pool.query('SELECT COUNT(*) as cnt FROM posts WHERE author_id = $1', [userId]);
+        return parseInt(r.rows[0]?.cnt) || 0;
+      }
+      case 'comment_50': {
+        const r = await pool.query('SELECT COUNT(*) as cnt FROM comments WHERE author_id = $1', [userId]);
+        return parseInt(r.rows[0]?.cnt) || 0;
+      }
+      case 'streak_7':
+      case 'streak_30':
+      case 'streak_100': {
+        const r = await pool.query(
+          'SELECT COALESCE(MAX(streak), 0) as max_streak FROM daily_goals_history WHERE user_id = $1',
+          [userId]
+        );
+        return parseInt(r.rows[0]?.max_streak) || 0;
+      }
+      case 'daily_allcomplete_10': {
+        const r = await pool.query(
+          'SELECT COUNT(*) as cnt FROM daily_goals_history WHERE user_id = $1 AND all_completed = TRUE',
+          [userId]
+        );
+        return parseInt(r.rows[0]?.cnt) || 0;
+      }
+      default:
+        return 0;
+    }
+  } catch {
+    return 0;
+  }
+}
+
 export const getAchievements = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -402,13 +483,65 @@ export const getAchievements = async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Получаем достижения пользователя
-    const achievements = await pool.query(
-      'SELECT * FROM user_achievements WHERE user_id = $1',
-      [userId]
-    );
+    // Получаем сохранённый прогресс из БД
+    let savedMap = new Map();
+    try {
+      const saved = await pool.query(
+        'SELECT * FROM user_achievements WHERE user_id = $1',
+        [userId]
+      );
+      savedMap = new Map(saved.rows.map(r => [r.achievement_id, r]));
+    } catch (e) {
+      // Таблица может не существовать — продолжаем без сохранённого прогресса
+      logger.warn('user_achievements table not found, using computed progress only');
+    }
 
-    res.json({ achievements: achievements.rows });
+    // Собираем полный каталог с реальным прогрессом
+    const achievements = [];
+    for (const def of ACHIEVEMENT_CATALOG) {
+      const savedRow = savedMap.get(def.id);
+      const current = await getAchievementProgress(userId, def.id);
+      const unlocked = current >= def.target;
+
+      // Синхронизируем в БД если прогресс изменился
+      try {
+        if (savedRow) {
+          if (current !== savedRow.progress_current || unlocked !== savedRow.unlocked) {
+            await pool.query(
+              `UPDATE user_achievements SET progress_current = $1, unlocked = $2, 
+               unlocked_at = CASE WHEN $2 = TRUE AND unlocked_at IS NULL THEN CURRENT_TIMESTAMP ELSE unlocked_at END,
+               updated_at = CURRENT_TIMESTAMP
+               WHERE user_id = $3 AND achievement_id = $4`,
+              [current, unlocked, userId, def.id]
+            );
+          }
+        } else {
+          await pool.query(
+            `INSERT INTO user_achievements (user_id, achievement_id, unlocked, unlocked_at, progress_current, progress_target)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (user_id, achievement_id) DO NOTHING`,
+            [userId, def.id, unlocked, unlocked ? new Date().toISOString() : null, current, def.target]
+          );
+        }
+      } catch (e) {
+        // Таблица может не существовать — пропускаем синхронизацию
+      }
+
+      achievements.push({
+        id: def.id,
+        title: def.title,
+        description: def.description,
+        icon: def.icon,
+        category: def.category,
+        rarity: def.rarity,
+        progress: { current: Math.min(current, def.target), target: def.target },
+        unlocked,
+        unlockedAt: savedRow?.unlocked_at || (unlocked ? new Date().toISOString() : undefined),
+        xpReward: def.xpReward,
+      });
+    }
+
+    res.json({ achievements });
   } catch (error) {
     logger.error('getAchievements error:', error);
     res.status(500).json({ error: 'Failed to get achievements' });
@@ -549,12 +682,42 @@ export const getStats = async (req, res) => {
     );
 
     const level = levelResult.rows[0] || null;
-    const achievements = achievementsResult.rows || [];
+    const achievementRows = achievementsResult.rows || [];
     const streak = historyResult.rows[0]?.streak || 0;
     const goals = goalsResult.rows || [];
     const todayProgress = goals.length > 0 
       ? (goals.filter(g => g.completed).length / goals.length) * 100 
       : 0;
+
+    // Маппим достижения через каталог для получения rarity
+    const catalogMap = new Map(ACHIEVEMENT_CATALOG.map(c => [c.id, c]));
+    const byRarity = {};
+    let unlockedCount = 0;
+    for (const a of achievementRows) {
+      const def = catalogMap.get(a.achievement_id);
+      const rarity = def?.rarity || 'common';
+      if (!byRarity[rarity]) byRarity[rarity] = 0;
+      if (a.unlocked) {
+        byRarity[rarity]++;
+        unlockedCount++;
+      }
+    }
+
+    // Последние начисления XP
+    let recentXP = [];
+    try {
+      const xpResult = await pool.query(
+        'SELECT source, amount, created_at FROM xp_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10',
+        [userId]
+      );
+      recentXP = xpResult.rows.map(r => ({
+        source: r.source,
+        amount: r.amount,
+        timestamp: r.created_at,
+      }));
+    } catch (e) {
+      logger.warn('Failed to load recentXP:', e.message);
+    }
 
     res.json({
       userLevel: level ? {
@@ -568,16 +731,16 @@ export const getStats = async (req, res) => {
           : 100,
       } : null,
       achievements: {
-        total: achievements.length,
-        unlocked: achievements.filter(a => a.unlocked).length,
-        byRarity: {}, // TODO: группировка по редкости
+        total: ACHIEVEMENT_CATALOG.length,
+        unlocked: unlockedCount,
+        byRarity,
       },
       dailyGoals: {
         current: goals,
         streak,
         todayProgress,
       },
-      recentXP: [], // TODO: последние XP из истории
+      recentXP,
     });
   } catch (error) {
     logger.error('getStats error:', error);

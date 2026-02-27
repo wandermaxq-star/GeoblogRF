@@ -1093,7 +1093,11 @@ const Map: React.FC<MapProps> = ({
         // Если карта не является активным контентом (фон для posts/activity) — убираем маркеры
         if (!isMapInteractive) {
             if (markerClusterGroupRef.current) {
-                try { mapRef.current.removeLayer(markerClusterGroupRef.current); } catch (e) { }
+                try {
+                    if (mapRef.current && typeof (mapRef.current as any).removeLayer === 'function') {
+                        (mapRef.current as any).removeLayer(markerClusterGroupRef.current);
+                    }
+                } catch (e) { }
                 markerClusterGroupRef.current = null;
             }
             return;
@@ -1106,17 +1110,29 @@ const Map: React.FC<MapProps> = ({
         const [searchRadiusCenterLat, searchRadiusCenterLng] = searchRadiusCenter;
 
         if (markerClusterGroupRef.current) {
-            mapRef.current.removeLayer(markerClusterGroupRef.current);
+            try {
+                if (mapRef.current && typeof (mapRef.current as any).removeLayer === 'function') {
+                    (mapRef.current as any).removeLayer(markerClusterGroupRef.current);
+                }
+            } catch (e) { }
             markerClusterGroupRef.current = null;
         }
 
         if (mapRef.current && typeof (mapRef.current as any).eachLayer === 'function') {
+            // Collect layers first to avoid modifying collection during iteration
+            const layersToRemove: any[] = [];
             (mapRef.current as any).eachLayer((layer: any) => {
-                // Avoid direct instanceof checks; remove layers that look like markers and aren't the temp marker
                 if (layer && (layer as any).markerData && layer !== tempMarkerRef.current) {
-                    try { mapRef.current?.removeLayer(layer); } catch (e) { }
+                    layersToRemove.push(layer);
                 }
             });
+            for (const layer of layersToRemove) {
+                try {
+                    if (typeof (mapRef.current as any).removeLayer === 'function') {
+                        (mapRef.current as any).removeLayer(layer);
+                    }
+                } catch (e) { }
+            }
         }
 
         // Create a marker cluster group via the facade (keeps Leaflet usage centralized)
@@ -1304,8 +1320,11 @@ const Map: React.FC<MapProps> = ({
                 leafletMarker.on('popupclose', () => {
                     const root = activePopupRoots.current[markerData.id];
                     if (root) {
-                        root.unmount();
                         delete activePopupRoots.current[markerData.id];
+                        // Defer unmount to avoid "synchronously unmount while React is rendering" race
+                        setTimeout(() => {
+                            try { root.unmount(); } catch (e) { /* already unmounted */ }
+                        }, 0);
                     }
                 });
 
@@ -2083,7 +2102,7 @@ const Map: React.FC<MapProps> = ({
                         showCultureMessage={false}
                         onSubmit={async (data: any) => {
                             if (mapRef.current && tempMarkerRef.current) {
-                                mapRef.current.removeLayer(tempMarkerRef.current);
+                                try { if (typeof (mapRef.current as any).removeLayer === 'function') (mapRef.current as any).removeLayer(tempMarkerRef.current); } catch (e) { }
                                 setTempMarker(null);
                             }
                             const markerDataWithCoords = {
@@ -2098,7 +2117,7 @@ const Map: React.FC<MapProps> = ({
                         }}
                         onCancel={() => {
                             if (mapRef.current && tempMarkerRef.current) {
-                                mapRef.current.removeLayer(tempMarkerRef.current);
+                                try { if (typeof (mapRef.current as any).removeLayer === 'function') (mapRef.current as any).removeLayer(tempMarkerRef.current); } catch (e) { }
                                 setTempMarker(null);
                             }
                             setCoordsForNewMarker(null);

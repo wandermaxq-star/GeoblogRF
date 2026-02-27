@@ -17,7 +17,11 @@ import logger from '../../logger.js';
 
 const router = express.Router();
 
-// Все роуты требуют аутентификации и прав администратора
+// Трекинг событий и ошибок — доступны авторизованным пользователям (не только admin)
+router.post('/track', authenticateToken, checkAnalyticsOptOut, trackEvent);
+router.post('/errors', authenticateToken, checkAnalyticsOptOut, trackError);
+
+// Все остальные роуты требуют аутентификации и прав администратора
 router.use(authenticateToken, requireRole(['admin']));
 
 // Логируем все запросы к аналитике
@@ -39,12 +43,6 @@ router.get('/technical', getTechnicalHealth);
 
 // Комплексные метрики
 router.get('/comprehensive', getComprehensiveMetrics);
-
-// Трекинг событий (проверяем флаг отказа от аналитики)
-router.post('/track', checkAnalyticsOptOut, trackEvent);
-
-// Трекинг ошибок (проверяем флаг отказа от аналитики)
-router.post('/errors', checkAnalyticsOptOut, trackError);
 
 export default router;
 

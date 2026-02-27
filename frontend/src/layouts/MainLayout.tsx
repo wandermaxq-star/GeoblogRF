@@ -30,6 +30,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   // Эти страницы должны сбрасывать панели и показывать children напрямую
   const soloPages = ['/centre', '/pro', '/partners', '/admin', '/test', '/legal'];
   const isSoloPage = soloPages.some(path => location.pathname.startsWith(path));
+  // Centre использует собственный фон (градиентные орбы) вместо карты
+  const isCentrePage = location.pathname.startsWith('/centre');
 
   // КРИТИЧНО: Предзагружаем компоненты карт при загрузке проекта
   useEffect(() => {
@@ -73,10 +75,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     lastPathnameRef.current = location.pathname;
 
     if (isSoloPage) {
-      // Solo-страницы (Centre и др.) показывают Leaflet-карту как фон
       const store = useContentStore.getState();
-      if (store.leftContent !== 'map') {
-        store.setLeftContent('map');
+      if (isCentrePage) {
+        // Centre: собственный фон, карта не нужна
+        store.setLeftContent(null);
+      } else {
+        // Остальные solo-страницы: Leaflet-карта как фон
+        if (store.leftContent !== 'map') {
+          store.setLeftContent('map');
+        }
       }
       store.setRightContent(null);
       // Скрываем контролы карты через body-класс

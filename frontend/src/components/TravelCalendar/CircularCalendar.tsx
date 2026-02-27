@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef, useId } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useId, useEffect } from 'react';
 import { MockEvent } from './mockEvents';
 import './CircularCalendar.css';
 
@@ -133,7 +133,7 @@ const CircularCalendar: React.FC<CircularCalendarProps> = ({
     onDateChange(new Date(year + 1, activeMonth, 1));
   }, [year, activeMonth, onDateChange]);
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
+  const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
     if (isExpanded) return;
     setActiveMonth(prev => {
@@ -141,6 +141,15 @@ const CircularCalendar: React.FC<CircularCalendarProps> = ({
       return (prev - 1 + 12) % 12;
     });
   }, [isExpanded]);
+
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [handleWheel]);
 
   const handleContainerClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!isExpanded || !containerRef.current) return;
@@ -179,7 +188,7 @@ const CircularCalendar: React.FC<CircularCalendarProps> = ({
   const activeSegment = segments[activeMonth];
 
   return (
-    <div className="ccal-wrapper" onWheel={handleWheel}>
+    <div className="ccal-wrapper" ref={wrapperRef}>
       <div
         ref={containerRef}
         className={`ccal-container ${isExpanded ? 'is-expanded' : ''}`}

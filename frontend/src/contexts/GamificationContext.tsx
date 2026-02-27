@@ -59,29 +59,27 @@ export const GamificationProvider: React.FC<GamificationProviderProps> = ({ chil
 
   // Загрузка feature flags и данных при монтировании
   useEffect(() => {
-    // Сразу завершаем загрузку, чтобы не блокировать приложение
-    // Данные геймификации загрузятся позже в фоне
     setLoading(false);
     
-    // Загружаем feature flags асинхронно, не блокируя рендеринг
-    const loadFeatures = async () => {
+    // Загружаем features ПЕРВЫМИ, потом данные — чтобы не было race condition
+    const init = async () => {
+      // 1. Features
+      let loadedFeatures = getActiveFeatures(1);
       try {
-        // Используем apiClient вместо fetch для правильного базового URL
         const response = await apiClient.get('/gamification/features');
-        setFeatures(response.data?.features || getActiveFeatures(1));
+        loadedFeatures = response.data?.features || loadedFeatures;
       } catch (error: any) {
-        // Не блокируем приложение при ошибках загрузки feature flags
-        setFeatures(getActiveFeatures(1)); // Fallback к этапу 1
+        // Fallback — defaults уже dailyGoals: true, streak: true
+      }
+      setFeatures(loadedFeatures);
+      
+      // 2. Данные геймификации (features уже актуальны)
+      if (auth?.user?.id) {
+        await loadGamificationData();
       }
     };
     
-    // Загружаем feature flags в фоне, не блокируя рендеринг
-    loadFeatures();
-    
-    // Загружаем данные геймификации только если пользователь авторизован
-    if (auth?.user?.id) {
-      loadGamificationData();
-    }
+    init();
   }, [auth?.user?.id]);
 
   // Загрузка всех данных геймификации (не блокирует рендеринг)

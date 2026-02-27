@@ -59,7 +59,7 @@ async function getSummary(targetType, targetId) {
 }
 
 // Upsert rating
-router.post('/ratings', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     await ensureTable();
     const userId = req.user.id;
@@ -103,7 +103,7 @@ router.post('/ratings', authenticateToken, async (req, res) => {
 });
 
 // Fetch summary
-router.get('/ratings/summary', async (req, res) => {
+router.get('/summary', async (req, res) => {
   try {
     await ensureTable();
     const targetType = String(req.query.type || '').toLowerCase();
@@ -138,7 +138,7 @@ router.get('/ratings/summary', async (req, res) => {
 });
 
 // Fetch current user's rating for a target
-router.get('/ratings/user', authenticateToken, async (req, res) => {
+router.get('/user', authenticateToken, async (req, res) => {
   try {
     await ensureTable();
     const userId = req.user.id;
