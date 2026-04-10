@@ -39,6 +39,81 @@ describe('Inline endpoints', () => {
       expect(res.body).toHaveProperty('port');
     });
   });
+
+  describe('Curated-route-pack endpoints', () => {
+    let adminToken;
+    let userToken;
+
+    beforeAll(async () => {
+      const { generateToken } = await import('../src/utils/jwt.js');
+      adminToken = generateToken(1, 'admin');
+      userToken = generateToken(2, 'registered');
+
+      // In test mode we rely on static packs; no DB seeding necessary
+
+    });
+
+    test('list endpoint returns array', async () => {
+      const res = await request(app).get('/api/curated-route-packs');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    test('item endpoint returns object when id exists', async () => {
+      const list = (await request(app).get('/api/curated-route-packs')).body;
+      if (list.length > 0) {
+        const id = list[0].id;
+        const res = await request(app).get(`/api/curated-route-packs/${id}`);
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('id', id);
+      }
+    });
+
+    test('item endpoint returns 404 for missing id', async () => {
+      const res = await request(app).get('/api/curated-route-packs/__no_such__');
+      expect(res.status).toBe(404);
+    });
+
+    // admin CRUD checks
+    test('unauthenticated user cannot create pack', async () => {
+      const res = await request(app)
+        .post('/api/curated-route-packs')
+        .send({ id: 'x' });
+      expect(res.status).toBe(401);
+    });
+
+    test('non-admin cannot create pack', async () => {
+      const res = await request(app)
+        .post('/api/curated-route-packs')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ id: 'x' });
+      expect(res.status).toBe(403);
+    });
+
+    test('admin can create/update/delete pack', async () => {
+      const newPack = { id: 'test-pack', title: 'Test', variants: [] };
+      let res = await request(app)
+        .post('/api/curated-route-packs')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(newPack);
+      expect(res.status).toBe(201);
+      expect(res.body).toHaveProperty('id', 'test-pack');
+
+      // update
+      res = await request(app)
+        .put('/api/curated-route-packs/test-pack')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ title: 'Changed' });
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('title', 'Changed');
+
+      // delete
+      res = await request(app)
+        .delete('/api/curated-route-packs/test-pack')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(res.status).toBe(204);
+    });
+  });
 });
 
 describe('ORS proxy — edge cases', () => {

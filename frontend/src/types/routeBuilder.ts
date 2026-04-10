@@ -3,7 +3,7 @@
  * Объединяет все источники точек в одном состоянии
  */
 
-export type PointSource = 'search' | 'favorites' | 'click' | 'coordinates' | 'route';
+export type PointSource = 'search' | 'favorites' | 'event' | 'click' | 'coordinates' | 'route';
 
 export interface RoutePoint {
   id: string;
@@ -31,6 +31,7 @@ export interface RoutePointManager {
   addPoint: (point: Omit<RoutePoint, 'id' | 'order' | 'isActive'>) => void;
   addSearchPoint: (address: string, coordinates: [number, number]) => void;
   addFavoritePoint: (favoriteId: string, title: string, coordinates: [number, number]) => void;
+  addEventPoint: (eventId: string, title: string, coordinates: [number, number]) => void;
   addClickPoint: (coordinates: [number, number], title?: string) => void;
   addCoordinatePoint: (coordinates: [number, number], title: string) => void;
   
@@ -42,8 +43,8 @@ export interface RoutePointManager {
   togglePoint: (pointId: string) => void; // Включить/выключить точку
   
   // Построение маршрута
-  buildRoute: () => Promise<void>;
-  rebuildRoute: () => Promise<void>;
+  buildRoute: (options?: { profile?: string; preference?: 'fastest' | 'shortest' | 'recommended' }) => Promise<void>;
+  rebuildRoute: (options?: { profile?: string; preference?: 'fastest' | 'shortest' | 'recommended' }) => Promise<void>;
   clearRoute: () => void;
   
   // Получение данных

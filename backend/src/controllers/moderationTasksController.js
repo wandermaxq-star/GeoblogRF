@@ -8,7 +8,8 @@ import logger from '../../logger.js';
  */
 export const getModerationTasks = async (req, res) => {
   try {
-    const { contentType } = req.params; // 'markers', 'events', 'routes', 'posts'
+    let { contentType } = req.params; // 'markers', 'events', 'routes', 'posts', 'marker_comments'
+    if (contentType === 'marker-comments') contentType = 'marker_comments';
     const userId = req.user?.id || req.user?.userId;
 
     // Проверка прав администратора
@@ -179,6 +180,96 @@ export const getModerationTasks = async (req, res) => {
         break;
       }
 
+      case 'comments': {
+        const newComments = await pool.query(`
+          SELECT 
+            c.id,
+            c.content,
+            c.status,
+            c.created_at,
+            u.username as author_name,
+            u.id as author_id,
+            p.id as post_id,
+            p.title as post_title,
+            'new_comment' as task_type
+          FROM comments c
+          LEFT JOIN users u ON u.id::text = c.author_id
+          LEFT JOIN posts p ON p.id::text = c.post_id
+          WHERE c.status = 'pending'
+          ORDER BY c.created_at DESC
+        `);
+
+        tasks = newComments.rows.map(row => ({
+          id: `comment_${row.id}`,
+          type: 'new_comment',
+          title: `${row.author_name || 'Пользователь'} комментирует пост "${row.post_title || 'без названия'}"`,
+          content: row,
+          coordinates: null,
+          created_at: row.created_at
+        }));
+        break;
+      }
+
+      case 'marker_comments': {
+        const newMarkerComments = await pool.query(`
+          SELECT
+            mc.id,
+            mc.marker_id,
+            mc.content,
+            mc.status,
+            mc.created_at,
+            u.username as author_name,
+            u.id as author_id,
+            m.title as marker_title,
+            m.latitude,
+            m.longitude,
+            'new_marker_comment' as task_type
+          FROM marker_comments mc
+          LEFT JOIN users u ON u.id::text = mc.author_id
+          LEFT JOIN map_markers m ON m.id::text = mc.marker_id
+          WHERE mc.status = 'pending'
+          ORDER BY mc.created_at DESC
+        `);
+
+        tasks = newMarkerComments.rows.map(row => ({
+          id: `marker_comment_${row.id}`,
+          type: 'new_marker_comment',
+          title: `${row.author_name || 'Пользователь'} прокомментировал метку "${row.marker_title || 'без названия'}"`,
+          content: row,
+          coordinates: row.latitude && row.longitude ? [row.latitude, row.longitude] : null,
+          created_at: row.created_at
+        }));
+        break;
+      }
+
+      case 'routes': {
+        const newRoutes = await pool.query(`
+          SELECT 
+            r.id,
+            r.title,
+            r.description,
+            r.status,
+            r.created_at,
+            u.username as author_name,
+            u.id as author_id,
+            'new_route' as task_type
+          FROM travel_routes r
+          LEFT JOIN users u ON u.id::text = r.creator_id
+          WHERE r.status = 'pending'
+          ORDER BY r.created_at DESC
+        `);
+
+        tasks = newRoutes.rows.map(row => ({
+          id: `route_${row.id}`,
+          type: 'new_route',
+          title: `${row.author_name || 'Пользователь'} создал маршрут "${row.title || 'без названия'}"`,
+          content: row,
+          coordinates: null,
+          created_at: row.created_at
+        }));
+        break;
+      }
+
       default:
         return res.status(400).json({ message: 'Неизвестный тип контента.' });
     }
@@ -216,15 +307,21 @@ export const getModerationTasksCount = async (req, res) => {
       SELECT
         (SELECT COUNT(*) FROM map_markers WHERE status = 'pending') as markers,
         (SELECT COUNT(*) FROM events WHERE status = 'pending') as events,
-        (SELECT COUNT(*) FROM posts WHERE status = 'pending') as posts
+        (SELECT COUNT(*) FROM posts WHERE status = 'pending') as posts,
+        (SELECT COUNT(*) FROM comments WHERE status = 'pending') as comments,
+        (SELECT COUNT(*) FROM travel_routes WHERE status = 'pending') as routes,
+        (SELECT COUNT(*) FROM marker_comments WHERE status = 'pending') as marker_comments
     `);
 
-    const result = counts.rows[0] || { markers: 0, events: 0, posts: 0 };
+    const result = counts.rows[0] || { markers: 0, events: 0, posts: 0, comments: 0, routes: 0, marker_comments: 0 };
 
     res.json({
       markers: parseInt(result.markers) || 0,
       events: parseInt(result.events) || 0,
-      posts: parseInt(result.posts) || 0
+      posts: parseInt(result.posts) || 0,
+      comments: parseInt(result.comments) || 0,
+      routes: parseInt(result.routes) || 0,
+      markerComments: parseInt(result.marker_comments) || 0
     });
   } catch (error) {
     logger.error('Ошибка получения счётчиков задач модерации:', error);

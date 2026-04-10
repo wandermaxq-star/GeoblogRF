@@ -1,0 +1,223 @@
+/* ============================================
+   STANDALONE MODE — Абстрактные фоны для solo-страниц
+   (Profile, Friends, Admin, и т.д. — всё что без mode-класса)
+   ============================================ */
+
+/* === EMERALD THEME: изумрудный градиент + абстрактные круги === */
+[data-theme="emerald"] .app-root {
+  /* Основной фон: тёмный изумрудный градиент */
+  background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Абстрактный круг 1 — левый верхний угол */
+[data-theme="emerald"] .app-root::before {
+  content: '';
+  position: absolute;
+  top: -200px;
+  left: -200px;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Абстрактный круг 2 — правый нижний угол */
+[data-theme="emerald"] .app-root::after {
+  content: '';
+  position: absolute;
+  bottom: -150px;
+  right: -150px;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(52, 211, 153, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Абстрактный круг 3 — центр (меньший, для глубины) */
+[data-theme="emerald"] .map-with-sidebar-container::before {
+  content: '';
+  position: absolute;
+  top: 30%;
+  left: 40%;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(6, 95, 70, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* === LIGHT THEME: светлый абстрактный фон === */
+[data-theme="light"] .app-root,
+[data-theme="light"].app-root {
+  /* Основной фон: светлый градиент (голубовато-серый) */
+  background: linear-gradient(135deg, #e0e7ff 0%, #f0f9ff 50%, #e0f2fe 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Абстрактный круг 1 — левый верхний (светло-голубой) */
+[data-theme="light"] .app-root::before {
+  content: '';
+  position: absolute;
+  top: -200px;
+  left: -200px;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(147, 197, 253, 0.25) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Абстрактный круг 2 — правый нижний (светло-фиолетовый) */
+[data-theme="light"] .app-root::after {
+  content: '';
+  position: absolute;
+  bottom: -150px;
+  right: -150px;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(196, 181, 253, 0.2) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Абстрактный круг 3 — центр (лёгкий) */
+[data-theme="light"] .map-with-sidebar-container::before {
+  content: '';
+  position: absolute;
+  top: 30%;
+  left: 40%;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(224, 242, 254, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* === DARK THEME: тёмный абстрактный фон === */
+[data-theme="dark"] .app-root,
+[data-theme="dark"].app-root {
+  /* Основной фон: тёмный градиент (серый/фиолетовый) */
+  background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 50%, #1e293b 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Абстрактный круг 1 — левый верхний (тёмно-фиолетовый) */
+[data-theme="dark"] .app-root::before {
+  content: '';
+  position: absolute;
+  top: -200px;
+  left: -200px;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Абстрактный круг 2 — правый нижний (тёмно-синий) */
+[data-theme="dark"] .app-root::after {
+  content: '';
+  position: absolute;
+  bottom: -150px;
+  right: -150px;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Абстрактный круг 3 — центр (лёгкий) */
+[data-theme="dark"] .map-with-sidebar-container::before {
+  content: '';
+  position: absolute;
+  top: 30%;
+  left: 40%;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(30, 41, 59, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* === Solo-страницы: контент поверх абстрактного фона === */
+[data-theme="emerald"] .activity-feed,
+[data-theme="light"] .activity-feed,
+[data-theme="dark"] .activity-feed {
+  /* Прозрачный контейнер — фон уже на .app-root */
+  background: transparent;
+}
+
+/* Центрированный контент на solo-страницах */
+[data-theme="emerald"] .page-main-panel,
+[data-theme="light"] .page-main-panel,
+[data-theme="dark"] .page-main-panel {
+  /* Glass-стиль для панелей */
+  background: var(--glass-l1-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-l1-border);
+  box-shadow: var(--glass-l1-shadow);
+  border-radius: var(--glass-radius);
+  color: var(--glass-text);
+}
+
+/* Карточки внутри solo-страниц */
+[data-theme="emerald"] .glass-card,
+[data-theme="light"] .glass-card,
+[data-theme="dark"] .glass-card {
+  background: var(--glass-l2-bg);
+  border: 1px solid var(--glass-l2-border);
+  box-shadow: var(--glass-l2-shadow);
+  color: var(--glass-text);
+}
+
+/* === Скрываем карту на solo-страницах в non-emerald темах === */
+[data-theme="light"] .solo-page-map-bg,
+[data-theme="dark"] .solo-page-map-bg {
+  display: none;
+  visibility: hidden;
+}
+
+/* Для изумрудной темы тоже скрываем карту (фон абстрактный) */
+[data-theme="emerald"] .solo-page-map-bg {
+  display: none;
+  visibility: hidden;
+}
+
+/* === Центрирование контента на solo-страницах === */
+/* Когда нет левой панели (карты скрыты) */
+[data-theme="emerald"] .activity-feed.no-left-panel,
+[data-theme="light"] .activity-feed.no-left-panel,
+[data-theme="dark"] .activity-feed.no-left-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Контейнер контента на solo-страницах */
+[data-theme="emerald"] .page-content-wrapper,
+[data-theme="light"] .page-content-wrapper,
+[data-theme="dark"] .page-content-wrapper {
+  /* Центрирование */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}

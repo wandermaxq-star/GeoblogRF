@@ -109,7 +109,18 @@ export function useMapMarkers(opts: UseMapMarkersOptions) {
             ? getDistanceFromLatLonInKm(searchRadiusCenterLat, searchRadiusCenterLng, Number(markerData.latitude), Number(markerData.longitude)) <= filters.radius
             : true;
 
-          const iconColor = isPending ? '#ff9800' : (isInRadius ? mapSettings.themeColor : (markerCategoryStyle.color || '#666'));
+          // protect against themeColor being black or empty
+          let iconColor: string;
+          if (isPending) {
+            iconColor = '#ff9800';
+          } else if (isInRadius) {
+            const tcol = mapSettings.themeColor;
+            iconColor = (tcol && tcol.toLowerCase() !== 'black' && tcol !== '#000' && tcol !== '#000000')
+              ? tcol
+              : (markerCategoryStyle.color || '#666');
+          } else {
+            iconColor = markerCategoryStyle.color || '#666';
+          }
 
           const icon = mapFacade().createDivIcon({
             className: 'event-marker ' + (isPending ? 'pending' : ''),
@@ -178,7 +189,6 @@ export function useMapMarkers(opts: UseMapMarkersOptions) {
                   onAddToFavorites={opts.onAddToFavorites || (() => {})}
                   onRemoveFromFavorites={opts.onRemoveFromFavorites}
                   setSelectedMarkerIds={opts.setSelectedMarkerIds}
-                  onAddToBlog={opts.onAddToBlog}
                   isFavorite={opts.isFavorite ? opts.isFavorite(markerData) : false}
                   isSelected={false}
                 />

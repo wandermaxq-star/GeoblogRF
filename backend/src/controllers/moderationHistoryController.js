@@ -32,7 +32,9 @@ export const getModerationHistory = async (req, res) => {
     let titleColumn;
     let contentColumn;
 
-    switch (contentType) {
+    const normalizedType = contentType === 'marker-comments' ? 'marker_comments' : contentType;
+
+    switch (normalizedType) {
       case 'events':
         tableName = 'events';
         authorColumn = 'creator_id';
@@ -59,6 +61,12 @@ export const getModerationHistory = async (req, res) => {
         break;
       case 'comments':
         tableName = 'comments';
+        authorColumn = 'author_id';
+        titleColumn = 'content';
+        contentColumn = 'content';
+        break;
+      case 'marker_comments':
+        tableName = 'marker_comments';
         authorColumn = 'author_id';
         titleColumn = 'content';
         contentColumn = 'content';
@@ -195,6 +203,10 @@ export const getContentDetails = async (req, res) => {
         tableName = 'comments';
         authorColumn = 'author_id';
         break;
+      case 'marker_comments':
+        tableName = 'marker_comments';
+        authorColumn = 'author_id';
+        break;
       default:
         return res.status(400).json({ message: 'Неизвестный тип контента.' });
     }
@@ -202,7 +214,7 @@ export const getContentDetails = async (req, res) => {
     // Получаем контент
     const contentResult = await pool.query(
       `SELECT c.*, u.username as author_name, u.email as author_email, u.role as author_role
-       ${contentType === 'comments' ? ", p.title as source_title, 'posts' as source_type, c.post_id as source_id" : ''}
+       ${contentType === 'comments' ? ", p.title as post_title, p.body as post_body, 'posts' as source_type, c.post_id as source_id" : ''}
        FROM ${tableName} c
        LEFT JOIN users u ON u.id::text = c.${authorColumn}::text
        ${contentType === 'comments' ? 'LEFT JOIN posts p ON c.post_id = p.id' : ''}

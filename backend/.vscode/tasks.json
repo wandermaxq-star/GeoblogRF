@@ -1,0 +1,16 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Install cookie-parser",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"install",
+				"cookie-parser"
+			],
+			"isBackground": false,
+			"group": "build"
+		}
+	]
+}

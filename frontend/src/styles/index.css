@@ -15,6 +15,7 @@
 /* 3. Layout и режимы (разделённые модули) */
 @import './_layout.css';
 @import './_modes.css';
+@import './_standalone-mode.css';
 
 /* 4. Content-specific styles (posts/blogs) — подключаем последним, чтобы гарантировать переопределение */
 @import './_content.css';

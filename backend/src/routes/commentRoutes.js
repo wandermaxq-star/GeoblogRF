@@ -4,6 +4,7 @@
 import express from 'express';
 import pool from '../../db.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { optionalAuthenticateToken } from '../middleware/optionalAuth.js';
 import logger from '../../logger.js';
 
 const router = express.Router();
@@ -69,6 +70,7 @@ router.get('/posts/:postId/comments', async (req, res) => {
        FROM comments c
        LEFT JOIN users u ON c.author_id = u.id
        WHERE c.post_id = $1::bigint
+         AND c.is_public = true
          AND (
            c.status = 'active'
            OR (c.status = 'pending' AND $2::uuid IS NOT NULL AND c.author_id = $2::uuid)
@@ -168,7 +170,7 @@ router.delete('/posts/:postId/comments/:commentId', authenticateToken, async (re
 
   try {
     const commentResult = await pool.query(
-      `SELECT id, author_id, status FROM comments WHERE id = $1 AND post_id = $2::bigint LIMIT 1`,
+      `SELECT id, author_id, status, is_public, post_id FROM comments WHERE id = $1 AND post_id = $2::bigint LIMIT 1`,
       [commentId, postId]
     );
     if (commentResult.rows.length === 0) {
@@ -181,6 +183,16 @@ router.delete('/posts/:postId/comments/:commentId', authenticateToken, async (re
     }
 
     await pool.query(`DELETE FROM comments WHERE id = $1`, [commentId]);
+
+    // Если комментарий был видимым (is_public=true и status=active), обновляем счётчик
+    if (comment.is_public === true && comment.status === 'active') {
+      try {
+        await pool.query(
+          `UPDATE posts SET comments_count = COALESCE(comments_count, 0) - 1 WHERE id = $1`,
+          [postId]
+        );
+      } catch (_) { /* колонка может отсутствовать */ }
+    }
 
     logger.info(`Comment deleted: id=${commentId}, by=${userId}`);
     res.json({ message: 'Комментарий удалён', id: Number(commentId) });
@@ -232,6 +244,167 @@ router.post('/posts/:postId/comments/:commentId/like', authenticateToken, async 
     res.status(500).json({ message: 'Ошибка лайка' });
   } finally {
     client.release();
+  }
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// МАРКЕР-КОММЕНТАРИИ (Новая функциональность)
+// ═════════════════════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────
+// GET /api/markers/:markerId/comments
+// Получить все активные комментарии к маркеру.
+// Авторизованный пользователь видит свои pending комментарии.
+// ─────────────────────────────────────────────
+router.get('/markers/:markerId/comments', optionalAuthenticateToken, async (req, res) => {
+  const { markerId } = req.params;
+
+  try {
+    // Проверяем существование таблицы
+    const tableCheck = await pool.query(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables WHERE table_name = 'marker_comments'
+      ) AS exists`
+    );
+    
+    if (!tableCheck.rows[0].exists) {
+      return res.json([]);
+    }
+
+    const currentUserId = req.user?.id || null;
+    const result = await pool.query(
+      `SELECT
+          mc.id,
+          mc.marker_id,
+          mc.author_id,
+          mc.content,
+          mc.content AS text,
+          mc.status,
+          mc.likes_count,
+          mc.created_at,
+          COALESCE(u.first_name || ' ' || u.last_name, u.username) AS author_name,
+          u.username AS author_username,
+          u.avatar_url AS author_avatar
+       FROM marker_comments mc
+       LEFT JOIN users u ON mc.author_id = u.id
+       WHERE mc.marker_id = $1
+         AND (
+           mc.status = 'active'
+           OR (mc.status = 'pending' AND mc.author_id = $2)
+         )
+       ORDER BY mc.created_at DESC`,
+      [markerId, currentUserId]
+    );
+
+    res.json(result.rows || []);
+  } catch (err) {
+    logger.error('GET /markers/:markerId/comments error', { error: err?.message });
+    res.status(500).json({ message: 'Ошибка получения комментариев' });
+  }
+});
+
+// ─────────────────────────────────────────────
+// POST /api/markers/:markerId/comments
+// Создать комментарий к маркеру (требует авторизации)
+// ─────────────────────────────────────────────
+router.post('/markers/:markerId/comments', authenticateToken, async (req, res) => {
+  const { markerId } = req.params;
+  const { content, is_public = true } = req.body;
+  const authorId = req.user?.id;
+
+  if (!content?.trim()) {
+    return res.status(400).json({ message: 'Текст комментария не может быть пустым' });
+  }
+
+  try {
+    // Проверяем существование таблицы  
+    const tableCheck = await pool.query(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables WHERE table_name = 'marker_comments'
+      ) AS exists`
+    );
+    
+    if (!tableCheck.rows[0].exists) {
+      // Создаём таблицу если она не существует
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS marker_comments (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          marker_id VARCHAR(255) NOT NULL,
+          author_id UUID NOT NULL,
+          content TEXT NOT NULL,
+          status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'rejected')),
+          is_public BOOLEAN DEFAULT true,
+          likes_count INTEGER DEFAULT 0,
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW(),
+          FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_marker_comments_marker_id ON marker_comments(marker_id);
+        CREATE INDEX IF NOT EXISTS idx_marker_comments_status ON marker_comments(status);
+        CREATE INDEX IF NOT EXISTS idx_marker_comments_created_at ON marker_comments(created_at DESC);
+      `);
+    }
+
+    const result = await pool.query(
+      `INSERT INTO marker_comments (marker_id, author_id, content, is_public, status)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id`,
+      [markerId, authorId, content, is_public, 'pending']
+    );
+
+    logger.info(`Marker comment created: id=${result.rows[0].id}, markerId=${markerId}, authorId=${authorId}`);
+    res.json({ 
+      ok: true, 
+      id: result.rows[0].id,
+      message: 'Комментарий отправлен на модерацию'
+    });
+  } catch (err) {
+    logger.error('POST /markers/:markerId/comments error', { error: err?.message });
+    res.status(500).json({ message: 'Ошибка создания комментария' });
+  }
+});
+
+// ─────────────────────────────────────────────
+// DELETE /api/markers/:markerId/comments/:commentId
+// Удалить комментарий (только автор или admin)
+// ─────────────────────────────────────────────
+router.delete('/markers/:markerId/comments/:commentId', authenticateToken, async (req, res) => {
+  const { markerId, commentId } = req.params;
+  const userId = req.user?.id;
+  const role = req.user?.role;
+
+  try {
+    const tableCheck = await pool.query(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables WHERE table_name = 'marker_comments'
+      ) AS exists`
+    );
+    
+    if (!tableCheck.rows[0].exists) {
+      return res.status(404).json({ message: 'Комментарий не найден' });
+    }
+
+    const commentResult = await pool.query(
+      `SELECT id, author_id FROM marker_comments WHERE id = $1 AND marker_id = $2`,
+      [commentId, markerId]
+    );
+    
+    if (commentResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Комментарий не найден' });
+    }
+
+    const comment = commentResult.rows[0];
+    if (comment.author_id !== userId && role !== 'admin') {
+      return res.status(403).json({ message: 'Нет прав для удаления' });
+    }
+
+    await pool.query(`DELETE FROM marker_comments WHERE id = $1`, [commentId]);
+    
+    logger.info(`Marker comment deleted: id=${commentId}, by=${userId}`);
+    res.json({ ok: true, message: 'Комментарий удалён' });
+  } catch (err) {
+    logger.error('DELETE marker comment error', { error: err?.message });
+    res.status(500).json({ message: 'Ошибка удаления комментария' });
   }
 });
 

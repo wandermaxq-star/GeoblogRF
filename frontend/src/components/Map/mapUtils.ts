@@ -153,21 +153,23 @@ export const markerCategoryStyles: { [key: string]: { color: string; icon: strin
  */
 export function createMarkerIconHTML(category: string, color: string, size: number = 24): string {
     const style = markerCategoryStyles[category] || markerCategoryStyles.default;
+    // ensure color is never empty/invalid; fall back to category style color
+    const fill = color && color !== 'black' && color !== '#000' ? color : style.color;
     return `
     <div style="
-      background-color: ${color || style.color};
+      background-color: ${fill} !important;
       width: ${size}px;
       height: ${size}px;
       border-radius: 50% 50% 50% 0;
-      border: 3px solid white;
+      border: 3px solid white !important;
       transform: rotate(-45deg);
       display: flex;
       align-items: center;
       justify-content: center;
       box-shadow: 0 3px 10px rgba(0,0,0,0.3);
     ">
-      <i class="fas ${style.icon}" style="
-        color: white;
+      <i class="fa ${style.icon}" style="
+        color: white !important;
         font-size: ${size * 0.5}px;
         transform: rotate(45deg);
       "></i>

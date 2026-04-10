@@ -53,7 +53,7 @@ const DownloadRegionModal: React.FC<DownloadRegionModalProps> = ({
   const estimateSize = async () => {
     if (!user?.id) return;
     
-    const size = await offlineService.estimateDownloadSize(regionId, selectedType, user.id);
+    const size = await offlineService.estimateDownloadSize(regionId, selectedType, user.id, tileVersion);
     setSizeEstimate(size);
   };
 
@@ -87,7 +87,8 @@ const DownloadRegionModal: React.FC<DownloadRegionModalProps> = ({
         user.id,
         (progressUpdate) => {
           setProgress(progressUpdate);
-        }
+        },
+        tileVersion,
       );
     
       setIsDownloaded(true);

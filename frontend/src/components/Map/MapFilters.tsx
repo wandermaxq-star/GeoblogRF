@@ -21,7 +21,14 @@ import {
   FaBus,
   FaQuestion,
   FaWallet,
-  FaUsers
+  FaUsers,
+  FaMusic,
+  FaImage,
+  FaTrophy,
+  FaFlag,
+  FaCamera,
+  FaPlane,
+  FaBed
 } from 'react-icons/fa';
 
 // Основные категории для легенды карты
@@ -40,6 +47,20 @@ const LEGEND_CATEGORIES = [
   { key: "other", label: "Другое", icon: FaQuestion, color: "#7f8c8d" },
 ];
 
+// Категории событий для фильтрации
+const EVENT_CATEGORIES = [
+  { key: "festival", label: "Фестиваль", icon: FaFlag, color: "#d946ef" },
+  { key: "concert", label: "Концерт", icon: FaMusic, color: "#6366f1" },
+  { key: "exhibition", label: "Выставка", icon: FaImage, color: "#a855f7" },
+  { key: "sport", label: "Спорт", icon: FaTrophy, color: "#84cc16" },
+  { key: "holiday", label: "Праздник", icon: FaFlag, color: "#ec4899" },
+  { key: "attractions", label: "Достопримечательности", icon: FaCamera, color: "#0ea5e9" },
+  { key: "restaurants", label: "Рестораны", icon: FaUtensils, color: "#10b981" },
+  { key: "transport", label: "Транспорт", icon: FaBus, color: "#8b5cf6" },
+  { key: "hotels", label: "Отели", icon: FaBed, color: "#f97316" },
+  { key: "flights", label: "Авиабилеты", icon: FaPlane, color: "#ef4444" },
+];
+
 const presets = [
   { key: 'nearby', label: 'Рядом со мной', icon: <FaCrosshairs /> },
   { key: 'hot', label: 'Популярное сейчас', icon: <FaFire /> },
@@ -54,6 +75,7 @@ const presets = [
 interface MapFiltersProps {
   filters: {
     categories: string[];
+    eventCategories: string[];
     radiusOn: boolean;
     radius: number;
     preset: string | null;
@@ -83,6 +105,9 @@ export const FiltersAndSettingsCard: React.FC<MapFiltersProps> = ({
   // Вместо локального состояния используем пропсы
   const selectedCategories = filters.categories;
   const setSelectedCategories = (cats: string[]) => onFiltersChange({ ...filters, categories: cats });
+
+  const selectedEventCategories = filters.eventCategories;
+  const setSelectedEventCategories = (cats: string[]) => onFiltersChange({ ...filters, eventCategories: cats });
 
   const isRadiusOn = filters.radiusOn;
   const setIsRadiusOn = (val: boolean) => onFiltersChange({ ...filters, radiusOn: val });
@@ -118,11 +143,16 @@ export const FiltersAndSettingsCard: React.FC<MapFiltersProps> = ({
         showCloseButton={!!onClose}
       />
 
-      {(selectedCategories.length > 0 || selectedPreset || isRadiusOn) ? (
+      {(selectedCategories.length > 0 || selectedEventCategories.length > 0 || selectedPreset || isRadiusOn) ? (
         <div className="map-filters-selected">
           {selectedCategories.map(catKey => (
             <button key={catKey} className="chip selected">
               {LEGEND_CATEGORIES.find((cat) => cat.key === catKey)?.label || catKey}
+            </button>
+          ))}
+          {selectedEventCategories.map(catKey => (
+            <button key={`event-${catKey}`} className="chip selected" style={{ background: EVENT_CATEGORIES.find(c => c.key === catKey)?.color, color: '#fff' }}>
+              {EVENT_CATEGORIES.find((cat) => cat.key === catKey)?.label || catKey}
             </button>
           ))}
           {selectedPreset && (
@@ -159,6 +189,32 @@ export const FiltersAndSettingsCard: React.FC<MapFiltersProps> = ({
                   }
                 >
                   <cat.icon className="category-icon" />
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+      </GlassAccordion>
+
+      {/* Категории событий */}
+      <GlassAccordion
+        title="Категории событий"
+        defaultOpen={openSection === 'eventCategories'}
+        onToggle={(isOpen) => setOpenSection(isOpen ? 'eventCategories' : '')}
+      >
+            <div className="category-chips">
+              {EVENT_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.key}
+                  className={selectedEventCategories.includes(cat.key) ? "chip selected" : "chip"}
+                  style={{ borderColor: selectedEventCategories.includes(cat.key) ? cat.color : undefined }}
+                  onClick={() =>
+                    setSelectedEventCategories(selectedEventCategories.includes(cat.key)
+                      ? selectedEventCategories.filter(k => k !== cat.key)
+                      : [...selectedEventCategories, cat.key]
+                    )
+                  }
+                >
+                  <cat.icon className="category-icon" style={{ color: cat.color }} />
                   {cat.label}
                 </button>
               ))}

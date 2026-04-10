@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { getSummary, getUserRating, rate, RatingTarget, RatingSummary } from '../services/ratingsService';
+import { useAuth } from '../contexts/AuthContext';
 
 interface UseRatingResult {
   summary: RatingSummary;
@@ -10,6 +11,7 @@ interface UseRatingResult {
 }
 
 export function useRating(target: RatingTarget, id: string | number | undefined | null): UseRatingResult {
+  const { user, token } = useAuth();
   const [summary, setSummary] = useState<RatingSummary>({ avg: 0, count: 0 });
   const [userRating, setUserRating] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -22,13 +24,19 @@ export function useRating(target: RatingTarget, id: string | number | undefined 
     setError(null);
     (async () => {
       try {
-        const [s, ur] = await Promise.all([
-          getSummary(target, String(id)),
-          getUserRating(target, String(id))
-        ]);
+        // Получаем сводку рейтинга (доступно для всех)
+        const s = await getSummary(target, String(id));
         if (!mounted) return;
         setSummary(s);
-        setUserRating(ur);
+        
+        // Получаем рейтинг пользователя только если авторизован
+        if (user && token) {
+          const ur = await getUserRating(target, String(id));
+          if (!mounted) return;
+          setUserRating(ur);
+        } else {
+          setUserRating(null);
+        }
       } catch (e) {
         if (!mounted) return;
         setError('Failed to load rating');
@@ -37,10 +45,14 @@ export function useRating(target: RatingTarget, id: string | number | undefined 
       }
     })();
     return () => { mounted = false; };
-  }, [target, id]);
+  }, [target, id, user, token]);
 
   const handleRate = useCallback(async (value: number) => {
-    if (!id) return;
+    // КРИТИЧНО: Оценка доступна только для авторизованных пользователей
+    if (!id || !user || !token) {
+      console.log('[useRating] Rating requires authentication');
+      return;
+    }
     try {
       const s = await rate(target, String(id), value);
       setUserRating(value);
@@ -48,7 +60,7 @@ export function useRating(target: RatingTarget, id: string | number | undefined 
     } catch (e) {
       // ignore
     }
-  }, [target, id]);
+  }, [target, id, user, token]);
 
   return { summary, userRating, isLoading, error, handleRate };
 }

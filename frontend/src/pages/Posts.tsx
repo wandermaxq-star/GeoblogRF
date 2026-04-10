@@ -173,8 +173,8 @@ const PostsPage: React.FC = () => {
 
     loadDraftsCount();
 
-    // Обновляем счётчик каждые 5 секунд
-    const interval = setInterval(loadDraftsCount, 5000);
+    // Обновляем счётчик каждые 60 секунд (было 5 — слишком агрессивно)
+    const interval = setInterval(loadDraftsCount, 60000);
 
     return () => clearInterval(interval);
   }, []);

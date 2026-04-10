@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import RussiaMapSvg from '../components/Offline/RussiaMapSvg';
 import RegionPanel from '../components/Offline/RegionPanel';
 import DownloadRegionModal from '../components/Regions/DownloadRegionModal';
+import DownloadedPacksPanel from '../components/Offline/DownloadedPacksPanel';
 import { useOfflineTilesStore } from '../stores/offlineTilesStore';
 import { offlineService } from '../services/offlineService';
 import { FaArrowLeft, FaGlobeAsia } from 'react-icons/fa';
@@ -55,6 +56,8 @@ const OfflinePage: React.FC = () => {
       {/* Панель со списком регионов */}
       <div className="offline-page-panel">
         <RegionPanel onRegionClick={handleRegionClick} />
+        {/* Список уже сохранённых пакетов */}
+        <DownloadedPacksPanel />
       </div>
 
       {/* Модал скачивания */}

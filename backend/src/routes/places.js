@@ -4,18 +4,127 @@ import fetch from 'node-fetch';
 
 const router = express.Router();
 
+function toNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function looksLikeAddressLabel(value) {
+  if (!value) {
+    return true;
+  }
+
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+
+  if (/^место\s*\(/i.test(normalized) || /^координаты:/i.test(normalized)) {
+    return true;
+  }
+
+  if (/^\d+[a-zа-яё\-\/]*$/i.test(normalized)) {
+    return true;
+  }
+
+  return /(улица|ул\.?|проспект|пр-?т|переулок|пер\.?|проезд|шоссе|набережная|бульвар|площадь|дорога|дом|корпус|строение|микрорайон)/i.test(normalized);
+}
+
+function pickPreferredOsmName(json) {
+  const candidates = [
+    json?.namedetails?.name,
+    json?.namedetails?.['name:ru'],
+    json?.namedetails?.official_name,
+    json?.namedetails?.short_name,
+    json?.extratags?.brand,
+    json?.name,
+    json?.address?.attraction,
+    json?.address?.tourism,
+    json?.address?.amenity,
+    json?.address?.building,
+    json?.address?.leisure,
+    json?.address?.historic,
+    json?.address?.shop,
+    json?.address?.natural,
+  ];
+
+  for (const candidate of candidates) {
+    const trimmed = String(candidate || '').trim();
+    if (trimmed && !looksLikeAddressLabel(trimmed)) {
+      return trimmed;
+    }
+  }
+
+  const fallbackCandidates = [
+    json?.display_name?.split(',')[0],
+    json?.address?.road,
+    json?.address?.pedestrian,
+    json?.address?.neighbourhood,
+    json?.address?.suburb,
+    json?.address?.village,
+    json?.address?.hamlet,
+  ];
+
+  for (const candidate of fallbackCandidates) {
+    const trimmed = String(candidate || '').trim();
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+
+  return '';
+}
+
+function buildOsmAddress(json, lat, lng) {
+  const displayName = String(json?.display_name || '').trim();
+  if (displayName) {
+    return displayName;
+  }
+
+  const address = json?.address || {};
+  const parts = [
+    address.road,
+    address.house_number,
+    address.neighbourhood,
+    address.suburb,
+    address.city || address.town || address.village,
+    address.state,
+    address.country,
+  ].filter(Boolean);
+
+  return parts.length > 0 ? parts.join(', ') : `Координаты: ${lat}, ${lng}`;
+}
+
+function computeDistanceMeters(lat1, lng1, lat2, lng2) {
+  const toRadians = (degrees) => degrees * (Math.PI / 180);
+  const earthRadiusMeters = 6371000;
+  const dLat = toRadians(lat2 - lat1);
+  const dLng = toRadians(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusMeters * c;
+}
+
 // Функция для нормализации ответа от Nominatim
 function normalizeNominatimReverse(json, lat, lng) {
   if (!json || !json.display_name) {
     return null;
   }
 
+  const name = pickPreferredOsmName(json);
+  const address = buildOsmAddress(json, lat, lng);
+  const confidence = name && !looksLikeAddressLabel(name) ? 0.94 : 0.55;
+
   return {
-    name: json.name || json.display_name.split(',')[0],
-    address: json.display_name,
+    name: name || address.split(',')[0],
+    address,
     type: json.type || 'place',
     category: json.category || 'other',
     source: 'osm',
+    confidence,
     coordinates: { latitude: Number(lat), longitude: Number(lng) }
   };
 }
@@ -30,7 +139,7 @@ router.get('/reverse', async (req, res) => {
 
   try {
     // Используем fetch для геопоиска через Nominatim
-    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&addressdetails=1&accept-language=ru`;
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&addressdetails=1&namedetails=1&extratags=1&accept-language=ru`;
     
     const response = await fetch(url, {
       headers: {
@@ -47,6 +156,7 @@ router.get('/reverse', async (req, res) => {
         type: 'place',
         category: 'other',
         source: 'local',
+        confidence: 0.2,
         coordinates: { latitude: Number(lat), longitude: Number(lng) }
       };
       
@@ -67,11 +177,12 @@ router.get('/reverse', async (req, res) => {
       } else {
         // Если нормализация не удалась
         const fallbackPlace = {
-          name: data.display_name.split(',')[0] || `Место (${lat}, ${lng})`,
-          address: data.display_name,
+          name: pickPreferredOsmName(data) || data.display_name.split(',')[0] || `Место (${lat}, ${lng})`,
+          address: buildOsmAddress(data, lat, lng),
           type: data.type || 'place',
           category: 'other',
           source: 'osm',
+          confidence: 0.5,
           coordinates: { latitude: Number(lat), longitude: Number(lng) }
         };
         
@@ -86,6 +197,7 @@ router.get('/reverse', async (req, res) => {
         type: 'place',
         category: 'other',
         source: 'local',
+        confidence: 0.2,
         coordinates: { latitude: Number(lat), longitude: Number(lng) }
       };
       
@@ -101,6 +213,7 @@ router.get('/reverse', async (req, res) => {
       type: 'place',
       category: 'other',
       source: 'local',
+      confidence: 0.2,
       coordinates: { latitude: Number(lat), longitude: Number(lng) }
     };
     
@@ -118,6 +231,10 @@ router.get('/nearby', async (req, res) => {
   }
 
   try {
+    const originLat = toNumber(lat);
+    const originLng = toNumber(lng);
+    const searchRadius = Math.max(toNumber(radius), 1);
+
     // Overpass API запрос для поиска POI в радиусе
     const overpassQuery = `
       [out:json][timeout:25];
@@ -149,19 +266,25 @@ router.get('/nearby', async (req, res) => {
     // Преобразуем результаты в наш формат
     const places = data.elements
       .filter(element => element.type === 'node' && element.tags && element.tags.name)
-      .map(element => ({
-        name: element.tags.name,
-        address: element.tags['addr:street'] ? 
-          `${element.tags['addr:street']}, ${element.tags['addr:housenumber'] || ''}`.trim() : 
-          'Адрес не указан',
-        type: element.tags.amenity || element.tags.shop || element.tags.tourism || element.tags.historic || element.tags.leisure || element.tags.natural || 'place',
-        category: element.tags.amenity || element.tags.shop || element.tags.tourism || element.tags.historic || element.tags.leisure || element.tags.natural || 'other',
-        source: 'osm',
-        coordinates: { latitude: element.lat, longitude: element.lon }
-      }))
+      .map(element => {
+        const distanceMeters = computeDistanceMeters(originLat, originLng, element.lat, element.lon);
+        return {
+          name: element.tags.name,
+          address: element.tags['addr:street']
+            ? `${element.tags['addr:street']}, ${element.tags['addr:housenumber'] || ''}`.trim()
+            : 'Адрес не указан',
+          type: element.tags.amenity || element.tags.shop || element.tags.tourism || element.tags.historic || element.tags.leisure || element.tags.natural || 'place',
+          category: element.tags.amenity || element.tags.shop || element.tags.tourism || element.tags.historic || element.tags.leisure || element.tags.natural || 'other',
+          source: 'osm',
+          confidence: Math.max(0.35, 0.92 - distanceMeters / Math.max(searchRadius * 2, 1)),
+          coordinates: { latitude: element.lat, longitude: element.lon },
+          distanceMeters,
+        };
+      })
+      .sort((a, b) => a.distanceMeters - b.distanceMeters)
       .slice(0, 10); // Ограничиваем 10 результатами
     
-    const payload = { places, totalFound: places.length };
+    const payload = { places, bestMatch: places[0] || null, totalFound: places.length };
     res.json(payload);
     
   } catch (error) {

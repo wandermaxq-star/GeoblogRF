@@ -7,11 +7,71 @@
   align-items: center;
   justify-content: center;
   padding: 0.75rem;
-  background: rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   animation: fadeInOverlay 0.3s ease-out;
   border-radius: inherit;
+  overflow: hidden; /* гарантируем, что контейнер не вылезет */
+}
+
+/* Standalone-режим: используется внутри GlassPanel на карте (без overlay) */
+.event-detail-standalone {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+}
+
+.event-detail-container--standalone {
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background:
+    radial-gradient(circle at top left, rgba(168, 85, 247, 0.24), transparent 32%),
+    radial-gradient(circle at top right, rgba(96, 165, 250, 0.16), transparent 24%),
+    linear-gradient(180deg, rgba(28, 23, 52, 0.92), rgba(15, 19, 36, 0.94));
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  box-shadow: 0 28px 72px rgba(6, 10, 26, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  animation: none;
+  margin: 0 auto;
+}
+
+.event-detail-container--standalone .event-detail-header {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  padding: 1rem 1rem 0.875rem;
+  background: linear-gradient(180deg, rgba(18, 21, 38, 0.94), rgba(18, 21, 38, 0.74));
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.event-detail-container--standalone .event-detail-content {
+  padding: 1rem;
+  gap: 1rem;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+
+.event-detail-container--standalone .event-glass-block,
+.event-detail-container--standalone .event-description-photo-block,
+.event-detail-container--standalone .event-key-info {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 10px 28px rgba(6, 10, 24, 0.16);
 }
 
 @keyframes fadeInOverlay {
@@ -23,21 +83,24 @@
   }
 }
 
-/* Контейнер события - прозрачное стекло */
+/* Контейнер события – теперь тот же стиль, что и у списка/предпросмотра */
 .event-detail-container {
   width: 100%;
-  max-width: 500px;
+  max-width: min(90%, 500px);
   max-height: 90%;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px) saturate(180%);
-  -webkit-backdrop-filter: blur(10px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  /* повторяем градиентную «превью» из EventsListModal */
+  background: linear-gradient(135deg, rgba(30, 20, 60, 0.72), rgba(40, 30, 80, 0.65));
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   animation: slideUpScale 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  /* все тексты внутри белые по умолчанию */
+  color: #ffffff;
 }
 
 @keyframes slideUpScale {
@@ -72,12 +135,12 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2); /* сделаем фон чуть темнее, чтобы стрелка и текст белые читались */
   backdrop-filter: blur(10px) saturate(180%);
   -webkit-backdrop-filter: blur(10px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 12px;
-  color: rgba(0, 0, 0, 0.8);
+  color: #ffffff; /* белый */
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -91,7 +154,7 @@
 }
 
 .event-back-button svg {
-  color: rgba(0, 0, 0, 0.8);
+  color: currentColor;
 }
 
 .event-header-actions {
@@ -104,10 +167,10 @@
   height: 40px;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(10px) saturate(180%);
   -webkit-backdrop-filter: blur(10px) saturate(180%);
-  color: rgba(0, 0, 0, 0.8);
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -120,6 +183,7 @@
   background: rgba(255, 255, 255, 0.15);
   border-color: rgba(255, 255, 255, 0.3);
   transform: scale(1.05);
+  color: #ffffff;
 }
 
 .event-header-btn.active {
@@ -133,7 +197,7 @@
 }
 
 .event-header-btn svg {
-  color: rgba(0, 0, 0, 0.8);
+  color: currentColor;
 }
 
 /* Основной контент */
@@ -181,7 +245,7 @@
   border-radius: 50px;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.8);
+  color: rgba(255, 255, 255, 0.9); /* белый текст */
   text-transform: capitalize;
   width: fit-content;
 }
@@ -191,7 +255,7 @@
   font-weight: 700;
   line-height: 1.3;
   margin: 0;
-  color: rgba(0, 0, 0, 0.9);
+  color: #ffffff; /* override black */
   letter-spacing: -0.01em;
 }
 
@@ -229,7 +293,7 @@
 .event-main-photo-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.6);
+  color: rgba(255, 255, 255, 0.72);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -285,13 +349,13 @@
 
 .event-key-item svg {
   flex-shrink: 0;
-  color: rgba(0, 0, 0, 0.7);
+  color: #ffffff;
 }
 
 .event-key-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 0.25rem;
@@ -300,7 +364,7 @@
 .event-key-value {
   font-size: 0.9375rem;
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.9);
+  color: #ffffff;
   line-height: 1.3;
 }
 
@@ -348,19 +412,19 @@
   gap: 0.75rem;
   font-size: 1.125rem;
   font-weight: 700;
-  color: rgba(0, 0, 0, 0.9);
+  color: #ffffff;
   margin: 0 0 1.25rem 0;
 }
 
 .event-block-title svg {
-  color: rgba(0, 0, 0, 0.7);
+  color: rgba(255, 255, 255, 0.88);
 }
 
 /* Описание */
 .event-description-text {
   font-size: 0.9375rem;
   line-height: 1.8;
-  color: rgba(0, 0, 0, 0.8);
+  color: #ffffff;
   margin: 0 0 1rem 0;
 }
 
@@ -373,7 +437,7 @@
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 10px;
-  color: rgba(0, 0, 0, 0.8);
+  color: rgba(255, 255, 255, 0.92);
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
@@ -387,7 +451,7 @@
 }
 
 .event-read-more-btn svg {
-  color: rgba(0, 0, 0, 0.7);
+  color: currentColor;
 }
 
 /* Детали - сетка */
@@ -416,14 +480,14 @@
 
 .event-detail-box svg {
   flex-shrink: 0;
-  color: rgba(0, 0, 0, 0.7);
+  color: #ffffff;
   margin-top: 0.125rem;
 }
 
 .event-detail-box-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 0.375rem;
@@ -432,9 +496,25 @@
 .event-detail-box-value {
   font-size: 0.9375rem;
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.9);
+  color: #ffffff;
   line-height: 1.4;
 }
+
+/* Универсальный сброс цвета текста и настройка svg внутри окна */
+.event-detail-container, 
+.event-detail-container * {
+  color: #ffffff !important;
+  /* не задаём fill, иначе заливка иконок превращается в сплошной прямоугольник */
+}
+
+/* Заливка убирается только у иконок внутри ключевой информации и деталей */
+.event-key-item svg,
+.event-detail-box svg {
+  fill: none !important;
+}
+
+/* ранее только svg был перекрашен */
+/* .event-detail-container svg { color: #ffffff !important; } */
 
 /* Фотографии */
 .event-photos-grid {
@@ -507,7 +587,7 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 50px;
   font-size: 0.875rem;
-  color: rgba(0, 0, 0, 0.8);
+  color: rgba(255, 255, 255, 0.92);
   font-weight: 600;
   transition: all 0.3s;
 }
@@ -545,20 +625,20 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
   text-decoration: none;
   width: 100%;
-  color: rgba(0, 0, 0, 0.8);
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .event-action-btn-primary {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: rgba(59, 130, 246, 0.3);
-  color: rgba(59, 130, 246, 0.95);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.34), rgba(168, 85, 247, 0.24));
+  border-color: rgba(196, 181, 253, 0.28);
+  color: #f5f3ff;
 }
 
 .event-action-btn-primary:hover {
-  background: rgba(59, 130, 246, 0.25);
-  border-color: rgba(59, 130, 246, 0.4);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.42), rgba(168, 85, 247, 0.3));
+  border-color: rgba(216, 180, 254, 0.36);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 10px 24px rgba(88, 28, 135, 0.24);
 }
 
 .event-action-btn {
@@ -587,9 +667,46 @@
     margin: 0;
   }
 
+  .event-detail-container--standalone {
+    border-radius: 24px;
+    margin: 0 auto;
+  }
+
+  .event-detail-container--standalone .event-detail-header {
+    padding: 0.875rem 0.875rem 0.75rem;
+  }
+
+  .event-detail-container--standalone .event-detail-content {
+    padding: 0.875rem;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    gap: 0.875rem;
+  }
+
   .event-detail-content {
     padding: 1.25rem;
     gap: 1.25rem;
+  }
+
+  .event-header-actions {
+    gap: 0.375rem;
+  }
+
+  .event-header-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+  }
+
+  .event-back-button {
+    padding: 0.625rem 0.875rem;
+    border-radius: 14px;
+  }
+
+  .event-description-photo-block,
+  .event-glass-block,
+  .event-key-info {
+    padding: 1rem;
+    border-radius: 18px;
   }
 
   .event-main-title {

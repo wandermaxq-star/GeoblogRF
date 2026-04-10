@@ -1,7 +1,8 @@
 import './TopPanel.css';
-import { Search, Settings, MessageCircle, Bell, MapPin } from 'lucide-react';
+import { Search, Settings, MessageCircle, Bell, MapPin, Users } from 'lucide-react';
 import { useActivityStats } from '../hooks/useActivityStats';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const Header = ({
   avatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' fill='%2329BFB5'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='16'%3EA%3C/text%3E%3C/svg%3E",
@@ -15,9 +16,14 @@ const Header = ({
 }) => {
   const { stats } = useActivityStats();
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   const handleNotificationsClick = () => {
     navigate('/activity');
+  };
+
+  const handlePartnerClick = () => {
+    navigate('/partner');
   };
   return (
     <header className="top-controls">
@@ -42,6 +48,12 @@ const Header = ({
           </span>
         )}
       </button>
+
+      {user?.role === 'partner' && (
+        <button className="icon-button" onClick={handlePartnerClick} aria-label="Партнёрка">
+          <Users size={20} strokeWidth={2.5} />
+        </button>
+      )}
 
       <button className="icon-button highlight" onClick={quickAddMarker} aria-label="Добавить метку">
         <MapPin size={20} strokeWidth={2.5} />

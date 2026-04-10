@@ -12,9 +12,10 @@ import storageService from '../../services/storageService';
  * @returns {boolean} - true если аналитика разрешена, false если отключена
  */
 export const isAnalyticsEnabled = (user: any): boolean => {
+  // КРИТИЧНО: Для гостей аналитика отключена (сервер требует авторизацию)
+  // Гости могут использовать app без аналитики
   if (!user) {
-    // Для гостей разрешаем только анонимную аналитику (PageView без userID)
-    return true;
+    return false;
   }
 
   // Если analytics_opt_out = true, аналитика отключена
@@ -30,13 +31,15 @@ export const getAnalyticsConsent = (): boolean => {
     // Пытаемся получить пользователя из storageService
     const savedUser = storageService.getItem('user') || storageService.getItem('user_in_session') || storageService.getItem('user');
     if (!savedUser) {
-      return true; // Для гостей разрешаем анонимную аналитику
+      // КРИТИЧНО: Для гостей аналитика отключена (сервер требует авторизацию)
+      return false;
     }
 
     const user = JSON.parse(savedUser);
     return !user.analytics_opt_out;
   } catch {
-    return true; // В случае ошибки разрешаем аналитику (fail-open)
+    // В случае ошибки отключаем аналитику (fail-closed для гостей)
+    return false;
   }
 };
 

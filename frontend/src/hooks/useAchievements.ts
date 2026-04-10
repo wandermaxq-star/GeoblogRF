@@ -299,6 +299,96 @@ const ALL_ACHIEVEMENTS: Achievement[] = [
     unlocked: false,
     xpReward: 250,
   },
+  // === ДОСТИЖЕНИЯ ПРО ПОДПИСКИ И ПАКИ ===
+  {
+    id: 'special_premium',
+    title: 'Premium-пользователь',
+    description: 'Оформлена платная подписка PRO',
+    icon: 'star',
+    category: 'special',
+    rarity: 'common',
+    progress: { current: 0, target: 1 },
+    unlocked: false,
+    xpReward: 100,
+  },
+  {
+    id: 'special_pack_first',
+    title: 'Первый пакет',
+    description: 'Приобретён первый платный пакет',
+    icon: 'cloud-upload',
+    category: 'special',
+    rarity: 'common',
+    progress: { current: 0, target: 1 },
+    unlocked: false,
+    xpReward: 75,
+  },
+  {
+    id: 'special_pack_bronze',
+    title: 'Коллекционер пакетов',
+    description: 'Приобретено 5 пакетов',
+    icon: 'cloud-upload',
+    category: 'special',
+    rarity: 'rare',
+    progress: { current: 0, target: 5 },
+    unlocked: false,
+    xpReward: 150,
+  },
+  {
+    id: 'special_pack_silver',
+    title: 'Любитель пакетов',
+    description: 'Приобретено 20 пакетов',
+    icon: 'cloud-upload',
+    category: 'special',
+    rarity: 'epic',
+    progress: { current: 0, target: 20 },
+    unlocked: false,
+    xpReward: 300,
+  },
+  {
+    id: 'special_pack_gold',
+    title: 'Мастера пакетов',
+    description: 'Приобретено 100 пакетов',
+    icon: 'cloud-upload',
+    category: 'special',
+    rarity: 'legendary',
+    progress: { current: 0, target: 100 },
+    unlocked: false,
+    xpReward: 600,
+  },
+  // === ДОСТИЖЕНИЯ ПАРТНЁРА ===
+  {
+    id: 'special_partner_newbie',
+    title: 'Партнёр-новичок',
+    description: 'Заявка партнёра одобрена',
+    icon: 'crown',
+    category: 'special',
+    rarity: 'common',
+    progress: { current: 0, target: 1 },
+    unlocked: false,
+    xpReward: 100,
+  },
+  {
+    id: 'special_partner_expert',
+    title: 'Гид-эксперт',
+    description: 'Достигнут уровень «Гид/Эксперт» в партнёрке',
+    icon: 'crown',
+    category: 'special',
+    rarity: 'rare',
+    progress: { current: 0, target: 1 },
+    unlocked: false,
+    xpReward: 200,
+  },
+  {
+    id: 'special_partner_top',
+    title: 'Топ-партнёр',
+    description: 'Достигнут уровень «Топ-партнёр» в партнёрке',
+    icon: 'crown',
+    category: 'special',
+    rarity: 'epic',
+    progress: { current: 0, target: 1 },
+    unlocked: false,
+    xpReward: 400,
+  },
 ];
 
 // Моковые данные пользователя для тестирования
@@ -335,6 +425,10 @@ const mockUserStats = {
     helpedUsers: 3,
     cities: 4,
     isSupporter: false,
+    // extra fields for pro achievements
+    packsPurchased: 0,
+    isPremium: false,
+    partnerTier: '',
   },
   dynamic: {
     isLeaderWeek: false,
@@ -353,6 +447,13 @@ export const useAchievements = () => {
   const favorites = useFavorites();
   const [achievements, setAchievements] = useState<Achievement[]>(ALL_ACHIEVEMENTS);
   const prevStatsRef = useRef<string>('');
+
+  // helper to read pack count / premium from user or mock
+  const packsPurchased = user?.packsPurchased ?? mockUserStats.special.packsPurchased;
+  const isPremium = user?.subscription_expires_at
+    ? new Date(user.subscription_expires_at).getTime() > Date.now()
+    : mockUserStats.special.isPremium;
+  const partnerTier = user?.partnerTier ?? mockUserStats.special.partnerTier;
 
   // Функция для получения статистики избранного (мемоизированная)
   const favoritesStats = useMemo(() => {
@@ -565,6 +666,42 @@ export const useAchievements = () => {
           unlocked = mockUserStats.special.isSupporter;
           break;
 
+        // === ДОСТИЖЕНИЯ ПРО ПОДПИСКИ И ПАКИ ===
+        case 'special_premium':
+          currentProgress = isPremium ? 1 : 0;
+          unlocked = isPremium;
+          break;
+        case 'special_pack_first':
+          currentProgress = packsPurchased;
+          unlocked = packsPurchased >= 1;
+          break;
+        case 'special_pack_bronze':
+          currentProgress = packsPurchased;
+          unlocked = packsPurchased >= 5;
+          break;
+        case 'special_pack_silver':
+          currentProgress = packsPurchased;
+          unlocked = packsPurchased >= 20;
+          break;
+        case 'special_pack_gold':
+          currentProgress = packsPurchased;
+          unlocked = packsPurchased >= 100;
+          break;
+
+        // === ДОСТИЖЕНИЯ ПАРТНЁРА ===
+        case 'special_partner_newbie':
+          currentProgress = partnerTier === 'newbie' ? 1 : 0;
+          unlocked = partnerTier === 'newbie';
+          break;
+        case 'special_partner_expert':
+          currentProgress = partnerTier === 'expert' ? 1 : 0;
+          unlocked = partnerTier === 'expert';
+          break;
+        case 'special_partner_top':
+          currentProgress = partnerTier === 'top' ? 1 : 0;
+          unlocked = partnerTier === 'top';
+          break;
+
         // Динамичные достижения
         case 'social_leader_week':
           unlocked = mockUserStats.dynamic.isLeaderWeek;
@@ -616,7 +753,7 @@ export const useAchievements = () => {
       // Возвращаем новые только если есть изменения
       return hasChanges ? updatedAchievements : prevAchievements;
     });
-  }, [favoritesStats]); // Зависим от мемоизированной статистики
+  }, [favoritesStats, packsPurchased, isPremium, partnerTier]); // Зависим от актуальной статистики и состояния пользователя
 
   // Обновление достижений за офлайн-контент
   useEffect(() => {

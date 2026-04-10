@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../../api/apiClient';
+import { getAllPendingContent, PendingContent, removePendingContent } from '../../services/localModerationStorage';
 
-type ContentType = 'events' | 'posts' | 'routes' | 'markers' | 'comments';
+type ContentType = 'events' | 'posts' | 'routes' | 'markers' | 'comments' | 'marker_comments';
 type StatusFilter = 'all' | 'pending' | 'active' | 'rejected' | 'hidden' | 'revision';
 
 interface StatusCounts {
@@ -39,8 +40,14 @@ interface HistoryItem {
   [key: string]: any;
 }
 
-const ModerationHistoryPanel: React.FC = () => {
-  const [contentType, setContentType] = useState<ContentType>('posts');
+interface ModerationHistoryPanelProps {
+  defaultContentType?: ContentType;
+}
+
+const ModerationHistoryPanel: React.FC<ModerationHistoryPanelProps> = ({ 
+  defaultContentType = 'posts' 
+}) => {
+  const [contentType, setContentType] = useState<ContentType>(defaultContentType);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -48,6 +55,7 @@ const ModerationHistoryPanel: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null);
   const [details, setDetails] = useState<any>(null);
+  const [photoVerified, setPhotoVerified] = useState(false); // ⚠️ Проверил все фотографии
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [statusCounts, setStatusCounts] = useState<StatusCounts>({
@@ -61,6 +69,7 @@ const ModerationHistoryPanel: React.FC = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
+      // ===== 1. Загружаем счётчики из БД =====
       const statuses: (keyof Omit<StatusCounts, 'all'>)[] = ['pending', 'active', 'rejected', 'hidden', 'revision'];
       const promises = statuses.map(s =>
         apiClient.get(`/moderation/history/${contentType}`, {
@@ -70,12 +79,27 @@ const ModerationHistoryPanel: React.FC = () => {
           .catch(() => ({ status: s, count: 0 }))
       );
       const results = await Promise.all(promises);
+      
+      // ===== 2. Добавляем счётчики локального контента =====
+      const localTypeKey = contentType.endsWith('s') ? contentType.slice(0, -1) : contentType;
+      const localPending = getAllPendingContent();
+      const localContentForType = localPending.filter((p: PendingContent) => p.type === localTypeKey);
+      
+      // Локальный контент всегда в статусе 'pending'
+      const localPendingCount = localContentForType.length;
+      
       const counts: StatusCounts = { all: 0, pending: 0, active: 0, rejected: 0, hidden: 0, revision: 0 };
       for (const r of results) {
         counts[r.status] = r.count;
         counts.all += r.count;
       }
+      
+      // Добавляем локальный контент к pending счётчику
+      counts.pending += localPendingCount;
+      counts.all += localPendingCount;
+      
       setStatusCounts(counts);
+      console.log(`📊 Счётчики обновлены для ${contentType}: ${counts.all} всего (локального pending: ${localPendingCount})`);
     } catch {
       // не критично
     }
@@ -99,38 +123,116 @@ const ModerationHistoryPanel: React.FC = () => {
         return;
       }
 
-      const params: any = {
-        limit,
-        offset: (page - 1) * limit,
-        sort: 'created_at DESC'
-      };
-
-      if (statusFilter !== 'all') {
-        params.status = statusFilter;
+      // ===== 1. Загружаем локальный контент из localStorage =====
+      let localContent: HistoryItem[] = [];
+      try {
+        const localPending = getAllPendingContent();
+        
+        // Фильтруем по типу контента
+        // Маппируем тип: 'post' -> 'posts', 'marker' -> 'markers', 'event' -> 'events'
+        const localTypeKey = contentType.endsWith('s') ? contentType.slice(0, -1) : contentType;
+        const filteredLocal = localPending.filter((p: PendingContent) => p.type === localTypeKey);
+        
+        // Конвертируем в HistoryItem
+        localContent = filteredLocal.map((p: PendingContent) => ({
+          id: p.id,
+          title: p.data?.title || 'Без заголовка',
+          body: p.data?.body || p.data?.description || '',
+          description: p.data?.description,
+          content: p.data?.content,
+          author_id: p.author_id,
+          author_name: p.author_name || 'Пользователь',
+          created_at: p.created_at,
+          updated_at: p.created_at,
+          status: 'pending',
+          photo_urls: p.data?.photo_urls,
+          ai_reason: p.ai_analysis?.reason,
+          ai_suggestion: p.ai_analysis?.suggestion,
+          ai_confidence: p.ai_analysis?.confidence,
+          ai_category: p.ai_analysis?.category,
+          ai_issues: p.ai_analysis?.issues,
+          _isLocal: true, // маркер локального контента
+        }));
+        
+        console.log(`📦 Загружено ${localContent.length} локальных ${contentType} на модерации`);
+      } catch (err) {
+        console.warn('Ошибка загрузки локального контента:', err);
       }
 
-      if (searchQuery.trim()) {
-        params.search = searchQuery.trim();
-      }
+      // ===== 2. Загружаем контент из БД =====
+      let dbContent: HistoryItem[] = [];
+      try {
+        const params: any = {
+          limit: 100, // загружаем больше для объединения
+          offset: 0,
+          sort: 'created_at DESC'
+        };
 
-      const response = await apiClient.get(`/moderation/history/${contentType}`, {
-        params,
-        headers: {
-          Authorization: `Bearer ${token}`
+        if (statusFilter !== 'all') {
+          params.status = statusFilter;
         }
-      });
 
-      if (response.data) {
-        setHistory(response.data.data || []);
-        setTotal(response.data.total || 0);
-      } else {
-        setHistory([]);
-        setTotal(0);
+        if (searchQuery.trim()) {
+          params.search = searchQuery.trim();
+        }
+
+        const response = await apiClient.get(`/moderation/history/${contentType}`, {
+          params,
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        dbContent = response.data?.data || [];
+        console.log(`🗄️  Загружено ${dbContent.length} ${contentType} из БД`);
+      } catch (err) {
+        console.warn('Ошибка загрузки контента из БД:', err);
       }
+
+      // ===== 3. Объединяем локальный и БД контент =====
+      const combinedContent = [...localContent, ...dbContent];
+      
+      // Убираем дубликаты по ID
+      const uniqueContent = Array.from(
+        new Map(combinedContent.map(item => [item.id, item])).values()
+      );
+
+      // ===== 4. Фильтруем по статусу =====
+      let filteredContent = uniqueContent;
+      if (statusFilter !== 'all') {
+        filteredContent = uniqueContent.filter(item => item.status === statusFilter);
+      }
+
+      // ===== 5. Фильтруем по поиску =====
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        filteredContent = filteredContent.filter(item =>
+          (item.title?.toLowerCase() || '').includes(q) ||
+          (item.body?.toLowerCase() || '').includes(q) ||
+          (item.author_name?.toLowerCase() || '').includes(q)
+        );
+      }
+
+      // ===== 6. Сортируем по дате (новые сначала) =====
+      filteredContent.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      // ===== 7. Применяем пагинацию =====
+      const paginatedContent = filteredContent.slice(
+        (page - 1) * limit,
+        page * limit
+      );
+
+      setHistory(paginatedContent);
+      setTotal(filteredContent.length);
+      
+      console.log(`✅ Итого на модерации: ${filteredContent.length} ${contentType} (страница ${page})`);
     } catch (err: any) {
       console.error('Ошибка загрузки истории:', err);
       setError(err.response?.data?.message || err.message || 'Ошибка загрузки истории');
       setHistory([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -147,42 +249,129 @@ const ModerationHistoryPanel: React.FC = () => {
       const item = history.find(h => h.id === itemId);
       if (!item) return;
 
-      let endpoint = '';
-      let body: Record<string, string> = {};
-
-      if (action === 'approve') {
-        endpoint = `/moderation/${contentType}/${itemId}/approve`;
-      } else if (action === 'reject') {
-        const reason = prompt('Укажите причину отклонения:');
-        if (!reason || reason.trim().length === 0) {
-          alert('Необходимо указать причину отклонения');
+      // ⚠️ КРИТИЧЕСКАЯ ПРОВЕРКА: если есть фото, необходимо явное подтверждение
+      const hasPhotos = parsePhotoUrls(item.photo_urls || details?.content?.photo_urls).length > 0;
+      if (action === 'approve' && hasPhotos) {
+        if (!photoVerified) {
+          alert('⚠️ ТРЕБУЕТСЯ ЯВНОЕ ПОДТВЕРЖДЕНИЕ:\n\n' +
+            '❌ Вы не подтвердили, что проверили ВСЕ фотографии.\n\n' +
+            '✅ Поставьте чекбокс "Я проверил все фотографии на безопасность" перед одобрением.\n\n' +
+            'ЭТО КРИТИЧНО ДЛЯ БЕЗОПАСНОСТИ ПЛАТФОРМЫ');
           return;
         }
-        endpoint = `/moderation/${contentType}/${itemId}/reject`;
-        body = { reason: reason.trim() };
-      } else if (action === 'revision') {
-        const reason = prompt('Укажите причину доработки:');
-        endpoint = `/moderation/${contentType}/${itemId}/revision`;
-        if (reason && reason.trim().length > 0) {
-          body = { reason: reason.trim() };
+      }
+
+      const isLocal = item._isLocal || String(itemId).startsWith('pending_');
+      let endpoint = '';
+      let body: Record<string, any> = {};
+
+      if (isLocal) {
+        // ===== ЛОКАЛЬНЫЙ КОНТЕНТ — СНАЧАЛА УДАЛЯЕМ ИЗ ХРАНИЛИЩА =====
+        const localTypeKey = contentType.endsWith('s') ? contentType.slice(0, -1) : contentType;
+        removePendingContent(localTypeKey as any, itemId);
+        console.log(`🗑️  Удалён из localStorage: ${itemId}`);
+        
+        // Теперь определяем действие
+        if (action === 'approve') {
+          // Локальный контент: отправляем на backend для публикации
+          endpoint = `/moderation/approve-local`;
+          
+          // Парсим тип контента для backend
+          const typeMap: Record<string, string> = {
+            'posts': 'post',
+            'post': 'post',
+            'markers': 'marker',
+            'marker': 'marker',
+            'events': 'event',
+            'event': 'event',
+          };
+          
+          const backendType = typeMap[contentType] || contentType;
+          
+          body = { 
+            content_type: backendType,
+            content_data: {
+              title: item.title,
+              body: item.body,
+              description: item.body,
+              content: item.body,
+              photo_urls: parsePhotoUrls(item.photo_urls),
+              status: 'pending',
+            },
+            author_id: item.author_id,
+          };
+        } else if (action === 'reject') {
+          const reason = prompt('Укажите причину отклонения:');
+          if (!reason || reason.trim().length === 0) {
+            alert('Необходимо указать причину отклонения');
+            return;
+          }
+          console.log(`🗑️  Отклонён локальный контент ${itemId}: ${reason}`);
+          alert('Локальный контент отклонён');
+        } else if (action === 'revision') {
+          const reason = prompt('Укажите причину доработки:');
+          if (!reason || reason.trim().length === 0) {
+            alert('Необходимо указать причину доработки');
+            return;
+          }
+          console.log(`✏️  На доработку локальный контент ${itemId}: ${reason}`);
+          alert('Отправлено автору на доработку (локально)');
         }
-      }
 
-      await apiClient.post(endpoint, body, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+        // Для approve локального контента
+        if (action === 'approve') {
+          try {
+            const res = await apiClient.post(endpoint, body, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            alert('✅ Контент одобрен и опубликован!');
+            // Уже удалили из localStorage выше в начале блока if (isLocal)
+          } catch (err: any) {
+            console.error('Ошибка при одобрении локального контента:', err);
+            alert(err.response?.data?.message || 'Контент одобрен локально (offline mode)');
+          }
+        }
+      } else {
+        // ===== КОНТЕНТ ИЗ БД =====
+        if (action === 'approve') {
+          endpoint = `/moderation/${contentType}/${itemId}/approve`;
+        } else if (action === 'reject') {
+          const reason = prompt('Укажите причину отклонения:');
+          if (!reason || reason.trim().length === 0) {
+            alert('Необходимо указать причину отклонения');
+            return;
+          }
+          endpoint = `/moderation/${contentType}/${itemId}/reject`;
+          body = { reason: reason.trim() };
+        } else if (action === 'revision') {
+          const reason = prompt('Укажите причину доработки:');
+          endpoint = `/moderation/${contentType}/${itemId}/revision`;
+          if (reason && reason.trim().length > 0) {
+            body = { reason: reason.trim() };
+          }
+        }
 
-      alert(action === 'approve' ? 'Контент одобрен и опубликован!' : action === 'reject' ? 'Контент отклонён' : 'Контент отправлен на доработку');
-      
-      // Удаляем из списка истории (если это pending элемент)
-      if (action === 'approve' || action === 'reject') {
-        setHistory(prev => prev.filter(h => h.id !== itemId));
-        setTotal(prev => Math.max(0, prev - 1));
+        await apiClient.post(endpoint, body, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        alert(action === 'approve' ? 'Контент одобрен и опубликован!' : action === 'reject' ? 'Контент отклонён' : 'Контент отправлен на доработку');
       }
       
-      // Перезагружаем историю и счётчики для обновления статусов
-      loadHistory();
+      // ===== ОБНОВЛЯЕМ СПИСОК ПОСЛЕ ДЕЙСТВИЯ =====
+      
+      // 0. ЗАКРЫВАЕМ И ОЧИЩАЕМ панель деталей
+      setSelectedItem(null);
+      setPhotoVerified(false);
+      
+      // 1. Удаляем контент из текущего списка НЕМЕДЛЕННО
+      setHistory(prev => prev.filter(h => h.id !== itemId));
+      setTotal(prev => Math.max(0, prev - 1));
+      
+      // 2. Обновляем счётчики (но НЕ перезагружаем весь список)
+      // Перезагрузка полного списка может вернуть контент назад если статус на сервере не обновился
       loadStatusCounts();
+      
     } catch (err: any) {
       console.error('Ошибка модерации:', err);
       alert(err.response?.data?.message || 'Ошибка модерации');
@@ -192,19 +381,83 @@ const ModerationHistoryPanel: React.FC = () => {
   const loadDetails = async (item: HistoryItem) => {
     try {
       setSelectedItem(item);
+      setPhotoVerified(false); // ⚠️ ВСЕГДА сбрасываем при загрузке нового контента
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await apiClient.get(`/moderation/${contentType}/${item.id}/details`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      // ===== ДЛЯ ЛОКАЛЬНОГО КОНТЕНТА =====
+      if (item._isLocal || String(item.id)?.startsWith('pending_')) {
+        // Локальный контент — данные уже есть в item
+        console.log(`📦 Откупываю локальный контент: ${item.id}`);
+        const authorName = item.author_name && item.author_name !== 'Гость' ? item.author_name : 'Пользователь (локальный)';
+        setDetails({
+          content: {
+            id: item.id,
+            title: item.title,
+            body: item.body,
+            description: item.body,
+            content: item.body,
+            status: item.status || 'pending',
+            author_name: authorName,
+            author_id: item.author_id,
+            created_at: item.created_at,
+            updated_at: item.updated_at || item.created_at,
+            photo_urls: item.photo_urls,
+          },
+          aiDecision: item.ai_analysis ? {
+            ai_reason: item.ai_reason,
+            ai_suggestion: item.ai_suggestion,
+            ai_confidence: item.ai_confidence,
+            ai_category: item.ai_category,
+            ai_issues: item.ai_issues,
+          } : null,
+          _isLocal: true,
+        });
+        return;
+      }
 
-      setDetails(response.data);
+      // ===== ДЛЯ КОНТЕНТА ИЗ БД =====
+      try {
+        const response = await apiClient.get(`/moderation/${contentType}/${item.id}/details`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        setDetails(response.data);
+      } catch (err: any) {
+        // Если 404 или ошибка — используем данные из item
+        console.warn(`Детали контента не найдены на backend (${err.response?.status}), используем доступные данные:`, err);
+        const authorName = item.author_name && item.author_name !== 'Гость' ? item.author_name : 'Пользователь';
+        setDetails({
+          content: {
+            id: item.id,
+            title: item.title,
+            body: item.body,
+            description: item.body,
+            content: item.body,
+            status: item.status || 'pending',
+            author_name: authorName,
+            author_id: item.author_id,
+            created_at: item.created_at,
+            updated_at: item.updated_at || item.created_at,
+            photo_urls: item.photo_urls,
+          },
+          aiDecision: item.ai_analysis ? {
+            ai_reason: item.ai_reason,
+            ai_suggestion: item.ai_suggestion,
+            ai_confidence: item.ai_confidence,
+            ai_category: item.ai_category,
+            ai_issues: item.ai_issues,
+          } : null,
+        });
+      }
     } catch (err: any) {
       console.error('Ошибка загрузки деталей:', err);
-      alert('Ошибка загрузки деталей контента');
+      // Не показываем alert для локального контента — детали загружены из item
+      if (!selectedItem?._isLocal && !selectedItem?.id?.startsWith('pending_')) {
+        alert('Ошибка загрузки деталей контента');
+      }
     }
   };
 
@@ -217,6 +470,16 @@ const ModerationHistoryPanel: React.FC = () => {
       case 'revision': return 'На доработке';
       default: return status;
     }
+  };
+
+  // ===== HELPER: Парсим photo_urls в массив =====
+  const parsePhotoUrls = (urls: any): string[] => {
+    if (!urls) return [];
+    if (Array.isArray(urls)) return urls.filter(u => u);
+    if (typeof urls === 'string') {
+      return urls.split(',').map(u => u.trim()).filter(u => u);
+    }
+    return [];
   };
 
   const getStatusColor = (status: string): string => {
@@ -240,9 +503,17 @@ const ModerationHistoryPanel: React.FC = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | undefined | null) => {
+    if (!dateString) {
+      return '—';
+    }
     try {
-      return new Date(dateString).toLocaleString('ru-RU', {
+      const date = new Date(dateString);
+      // Проверяем, что дата валидна
+      if (isNaN(date.getTime())) {
+        return '—';
+      }
+      return date.toLocaleString('ru-RU', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -250,7 +521,7 @@ const ModerationHistoryPanel: React.FC = () => {
         minute: '2-digit'
       });
     } catch {
-      return dateString;
+      return '—';
     }
   };
 
@@ -260,6 +531,7 @@ const ModerationHistoryPanel: React.FC = () => {
     routes: 'Маршруты',
     markers: 'Метки',
     comments: 'Комментарии',
+    marker_comments: 'Комментарии метак',
   };
 
   const totalPages = Math.ceil(total / limit);
@@ -470,31 +742,54 @@ const ModerationHistoryPanel: React.FC = () => {
                     
                     {/* Кнопки управления ТОЛЬКО для элементов на модерации */}
                     {item.status === 'pending' && (
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={async () => {
-                            await handleModerate(item.id, 'approve');
-                          }}
-                          className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
-                        >
-                          Одобрить
-                        </button>
-                        <button
-                          onClick={async () => {
-                            await handleModerate(item.id, 'revision');
-                          }}
-                          className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors"
-                        >
-                          На доработку
-                        </button>
-                        <button
-                          onClick={async () => {
-                            await handleModerate(item.id, 'reject');
-                          }}
-                          className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
-                        >
-                          Отклонить
-                        </button>
+                      <div className="space-y-3">
+                        {/* ⚠️ ЕСЛИ ЕСТЬ ФОТО — требуем явное подтверждение */}
+                        {(() => {
+                          const hasPhotos = parsePhotoUrls(item.photo_urls || details?.content?.photo_urls).length > 0;
+                          return hasPhotos ? (
+                            <div className="p-3 bg-red-100 border border-red-300 rounded-md">
+                              <label className="flex items-start gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={photoVerified}
+                                  onChange={(e) => setPhotoVerified(e.target.checked)}
+                                  className="mt-1 w-4 h-4 text-red-600"
+                                />
+                                <span className="text-sm font-medium text-red-800">
+                                  ✓ Я проверил все фотографии на небезопасный контент (реклама, порно, насилие и т.д.) и подтверждаю их соответствие правилам платформы
+                                </span>
+                              </label>
+                            </div>
+                          ) : null;
+                        })()}
+
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={async () => {
+                              await handleModerate(item.id, 'approve');
+                            }}
+                            disabled={(item.photo_urls || details?.content?.photo_urls) && !photoVerified}
+                            className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                          >
+                            ✓ Одобрить
+                          </button>
+                          <button
+                            onClick={async () => {
+                              await handleModerate(item.id, 'revision');
+                            }}
+                            className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors"
+                          >
+                            На доработку
+                          </button>
+                          <button
+                            onClick={async () => {
+                              await handleModerate(item.id, 'reject');
+                            }}
+                            className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+                          >
+                            ✗ Отклонить
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -535,7 +830,10 @@ const ModerationHistoryPanel: React.FC = () => {
             <div className="p-6">
               <div className="flex justify-between items-start mb-4">
                 <h3 className="text-2xl font-bold text-gray-900">
-                  {details.content?.title || details.content?.description || 'Детали контента'}
+                  {contentType === 'marker_comments' 
+                    ? `Комментарий к маркеру: ${details.content?.marker_id || 'N/A'}`
+                    : (details.content?.title || details.content?.description || 'Детали контента')
+                  }
                 </h3>
                 <button
                   onClick={() => {
@@ -558,15 +856,102 @@ const ModerationHistoryPanel: React.FC = () => {
                     <div>Автор: {details.content?.author_name || details.content?.author_id || 'Гость'}</div>
                     <div>Создано: {formatDate(details.content?.created_at)}</div>
                     <div>Обновлено: {formatDate(details.content?.updated_at)}</div>
+                    {contentType === 'marker_comments' && details.content?.marker_id && (
+                      <div className="mt-2 pt-2 border-t border-gray-200">
+                        <div className="font-semibold">📍 Маркер:</div>
+                        <div>ID маркера: {details.content?.marker_id}</div>
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                {/* ⚠️ ФОТОГРАФИИ — КРИТИЧЕСКАЯ ПРОВЕРКА БЕЗОПАСНОСТИ */}
+                {(() => {
+                  const photoArray = parsePhotoUrls(details.content?.photo_urls);
+                  return photoArray.length > 0 ? (
+                    <div className="p-4 bg-red-50 border-2 border-red-300 rounded-md">
+                      <div className="text-sm font-bold text-red-900 mb-3">
+                        🚨 ВНИМАНИЕ: Фотографии для модерации ({photoArray.length})
+                      </div>
+                      <div className="text-xs text-red-800 mb-4 p-2 bg-red-100 rounded">
+                        Проверьте все фотографии перед одобрением. ИИ анализировал эти изображения.
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {photoArray.map((url: string, idx: number) => (
+                          <div key={idx} className="relative group">
+                            <img 
+                              src={url} 
+                              alt={`Фото ${idx + 1}`}
+                              className="w-full h-40 object-cover rounded border-2 border-red-200"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23f0f0f0" width="100" height="100"/%3E%3Ctext x="50" y="50" text-anchor="middle" dy=".3em" font-size="12" fill="%23999"%3EОшибка фото%3C/text%3E%3C/svg%3E';
+                              }}
+                            />
+                            <div className="absolute top-1 right-1 bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">
+                              {idx + 1}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                      <div className="text-sm text-yellow-800">
+                        ℹ️ Контент без фотографий
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Полный текст контента */}
                 {(details.content?.body || details.content?.description || details.content?.content) && (
                   <div className="p-4 bg-white border border-gray-200 rounded-md">
-                    <div className="text-sm font-semibold text-gray-700 mb-2">Текст контента:</div>
+                    <div className="text-sm font-semibold text-gray-700 mb-2">
+                      {contentType === 'comments' ? '💬 Текст комментария:' : contentType === 'marker_comments' ? '💭 Текст комментария к маркеру:' : 'Текст контента:'}
+                    </div>
                     <div className="text-sm text-gray-700 whitespace-pre-wrap">
                       {details.content?.body || details.content?.description || details.content?.content}
+                    </div>
+                  </div>
+                )}
+
+                {/* Пост, на который оставлен комментарий */}
+                {contentType === 'comments' && details.content?.post_id && (
+                  <div className="p-4 bg-blue-50 border-2 border-blue-300 rounded-md">
+                    <div className="text-sm font-semibold text-blue-900 mb-3">📄 Пост, на который оставлен комментарий:</div>
+                    <div className="space-y-2">
+                      <div className="p-3 bg-white rounded border border-blue-200">
+                        <div className="text-sm font-bold text-blue-900 mb-2">
+                          {details.content?.post_title || 'Пост без названия'}
+                        </div>
+                        {details.content?.post_body && (
+                          <div className="text-sm text-gray-700 whitespace-pre-wrap line-clamp-5">
+                            {details.content.post_body}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Маркер, на который оставлен комментарий */}
+                {contentType === 'marker_comments' && details.content?.marker_id && (
+                  <div className="p-4 bg-green-50 border-2 border-green-300 rounded-md">
+                    <div className="text-sm font-semibold text-green-900 mb-3">📍 Маркер, на который оставлен комментарий:</div>
+                    <div className="space-y-2">
+                      <div className="p-3 bg-white rounded border border-green-200">
+                        <div className="text-sm font-bold text-green-900 mb-2">
+                          ID маркера: {details.content?.marker_id}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          <strong>Заголовок:</strong> {details.content?.marker_title || 'Без названия'}
+                        </div>
+                        {details.content?.marker_description && (
+                          <div className="text-sm text-gray-700 whitespace-pre-wrap line-clamp-3 mt-2">
+                            {details.content.marker_description}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

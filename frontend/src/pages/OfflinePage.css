@@ -144,6 +144,41 @@
   z-index: 10;
 }
 
+/* ── Downloaded packs panel ───────────────────────────────────────── */
+.downloaded-packs-panel {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid #e2e8f0;
+}
+.downloaded-packs-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 0.5rem;
+}
+.downloaded-packs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.downloaded-packs-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.downloaded-packs-delete {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+}
+.downloaded-packs-delete:hover {
+  text-decoration: underline;
+}
+
 /* ════════════════════════════════════════════════════════════════════
    RegionPanel
    ════════════════════════════════════════════════════════════════════ */

@@ -10,6 +10,7 @@ import { useRegionsStore, getRegionIdByName } from '../../stores/regionsStore';
 import { offlineContentStorage, OfflineEventDraft } from '../../services/offlineContentStorage';
 import { useAuth } from '../../contexts/AuthContext';
 import { useIsMobile } from '../../hooks/use-mobile';
+import { useContentStore } from '../../stores/contentStore';
 import './TravelCalendar.css';
 import './CircularCalendar.css';
 import CircularCalendar from './CircularCalendar';
@@ -82,6 +83,7 @@ const TravelCalendar: React.FC<TravelCalendarProps> = ({
   const { user } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const setLeftContent = useContentStore(state => state.setLeftContent);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [internalSelectedDate, setInternalSelectedDate] = useState<Date | null>(null);
   
@@ -301,9 +303,12 @@ const TravelCalendar: React.FC<TravelCalendarProps> = ({
     setSelectedEventInStore(mockEvent);
     // Фокус карты на событии
     setFocusEvent(mockEvent);
-    // На мобильном — переходим на страницу карты
-    if (isMobile) {
-      navigate('/map');
+    
+    // На десктопе - включаем карту сразу
+    // На мобильном - оставляем пользователя на странице события (календаре),
+    // чтобы он мог прочитать детали. На карту он перейдет по кнопке "Показать на карте".
+    if (!isMobile) {
+      setLeftContent('map');
     }
   };
 
@@ -313,7 +318,11 @@ const TravelCalendar: React.FC<TravelCalendarProps> = ({
     description: event.description || '',
     start_date: event.date,
     end_date: event.date,
-    location: { address: event.location || '' },
+    location: {
+      address: event.location || '',
+      latitude: Number.isFinite(event.latitude) ? event.latitude : undefined,
+      longitude: Number.isFinite(event.longitude) ? event.longitude : undefined,
+    },
     source: 'local',
     category: event.categoryId,
     url: '',

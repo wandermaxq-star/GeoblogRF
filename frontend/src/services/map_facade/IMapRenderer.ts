@@ -48,6 +48,8 @@ export interface UnifiedMarker {
   category?: string;
   iconSize?: [number, number];
   routeMarker?: string;
+  /** Порядковый номер метки в маршруте (1-based). Отображается внутри капли. */
+  number?: number;
 }
 
 export interface CalendarEvent {
@@ -216,6 +218,11 @@ export interface IMapRenderer {
   clear?(): void;
   removeMarker?(id: string): void;
   removeRoute?(id: string): void;
+  createRouteEditor?(route: PersistedRoute, options?: { addMidPoints?: boolean }): Promise<boolean>;
+  setRouteEditorMode?(mode: 'addMidPoints' | 'none'): void;
+  getEditedRouteGeometry?(): Array<[number, number]> | null;
+  removeRouteEditor?(): void;
+  clearRoutesExceptEditor?(): void;
 
   // Навигация и bounds — facade-level uses domain types
   setCenter?(center: DomainGeoPoint, zoom?: number): void;
@@ -250,4 +257,10 @@ export interface IMapRenderer {
   offMapMoveStart?(handler: () => void): void;
   onMapZoomStart?(handler: () => void): void;
   offMapZoomStart?(handler: () => void): void;
+
+  // Планировщик-специфичные методы
+  clearAlternatives?(): void;
+  clearAllRoutes?(): void;
+  showTraffic?(): void;
+  hideTraffic?(): void;
 }

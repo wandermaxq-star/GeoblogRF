@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { ModerationNotification } from '../../services/moderationNotificationsService';
 
-const ToastContainer = styled.div<{ isVisible: boolean }>`
+const ToastContainer = styled.div<{ $isVisible: boolean }>`
   position: fixed;
   top: 24px;
   right: 24px;
@@ -13,10 +13,10 @@ const ToastContainer = styled.div<{ isVisible: boolean }>`
   padding: 16px 20px;
   min-width: 320px;
   max-width: 480px;
-  opacity: ${props => props.isVisible ? 1 : 0};
-  transform: ${props => props.isVisible ? 'translateX(0)' : 'translateX(400px)'};
+  opacity: ${props => props.$isVisible ? 1 : 0};
+  transform: ${props => props.$isVisible ? 'translateX(0)' : 'translateX(400px)'};
   transition: all 0.3s ease;
-  pointer-events: ${props => props.isVisible ? 'auto' : 'none'};
+  pointer-events: ${props => props.$isVisible ? 'auto' : 'none'};
 `;
 
 const ToastHeader = styled.div`
@@ -52,11 +52,11 @@ const CloseButton = styled.button`
   }
 `;
 
-const ToastDescription = styled.div<{ hasReason?: boolean }>`
+const ToastDescription = styled.div<{ $hasReason?: boolean }>`
   font-size: 13px;
   color: #444;
   line-height: 1.5;
-  margin-bottom: ${props => props.hasReason ? '8px' : '0'};
+  margin-bottom: ${props => props.$hasReason ? '8px' : '0'};
 `;
 
 const ToastReason = styled.div`
@@ -146,7 +146,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
 
   return (
     <ToastContainer
-      isVisible={isVisible}
+      $isVisible={isVisible}
       onClick={onClick}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
@@ -158,7 +158,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
           ×
         </CloseButton>
       </ToastHeader>
-      <ToastDescription hasReason={!!notification.reason}>
+      <ToastDescription $hasReason={!!notification.reason}>
         {getDescription()}
       </ToastDescription>
       {notification.reason && (

@@ -189,39 +189,52 @@ export const createEvent = async (req, res) => {
   }
 };
 
-// Получение всех событий
+// Получение всех событий с пагинацией
 export const getEvents = async (req, res) => {
   try {
-    const { status, pending } = req.query;
+    const { status, pending, limit = 50, offset = 0 } = req.query;
     const userId = req.user?.id || req.user?.userId || null;
 
+    const limitNum = Math.min(parseInt(limit, 10) || 50, 200); // максимум 200
+    const offsetNum = Math.max(parseInt(offset, 10) || 0, 0);
+
     let query;
+    let countQuery;
     let params;
 
     // Если запрашиваются события на модерации
     if (pending === 'true' || status === 'pending') {
       query = `
-        SELECT e.*, e.is_user_modified, e.used_in_blogs, u.username as creator_name 
-        FROM events e 
-        LEFT JOIN users u ON e.creator_id = u.id 
+        SELECT e.*, e.is_user_modified, e.used_in_blogs, u.username as creator_name
+        FROM events e
+        LEFT JOIN users u ON e.creator_id = u.id
         WHERE e.status = 'pending'
         ORDER BY e.created_at DESC
+        LIMIT $1 OFFSET $2
       `;
-      params = [];
+      countQuery = `SELECT COUNT(*) as total FROM events e WHERE e.status = 'pending'`;
+      params = [limitNum, offsetNum];
     } else {
       // Обычные события (только активные и публичные)
       query = `
-        SELECT e.*, e.is_user_modified, e.used_in_blogs, u.username as creator_name 
-        FROM events e 
-        LEFT JOIN users u ON e.creator_id = u.id 
-        WHERE (e.is_public = true AND (e.status = 'active' OR e.status IS NULL)) 
-           OR e.creator_id = $1
+        SELECT e.*, e.is_user_modified, e.used_in_blogs, u.username as creator_name
+        FROM events e
+        LEFT JOIN users u ON e.creator_id = u.id
+        WHERE (e.is_public = true AND (e.status = 'active' OR e.status IS NULL))
+           OR e.creator_id = $3
         ORDER BY e.start_datetime ASC
+        LIMIT $1 OFFSET $2
       `;
-      params = [userId];
+      countQuery = `
+        SELECT COUNT(*) as total FROM events e
+        WHERE (e.is_public = true AND (e.status = 'active' OR e.status IS NULL))
+           OR e.creator_id = $1
+      `;
+      params = [limitNum, offsetNum, userId];
     }
 
     const result = await pool.query(query, params);
+    const countResult = await pool.query(countQuery, params.slice(-1)); // последний параметр для count
 
     // Фильтруем события только в пределах РФ (кроме событий на модерации)
     const russiaEvents = result.rows.filter(event => {
@@ -234,7 +247,19 @@ export const getEvents = async (req, res) => {
       return true; // Если нет координат, оставляем событие
     });
 
-    res.json(russiaEvents);
+    const total = parseInt(countResult.rows[0].total, 10);
+
+    logger.info(`Events pagination: limit=${limitNum}, offset=${offsetNum}, total=${total}, returned=${russiaEvents.length}`);
+
+    res.json({
+      events: russiaEvents,
+      pagination: {
+        limit: limitNum,
+        offset: offsetNum,
+        total,
+        hasMore: offsetNum + russiaEvents.length < total
+      }
+    });
   } catch (error) {
     logger.error('Ошибка получения событий:', error);
     res.status(500).json({ message: 'Ошибка сервера при получении событий.' });

@@ -843,50 +843,64 @@ const PlannerAccordion: React.FC<PlannerAccordionProps> = ({
         </GlassAccordion>
         </ScrollableContent>
 
-        {/* Статистика маршрута в реальном времени */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-200 p-4" style={{ flexShrink: 0 }}>
-          <div className="text-center">
-            <div className="flex items-center justify-center space-x-4 mb-2">
-              <div className="flex items-center space-x-1">
-                <span className="text-lg">📍</span>
-                <span className="text-sm font-medium text-gray-700">
-                  {activePoints?.filter(p => p.isActive).length || 0} активных точек
-                </span>
-              </div>
-              {routeStats && (routeStats.distance ?? 0) > 0 && (
-                <div className="flex items-center space-x-1">
-                  <span className="text-lg">📏</span>
-                  <span className="text-sm font-medium text-blue-700">
-                    {routeStats.distance?.toFixed(1) ?? 0} км
-                  </span>
+        {/* Футер: кнопка + статистика маршрута */}
+        <div style={{ flexShrink: 0, padding: '10px 16px 14px', borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+          {/* Кнопка построения */}
+          {canBuildRoute ? (
+            <button
+              onClick={onBuildRouteFromPoints}
+              className="w-full py-2 px-4 rounded-lg font-semibold text-sm transition-all"
+              style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff', border: 'none', cursor: 'pointer', marginBottom: 8 }}
+            >
+              🗺️ Построить / Перестроить маршрут
+            </button>
+          ) : (
+            <div className="text-xs text-orange-600 text-center mb-2">
+              ⚠️ Добавьте минимум 2 точки для построения маршрута
+            </div>
+          )}
+
+          {/* Инфо-строка: появляется только после построения маршрута */}
+          {routeStats && (routeStats.distance ?? 0) > 0 ? (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-around',
+              background: 'linear-gradient(135deg, rgba(59,130,246,0.12), rgba(99,102,241,0.12))',
+              borderRadius: 10, padding: '8px 12px', gap: 8
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 1 }}>Расстояние</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#1d4ed8' }}>
+                  {(routeStats.distance ?? 0) >= 1
+                    ? `${(routeStats.distance ?? 0).toFixed(1)} км`
+                    : `${Math.round((routeStats.distance ?? 0) * 1000)} м`}
                 </div>
+              </div>
+              {(routeStats.duration ?? 0) > 0 && (
+                <>
+                  <div style={{ width: 1, height: 28, background: 'rgba(99,102,241,0.25)' }} />
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 1 }}>Время в пути</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#059669' }}>
+                      {Math.round((routeStats.duration ?? 0) / 60) >= 60
+                        ? `${Math.floor(Math.round((routeStats.duration ?? 0) / 60) / 60)} ч ${Math.round((routeStats.duration ?? 0) / 60) % 60} мин`
+                        : `${Math.round((routeStats.duration ?? 0) / 60)} мин`}
+                    </div>
+                  </div>
+                  <div style={{ width: 1, height: 28, background: 'rgba(99,102,241,0.25)' }} />
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 1 }}>Транспорт</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#7c3aed' }}>
+                      {TRANSPORT_CONFIG[settings.transportType]?.icon} {TRANSPORT_CONFIG[settings.transportType]?.name}
+                    </div>
+                  </div>
+                </>
               )}
-              {routeStats && (routeStats.duration ?? 0) > 0 && (
-                <div className="flex items-center space-x-1">
-                  <span className="text-lg">⏱️</span>
-                  <span className="text-sm font-medium text-green-700">
-                    {Math.round((routeStats.duration ?? 0) / 60)} мин
-                  </span>
             </div>
-              )}
-              {routeStats && (routeStats.distance ?? 0) > 0 && TRANSPORT_CONFIG[settings.transportType] && (
-                <div className="flex items-center space-x-1">
-                  <span className="text-lg">🚀</span>
-                  <span className="text-sm font-medium text-purple-700">
-                    ~{Math.round((routeStats.distance ?? 0) / TRANSPORT_CONFIG[settings.transportType].speed * 60)} мин
-                  </span>
-                  <span className="text-xs text-gray-500">({TRANSPORT_CONFIG[settings.transportType].speed} км/ч)</span>
+          ) : (
+            <div style={{ fontSize: 12, color: '#9ca3af', textAlign: 'center' }}>
+              📍 {activePoints?.filter(p => p.isActive).length || 0} {(activePoints?.filter(p => p.isActive).length || 0) === 1 ? 'точка' : 'активных точек'}
             </div>
-              )}
-          </div>
-            <div className="text-xs text-gray-600">
-              {canBuildRoute ? (
-                <span className="text-green-600 font-medium">✅ Маршрут готов к построению</span>
-              ) : (
-                <span className="text-orange-600">⚠️ Добавьте минимум 2 точки для построения маршрута</span>
-        )}
-            </div>
-          </div>
+          )}
         </div>
       
       {/* Модальные окна */}

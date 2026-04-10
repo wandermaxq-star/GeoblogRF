@@ -975,6 +975,10 @@
 }
 
 .page-container.map-mode .page-main-panel {
+  pointer-events: none;
+}
+
+.page-container.map-mode .page-main-panel {
   border-radius: 0;
   background: transparent;
   backdrop-filter: none;
@@ -1195,6 +1199,52 @@
   .page-side-button.right {
     right: 1rem;
   }
+
+  /* ===== МОБИЛЬНЫЕ СТИЛИ ДЛЯ CENTRE-MODE ===== */
+  .page-container.centre-mode {
+    position: fixed !important;
+    top: calc(64px + 0.5cm) !important;
+    bottom: 0.5cm !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: calc(100vw - 28px - 0.5cm) !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    border-radius: 16px !important;
+  }
+
+  .centre-static-header {
+    padding: 12px 16px 10px 16px !important;
+  }
+
+  .centre-static-header h2 {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .centre-static-header p {
+    font-size: 0.75rem !important;
+  }
+
+  .centre-scroll-area {
+    padding: 12px 16px 20px 16px !important;
+  }
+
+  .centre-scroll-area .centre-content {
+    gap: 3 !important;
+  }
+
+  .centre-glass-card {
+    padding: 14px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .centre-user-profile-card {
+    padding: 16px !important;
+    margin-bottom: 12px !important;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1212,6 +1262,43 @@
     width: 40px;
     height: 40px;
     top: calc(50% + 6px);
+  }
+
+  /* ===== ОЧЕНЬ МАЛЫЕ ЭКРАНЫ: CENTRE-MODE ===== */
+  .page-container.centre-mode {
+    top: calc(64px + 0.3cm) !important;
+    bottom: 0.3cm !important;
+    width: calc(100vw - 12px - 0.3cm) !important;
+    border-radius: 12px !important;
+    max-width: calc(100vw - 12px) !important;
+  }
+
+  .centre-static-header {
+    padding: 10px 12px 8px 12px !important;
+    border-bottom: 1px solid var(--glass-l2-border) !important;
+  }
+
+  .centre-static-header h2 {
+    font-size: 0.95rem;
+  }
+
+  .centre-static-header p {
+    font-size: 0.7rem !important;
+  }
+
+  .centre-scroll-area {
+    padding: 10px 12px 16px 12px !important;
+  }
+
+  .centre-glass-card {
+    padding: 12px !important;
+    margin-bottom: 10px !important;
+    border-radius: 10px !important;
+  }
+
+  .centre-user-profile-card {
+    padding: 12px !important;
+    border-radius: 10px !important;
   }
 }
 
@@ -1723,6 +1810,94 @@
   z-index: 1145 !important;
 }
 
+/* === Контрастный текст для solo-страниц (центр/профиль/юзер-агримент/приватность) === */
+[data-theme="light"] .centre-mode,
+[data-theme="light"] .centre-mobile-page {
+  /* Сила текста для лучшей читаемости на светлом фоне */
+  --glass-text: #000;
+  --glass-text-secondary: rgba(0,0,0,0.85);
+  --glass-text-muted: rgba(0,0,0,0.7);
+
+  --glass-card-text: #000;
+  --glass-card-text-secondary: rgba(0,0,0,0.85);
+  --glass-card-text-muted: rgba(0,0,0,0.9);
+
+  /* Гарантируем, что стандартный цвет текста на solo-страницах — чёрный */
+  color: #000 !important;
+}
+
+/* Принудительно делаем все утилиты cg-text чёрными, даже если они были заданы через Tailwind */
+[data-theme="light"] .centre-mode .cg-text,
+[data-theme="light"] .centre-mode .cg-text-muted,
+[data-theme="light"] .centre-mobile-page .cg-text,
+[data-theme="light"] .centre-mobile-page .cg-text-muted {
+  color: #000 !important;
+}
+
+/* Принудительно перекрашиваем Tailwind классы серых текстов внутри solo-страниц */
+[data-theme="light"] .centre-mode [class*="text-gray"],
+[data-theme="light"] .centre-mobile-page [class*="text-gray"] {
+  color: #000 !important;
+}
+
+/* Профиль: светлая тема → чёрный текст, тёмная → белый (как centre/pro/partner) */
+[data-theme="light"] .profile-mode {
+  --glass-text: #000 !important;
+  --glass-text-secondary: rgba(0, 0, 0, 0.85) !important;
+  --glass-text-muted: rgba(0, 0, 0, 0.7) !important;
+  color: #000 !important;
+}
+
+[data-theme="light"] .profile-mode .text-foreground,
+[data-theme="light"] .profile-mode .text-muted-foreground,
+[data-theme="light"] .profile-mode .text-gray-500,
+[data-theme="light"] .profile-mode .text-gray-600,
+[data-theme="light"] .profile-mode .text-gray-700 {
+  color: #000 !important;
+}
+
+[data-theme="light"] .profile-mode svg,
+[data-theme="light"] .profile-mode i {
+  color: #000 !important;
+  fill: #000 !important;
+  stroke: #000 !important;
+}
+
+[data-theme="light"] .profile-mode .cg-text,
+[data-theme="light"] .profile-mode .cg-text-muted,
+[data-theme="light"] .profile-mode [class*="text-gray"] {
+  color: #000 !important;
+}
+
+/* Профиль: тёмная тема → белый текст */
+[data-theme="dark"] .profile-mode {
+  --glass-text: #fff !important;
+  --glass-text-secondary: rgba(255, 255, 255, 0.85) !important;
+  --glass-text-muted: rgba(255, 255, 255, 0.6) !important;
+  color: #fff !important;
+}
+
+[data-theme="dark"] .profile-mode .text-foreground,
+[data-theme="dark"] .profile-mode .text-muted-foreground,
+[data-theme="dark"] .profile-mode .text-gray-500,
+[data-theme="dark"] .profile-mode .text-gray-600,
+[data-theme="dark"] .profile-mode .text-gray-700 {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+[data-theme="dark"] .profile-mode svg,
+[data-theme="dark"] .profile-mode i {
+  color: #fff !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+
+[data-theme="dark"] .profile-mode .cg-text,
+[data-theme="dark"] .profile-mode .cg-text-muted,
+[data-theme="dark"] .profile-mode [class*="text-gray"] {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
 /* Заголовок centre */
 .centre-static-header {
   position: relative !important;
@@ -1732,6 +1907,13 @@
   border-bottom: 1px solid var(--glass-l2-border) !important;
   background: transparent !important;
   z-index: 10 !important;
+}
+
+/* Убираем дублирующийся Topbar на мобильной версии профиля */
+@media (max-width: 767px) {
+  .profile-mode .topbar-container {
+    display: none !important;
+  }
 }
 
 .centre-static-header h2 {
@@ -1762,9 +1944,18 @@
 
 /* Ограничиваем ширину контента внутри скролла */
 .centre-scroll-area .centre-content {
+  display: flex !important;
+  flex-direction: column !important;
   max-width: 1200px !important;
   margin: 0 auto !important;
   padding-bottom: 20px !important;
+}
+
+/* Карта внутри kontenta должна расширяться и занимать свободное место */
+.centre-scroll-area .centre-content .offline-map-widget {
+  flex: 1 !important;
+  min-height: 600px !important;
+  width: 100% !important;
 }
 
 /* Скрываем скролл на уровне контейнера */

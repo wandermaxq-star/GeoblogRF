@@ -108,7 +108,56 @@ export const analyzeContent = async (req, res) => {
   try {
     const { contentType, contentId } = req.params;
 
-    // Получаем контент
+    // Проверяем, это локальный контент (из фронтенда) или из БД
+    const isLocalContent = contentId.startsWith('pending_') || contentId.includes(':');
+    
+    if (isLocalContent) {
+      // Локальный контент: берем данные из body или используем дефолтный анализ
+      console.log(`📝 Локальный контент: ${contentType}/${contentId}`);
+      
+      const textContent = req.body?.content_text || 
+                         (req.body?.content_data?.title || '') + ' ' + 
+                         (req.body?.content_data?.body || '') +
+                         (req.body?.content_data?.description || '');
+
+      // Используем ModerationService для анализа текста из фронтенда
+      const moderationResult = await ModerationService.moderateContent({
+        text: textContent.trim(),
+        type: 'post',
+        userId: req.user?.id || 'unknown',
+        location: req.body?.location,
+        timestamp: new Date()
+      });
+
+      const aiSuggestion = 
+        moderationResult.action === 'hide' || moderationResult.action === 'block' ? 'reject' :
+        moderationResult.action === 'review' ? 'review' : 'approve';
+
+      const aiReason = moderationResult.detailedReason || 
+                       (moderationResult.issues?.length > 0 
+                         ? moderationResult.issues.join('; ') 
+                         : 'Контент проверен');
+
+      console.log(`✅ Локальный анализ завершён: ${aiSuggestion}`);
+
+      return res.json({
+        decision: {
+          id: `temp_${Date.now()}`,
+          content_type: contentType,
+          content_id: contentId,
+          ai_suggestion: aiSuggestion,
+          ai_confidence: moderationResult.confidence,
+          ai_reason: aiReason,
+          ai_category: moderationResult.category,
+          ai_issues: moderationResult.issues || [],
+          admin_verdict: 'pending',
+        },
+        moderationResult,
+        status: 'success',
+      });
+    }
+
+    // Контент из БД: получаем из базы
     let content;
     let contentText = '';
     let contentData = null;

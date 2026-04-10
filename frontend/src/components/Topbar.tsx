@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGuest } from '../contexts/GuestContext';
 import { useContentStore } from '../stores/contentStore';
 import { useThemeStore } from '../stores/themeStore';
-import { FaBell, FaNewspaper, FaUserPlus, FaSignInAlt, FaSun, FaMoon } from 'react-icons/fa';
+import { FaBell, FaNewspaper, FaUserPlus, FaSignInAlt, FaSun, FaMoon, FaLeaf } from 'react-icons/fa';
 import NotificationIcon from './Notifications/NotificationIcon';
 import DynamicTitle from './DynamicTitle';
+import AuthModal from './AuthModal';
 
 const Topbar: React.FC = () => {
   const navigate = useNavigate();
@@ -15,12 +16,25 @@ const Topbar: React.FC = () => {
   const guest = useGuest();
   const { user } = auth || { user: null };
   const isGuest = !user;
-  const [activities] = React.useState<any[]>([]);
-  const [postsCount] = React.useState<number>(0);
-  const [showUserMenu, setShowUserMenu] = React.useState(false);
+  const [activities] = useState<any[]>([]);
+  const [postsCount] = useState<number>(0);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
   const { theme, toggleTheme } = useThemeStore();
+  const isMapPath = ['/map','/planner','/calendar','/posts','/activity'].some(p => location.pathname.startsWith(p));
+
+  const openAuthModal = (mode: 'login' | 'register') => {
+    setAuthModalMode(mode);
+    setAuthModalOpen(true);
+  };
+
+  const closeAuthModal = () => {
+    setAuthModalOpen(false);
+  };
 
   return (
+    <>
     <div 
       className="topbar-container"
       style={{
@@ -90,22 +104,20 @@ const Topbar: React.FC = () => {
             </span>
           </button>
 
-          {/* Переключатель темы light/dark */}
+          {/* Переключатель темы (солнце / полумесяц) */}
           <button
             className="theme-toggle-btn"
             onClick={toggleTheme}
-            title={theme === 'light' ? 'Переключить на тёмную тему' : 'Переключить на светлую тему'}
+            title={theme === 'light' ? 'Светлая тема' : 'Тёмная тема'}
           >
-            {theme === 'light' ? <FaMoon /> : <FaSun />}
+            {theme === 'light' ? <FaSun /> : <FaMoon />}
           </button>
 
           {isGuest ? (
             <div className="flex items-center space-x-2">
               {/* Кнопка входа */}
               <button
-                onClick={() => {
-                  navigate('/login');
-                }}
+                onClick={() => openAuthModal('login')}
                 className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
                 title="Войти в систему"
                 style={{ color: 'var(--text-primary)' }}
@@ -116,9 +128,7 @@ const Topbar: React.FC = () => {
               
               {/* Кнопка регистрации */}
               <button
-                onClick={() => {
-                  navigate('/register');
-                }}
+                onClick={() => openAuthModal('register')}
                 className="flex items-center px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors"
                 title="Зарегистрироваться"
               >
@@ -201,7 +211,7 @@ const Topbar: React.FC = () => {
                     <div className="py-2">
                       <button
                         onClick={() => {
-                          useContentStore.getState().setRightContent('profile');
+                          navigate('/profile');
                           setShowUserMenu(false);
                         }}
                         className="w-full px-4 py-2 text-left transition-colors flex items-center topbar-dropdown-item"
@@ -214,7 +224,7 @@ const Topbar: React.FC = () => {
                       <button
                         onClick={() => {
                           setShowUserMenu(false);
-                          navigate('/login');
+                          openAuthModal('login');
                         }}
                         className="w-full px-4 py-2 text-left transition-colors flex items-center topbar-dropdown-item"
                         style={{ color: 'var(--glass-card-text)' }}
@@ -245,6 +255,12 @@ const Topbar: React.FC = () => {
         </div>
       </div>
     </div>
+    <AuthModal
+      isOpen={authModalOpen}
+      onClose={closeAuthModal}
+      initialMode={authModalMode}
+    />
+    </>
   );
 };
 

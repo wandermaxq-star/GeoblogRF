@@ -123,6 +123,20 @@ class OfflineContentStorage {
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
 
+  private resetConnection() {
+    this.db = null;
+    this.initPromise = null;
+  }
+
+  private isRecoverableConnectionError(error: unknown): boolean {
+    if (error instanceof DOMException) {
+      return error.name === 'InvalidStateError';
+    }
+
+    const message = error instanceof Error ? error.message : String(error);
+    return message.includes('database connection is closing') || message.includes('connection is closing');
+  }
+
   /**
    * Инициализация IndexedDB с миграциями
    */
@@ -141,6 +155,26 @@ class OfflineContentStorage {
 
       request.onsuccess = () => {
         this.db = request.result;
+        const activeDb = request.result;
+
+        activeDb.onversionchange = () => {
+          try {
+            activeDb.close();
+          } catch {
+            // ignore close race
+          }
+
+          if (this.db === activeDb) {
+            this.resetConnection();
+          }
+        };
+
+        activeDb.onclose = () => {
+          if (this.db === activeDb) {
+            this.resetConnection();
+          }
+        };
+
         // console.log('✅ IndexedDB для офлайн контента инициализирован');
         resolve();
       };
@@ -398,46 +432,64 @@ class OfflineContentStorage {
     contentType?: ContentType,
     status?: DraftStatus
   ): Promise<AnyOfflineDraft[]> {
-    await this.init();
+    const loadDrafts = async (): Promise<AnyOfflineDraft[]> => {
+      await this.init();
 
-    return new Promise((resolve, reject) => {
-      if (!this.db) {
-        reject(new Error('База данных не инициализирована'));
-        return;
+      return new Promise((resolve, reject) => {
+        if (!this.db) {
+          reject(new Error('База данных не инициализирована'));
+          return;
+        }
+
+        let request: IDBRequest;
+
+        try {
+          const transaction = this.db.transaction([STORE_NAME], 'readonly');
+          const store = transaction.objectStore(STORE_NAME);
+
+          if (contentType && status) {
+            const index = store.index('type_status');
+            request = index.getAll([contentType, status]);
+          } else if (contentType) {
+            const index = store.index('contentType');
+            request = index.getAll(contentType);
+          } else if (status) {
+            const index = store.index('status');
+            request = index.getAll(status);
+          } else {
+            request = store.getAll();
+          }
+
+          transaction.onabort = () => {
+            reject(transaction.error || new Error('Транзакция чтения черновиков была прервана'));
+          };
+
+          request.onsuccess = () => {
+            const drafts = request.result || [];
+            drafts.sort((a: AnyOfflineDraft, b: AnyOfflineDraft) => b.createdAt - a.createdAt);
+            resolve(drafts);
+          };
+
+          request.onerror = () => {
+            reject(request.error);
+          };
+        } catch (error) {
+          reject(error);
+        }
+      });
+    };
+
+    try {
+      return await loadDrafts();
+    } catch (error) {
+      if (!this.isRecoverableConnectionError(error)) {
+        throw error;
       }
 
-      const transaction = this.db.transaction([STORE_NAME], 'readonly');
-      const store = transaction.objectStore(STORE_NAME);
-      let request: IDBRequest;
-
-      if (contentType && status) {
-        // Фильтр по типу и статусу
-        const index = store.index('type_status');
-        request = index.getAll([contentType, status]);
-      } else if (contentType) {
-        // Фильтр только по типу
-        const index = store.index('contentType');
-        request = index.getAll(contentType);
-      } else if (status) {
-        // Фильтр только по статусу
-        const index = store.index('status');
-        request = index.getAll(status);
-      } else {
-        // Все черновики
-        request = store.getAll();
-      }
-
-      request.onsuccess = () => {
-        const drafts = request.result || [];
-        // Сортируем по дате создания (новые первыми)
-        drafts.sort((a: AnyOfflineDraft, b: AnyOfflineDraft) => b.createdAt - a.createdAt);
-        resolve(drafts);
-      };
-
-      request.onerror = () => {
-        reject(request.error);
-      };
-    });
+      this.resetConnection();
+      await this.init();
+      return loadDrafts();
+    }
   }
 
   /**

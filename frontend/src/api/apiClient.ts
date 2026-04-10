@@ -23,38 +23,38 @@ const apiClient = axios.create({
   },
 });
 
+// Вспомогательная функция для декодирования base64url (JWT использует base64url, а не стандартный base64)
+function decodeJwtPayload(token: string): { exp?: number } | null {
+  try {
+    // JWT payload — это base64url (символы '-' и '_' вместо '+' и '/'), без символов '='
+    const base64Url = token.split('.')[1];
+    if (!base64Url) return null;
+    // Конвертируем base64url → стандартный base64
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    // Добавляем padding если нужно
+    const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+}
+
 // Интерсептор для автоматического добавления токена авторизации
 apiClient.interceptors.request.use((config) => {
   // Берём токен из storageService
   const token = storageService.getItem('token');
   
-  // Проверяем валидность токена перед использованием
-  if (token) {
-    try {
-      // Парсим токен и проверяем, не истёк ли он
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const now = Math.floor(Date.now() / 1000);
-      
-      // Если токен истёк, удаляем его из localStorage
-      if (payload.exp && payload.exp < now) {
-        // console.warn('⚠️ Токен истёк, удаляем из storageService');
-        storageService.removeItem('token');
-        storageService.removeItem('user');
-        // Не добавляем токен к запросу
-        return config;
-      }
-      
-      // Добавляем токен только если он валидный
-      if (!config.headers.Authorization) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    } catch (error) {
-      // Если токен невалидный (не JSON, повреждён), удаляем его
-      // console.warn('⚠️ Токен невалидный, удаляем из localStorage:', error);
-      storageService.removeItem('token');
-      storageService.removeItem('user');
-      // Не добавляем токен к запросу
+  if (token && !config.headers.Authorization) {
+    // Проверяем срок действия токена (без изменения state — только пропускаем невалидный)
+    const payload = decodeJwtPayload(token);
+    const now = Math.floor(Date.now() / 1000);
+    const isExpired = payload?.exp && payload.exp < now;
+    
+    if (!isExpired) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
+    // Если истёк или невалидный — просто не добавляем заголовок.
+    // Управление состоянием авторизации — задача AuthContext, не перехватчика.
   }
   
   return config;

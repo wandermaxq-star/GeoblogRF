@@ -10,6 +10,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useGamification } from '../../contexts/GamificationContext';
 import { useLevelProgress } from '../../hooks/useLevelProgress';
 import { useAchievements, type Achievement as NewAchievement } from '../../hooks/useAchievements';
+import { getAchievementIcon } from './achievementIcons';
 
 // Простые анимации - все крутящиеся
 const spinAnimation = keyframes`
@@ -380,22 +381,8 @@ const AchievementsDashboard: React.FC<AchievementsDashboardProps> = ({ isOwnProf
 
   // Функция для преобразования новых достижений в формат карточек
   const convertNewAchievementToCard = (newAchievement: NewAchievement): Achievement => {
-    // Маппинг иконок
-    const iconMap: { [key: string]: React.ReactNode } = {
-      'trophy': <FaTrophy />,
-      'star': <FaStar />,
-      'crown': <FaCrown />,
-      'gem': <FaGem />,
-      'medal': <FaMedal />,
-      'award': <FaAward />,
-      'rocket': <FaRocket />,
-      'fire': <FaFire />,
-      'heart': <FaHeart />,
-      'map': <FaMapMarkerAlt />,
-      'camera': <FaCamera />,
-    };
-
-    // Маппинг типов по редкости
+    // используем общий резольвер иконок
+    // (imported at top)
     const typeMap: { [key: string]: 'bronze' | 'silver' | 'gold' | 'platinum' } = {
       'common': 'bronze',
       'rare': 'silver',
@@ -417,7 +404,7 @@ const AchievementsDashboard: React.FC<AchievementsDashboardProps> = ({ isOwnProf
       id: newAchievement.id,
       title: newAchievement.title,
       description: newAchievement.description,
-      icon: iconMap[newAchievement.icon] || <FaTrophy />,
+      icon: getAchievementIcon(newAchievement.icon as string),
       type: typeMap[newAchievement.rarity] || 'bronze',
       xpReward: newAchievement.rarity === 'common' ? 50 : 
                 newAchievement.rarity === 'rare' ? 150 :

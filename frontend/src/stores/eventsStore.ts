@@ -14,6 +14,11 @@ export interface PickedLocation {
 export interface EventsState {
   // Открытые события (из календаря) - отображаются на карте
   openEvents: MockEvent[];
+
+  // Мобильная шторка событий на карте
+  isEventSheetOpen: boolean;
+  eventSheetDate: string | null;
+  eventSheetFocusEventId: number | null;
   
   // Выбранное событие (для детального просмотра)
   selectedEvent: MockEvent | null;
@@ -35,6 +40,10 @@ export interface EventsState {
   
   // Методы для управления выбранным событием
   setSelectedEvent: (event: MockEvent | null) => void;
+
+  // Mobile event sheet
+  openEventSheet: (date?: string | null, focusEventId?: number | null) => void;
+  closeEventSheet: () => void;
   
   // Picking
   startPickingLocation: () => void;
@@ -53,6 +62,9 @@ export const useEventsStore = create<EventsState>()(
   subscribeWithSelector((set, get) => ({
     // Начальное состояние
     openEvents: [],
+    isEventSheetOpen: false,
+    eventSheetDate: null,
+    eventSheetFocusEventId: null,
     selectedEvent: null,
     isPickingEventLocation: false,
     pickedEventLocation: null,
@@ -93,6 +105,22 @@ export const useEventsStore = create<EventsState>()(
     // Установка выбранного события
     setSelectedEvent: (event: MockEvent | null) => {
       set({ selectedEvent: event });
+    },
+
+    openEventSheet: (date?: string | null, focusEventId?: number | null) => {
+      set({
+        isEventSheetOpen: true,
+        eventSheetDate: date ?? null,
+        eventSheetFocusEventId: focusEventId ?? null,
+      });
+    },
+
+    closeEventSheet: () => {
+      set({
+        isEventSheetOpen: false,
+        eventSheetDate: null,
+        eventSheetFocusEventId: null,
+      });
     },
 
     // Pick-location

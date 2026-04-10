@@ -56,8 +56,16 @@ export const RoutePlannerProvider = ({ children }: { children: ReactNode }) => {
   // Базовые функции (мемоизированы для стабильных ссылок)
   const setRoutePoints = useCallback((points: RoutePoint[]) => setRoutePointsState(points), []);
   const clearRoutePoints = useCallback(() => setRoutePointsState([]), []);
-  const addRoutePoint = useCallback((point: RoutePoint) => setRoutePointsState(prev => [...prev, point]), []);
-  const removeRoutePoint = useCallback((id: string) => setRoutePointsState(prev => prev.filter(p => p.id !== id)), []);
+  const addRoutePoint = useCallback((point: RoutePoint) => setRoutePointsState(prev => {
+    // Не добавляем дубликаты
+    if (prev.some(p => p.id === point.id)) return prev;
+    return [...prev, point];
+  }), []);
+  const removeRoutePoint = useCallback((id: string) => setRoutePointsState(prev => {
+    const filtered = prev.filter(p => p.id !== id);
+    // Если ничего не удалено — возвращаем ту же ссылку (предотвращает лишние ре-рендеры)
+    return filtered.length === prev.length ? prev : filtered;
+  }), []);
 
   // Функции построения маршрута
   const startRouteBuilding = useCallback(() => {

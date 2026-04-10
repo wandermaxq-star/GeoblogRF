@@ -118,6 +118,10 @@ describe('useMapMarkers', () => {
     expect(facade.createMarkerClusterGroup).toHaveBeenCalled();
     expect(facade.createMarker).toHaveBeenCalled();
     expect(createdMarkers.length).toBeGreaterThan(0);
+    // when themeColor is black we still fall back to category color, so divIcon html should not contain pure black background
+    expect(facade.createDivIcon).toHaveBeenCalled();
+    const divArgs = (facade.createDivIcon as any).mock.calls[0][0] || {};
+    expect(divArgs.html || '').not.toMatch(/background-color:\s*#000/);
   });
 
   it('renders MarkerPopup when popupopen is fired and cleans up on popupclose', async () => {

@@ -7,6 +7,7 @@ import { useAchievements } from '../../hooks/useAchievements';
 import { useAuth } from '../../contexts/AuthContext';
 import LevelCard from '../Gamification/LevelCard';
 import DailyGoalsWidget from '../Gamification/DailyGoalsWidget';
+import { getAchievementIcon } from '../Achievements/achievementIcons';
 
 interface ProgressRatingProps {
   className?: string;
@@ -16,24 +17,7 @@ const ProgressRating: React.FC<ProgressRatingProps> = ({ className = '' }) => {
   const { achievements: allAchievements, getUnlockedAchievements } = useAchievements();
   const unlockedAchievements = getUnlockedAchievements();
   
-  // Маппинг иконок для достижений
-  const getAchievementIcon = (iconName: string) => {
-    const iconMap: { [key: string]: React.ReactNode } = {
-      'trophy': <Trophy className="w-5 h-5" />,
-      'star': <Star className="w-5 h-5" />,
-      'crown': <Crown className="w-5 h-5" />,
-      'gem': <Award className="w-5 h-5" />,
-      'medal': <Award className="w-5 h-5" />,
-      'award': <Award className="w-5 h-5" />,
-      'rocket': <Zap className="w-5 h-5" />,
-      'fire': <Zap className="w-5 h-5" />,
-      'heart': <Star className="w-5 h-5" />,
-      'map': <Target className="w-5 h-5" />,
-      'camera': <Target className="w-5 h-5" />,
-    };
-    return iconMap[iconName] || <Trophy className="w-5 h-5" />;
-  };
-  
+
   // Берем первые 8 достижений (разблокированные + заблокированные для заполнения)
   const displayAchievements = unlockedAchievements.slice(0, 8);
   // Если разблокированных меньше 8, добавляем заблокированные

@@ -2,6 +2,169 @@
    Перенесено из PageLayout.css (posts-mode и связанные селекторы)
 */
 
+/* FAVORITES MODE: статичный glass-контейнер (аналогично posts-mode) */
+.page-container.favorites-mode .page-main-panel {
+  position: absolute;
+  top: 0;
+  overflow: hidden;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+
+  /* GLASSMORPHISM — Точно как в posts-mode */
+  background: var(--glass-l1-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-l1-border);
+  box-shadow: var(--glass-l1-shadow);
+  border-radius: var(--glass-radius);
+  color: var(--glass-text);
+
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  padding: 0;
+
+  /* Плавные переходы для смены варианта стекла */
+  transition: background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+/* FavoritesPanel внутри favorites-mode занимает всё пространство */
+.page-container.favorites-mode .favorites-accordion {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+/* Прозрачный контент внутри FavoritesPanel */
+.page-container.favorites-mode .favorites-header {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--glass-l2-border);
+  color: var(--glass-text);
+}
+
+.page-container.favorites-mode .favorites-tabs {
+  background: transparent;
+  border-bottom: 1px solid var(--glass-l2-border);
+}
+
+.page-container.favorites-mode .favorites-tab {
+  color: var(--glass-text);
+  background: transparent;
+}
+
+.page-container.favorites-mode .favorites-tab.active {
+  background: var(--glass-l2-bg);
+  color: var(--glass-text);
+  border-bottom: 2px solid var(--glass-l2-border-active);
+}
+
+.page-container.favorites-mode .favorites-tab:hover {
+  background: var(--glass-l2-bg-hover);
+}
+
+/* Карточки меток внутри FavoritesPanel */
+.page-container.favorites-mode .marker-item,
+.page-container.favorites-mode .event-item,
+.page-container.favorites-mode .route-item {
+  background: var(--glass-l2-bg);
+  border: 1px solid var(--glass-l2-border);
+  box-shadow: var(--glass-l2-shadow);
+  color: var(--glass-text);
+}
+
+.page-container.favorites-mode .marker-item:hover,
+.page-container.favorites-mode .event-item:hover,
+.page-container.favorites-mode .route-item:hover {
+  background: var(--glass-l2-bg-hover);
+  border-color: var(--glass-l2-border-hover);
+}
+
+.page-container.favorites-mode .marker-item.selected,
+.page-container.favorites-mode .event-item.selected,
+.page-container.favorites-mode .route-item.selected {
+  background: var(--glass-l2-bg-active);
+  border-color: var(--glass-l2-border-active);
+}
+
+/* Текст внутри карточек */
+.page-container.favorites-mode .marker-title,
+.page-container.favorites-mode .route-title,
+.page-container.favorites-mode .group-title {
+  color: var(--glass-text);
+}
+
+.page-container.favorites-mode .marker-details,
+.page-container.favorites-mode .marker-helper,
+.page-container.favorites-mode .route-points-count {
+  color: var(--glass-text-secondary);
+}
+
+/* Кнопки */
+.page-container.favorites-mode .action-btn,
+.page-container.favorites-mode .selection-btn {
+  background: var(--glass-l2-bg);
+  border-color: var(--glass-l2-border);
+  color: var(--glass-text);
+}
+
+.page-container.favorites-mode .action-btn:hover,
+.page-container.favorites-mode .selection-btn:hover {
+  background: var(--glass-l2-bg-hover);
+  border-color: var(--glass-l2-border-hover);
+}
+
+.page-container.favorites-mode .action-btn.primary {
+  background: var(--glass-l2-bg-active);
+  border-color: var(--glass-l2-border-active);
+}
+
+/* Поиск */
+.page-container.favorites-mode .search-input-group {
+  background: var(--glass-l2-bg);
+  border-color: var(--glass-l2-border);
+}
+
+.page-container.favorites-mode .search-input {
+  color: var(--glass-text);
+}
+
+.page-container.favorites-mode .search-input::placeholder {
+  color: var(--glass-text-muted);
+}
+
+/* Футер */
+.page-container.favorites-mode .favorites-footer {
+  background: transparent;
+  border-top: 1px solid var(--glass-l2-border);
+  color: var(--glass-text-secondary);
+}
+
+/* Скролл */
+.page-container.favorites-mode .favorites-content,
+.page-container.favorites-mode .markers-list-container,
+.page-container.favorites-mode .routes-list {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.page-container.favorites-mode .favorites-content::-webkit-scrollbar,
+.page-container.favorites-mode .markers-list-container::-webkit-scrollbar,
+.page-container.favorites-mode .routes-list::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 /* POSTS MODE: статичный glass-контейнер + область скролла */
 .page-container.posts-mode .page-main-panel {
   position: absolute;
@@ -31,7 +194,7 @@
 
   /* Плавные переходы для смены варианта стекла */
   transition: background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
-} 
+}
 /* Ограниченный эффект размытия: небольшая градиентная накладка внизу */
 .page-container.posts-mode .posts-scroll-area {
   position: relative !important;
@@ -514,4 +677,116 @@ body.disable-posts-blur .page-container.posts-mode * {
 .create-post-inline input::placeholder,
 .create-post-inline textarea::placeholder {
   color: var(--glass-text-muted);
+}
+
+/* ===== FAVORITES MODE: двуслойная структура (аналогично posts) ===== */
+
+/* L1: Статичный заголовок (не скроллится) — как posts-static-header */
+.favorites-static-header {
+  position: relative !important;
+  flex-shrink: 0 !important;
+  padding: 16px 20px 12px 20px !important;
+  margin: 0 !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: inherit;
+  z-index: 10 !important;
+  pointer-events: auto;
+}
+
+/* Ряд с заголовком — как posts-title-row */
+.favorites-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+/* Заголовок — как posts-main-title */
+.favorites-main-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin: 0;
+  color: inherit;
+}
+
+/* L2: Скролльная область — как posts-scroll-area */
+.favorites-scroll-area {
+  flex: 1;
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 16px 16px 16px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  pointer-events: auto;
+}
+
+.favorites-scroll-area::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Центрированный контент — как posts-content-centered */
+.favorites-content-centered {
+  max-width: 900px !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  padding-bottom: 20px !important;
+  width: 100%;
+}
+
+/* Glass стили для L1 (header) — через CSS vars */
+.page-container.favorites-mode.glass-light .favorites-static-header,
+.page-container.favorites-mode.glass-dark .favorites-static-header {
+  background: var(--glass-l2-bg) !important;
+  border-bottom: 1px solid var(--glass-l2-border) !important;
+}
+.page-container.favorites-mode.glass-light .favorites-main-title,
+.page-container.favorites-mode.glass-dark .favorites-main-title {
+  color: var(--glass-text) !important;
+  text-shadow: none;
+}
+
+/* Glass стили для контейнера L1 */
+.page-container.favorites-mode.glass-light .page-main-panel,
+.page-container.favorites-mode.glass-dark .page-main-panel {
+  background: var(--glass-l1-bg) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  border: 1px solid var(--glass-l1-border) !important;
+  box-shadow: var(--glass-l1-shadow) !important;
+  color: var(--glass-text) !important;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Light variant: тёмный текст */
+.page-container.favorites-mode.glass-light .favorites-static-header {
+  background: rgba(255,255,255,0.10) !important;
+  border-bottom: 1px solid rgba(15,23,42,0.06) !important;
+}
+.page-container.favorites-mode.glass-light .favorites-main-title {
+  color: #0f1720 !important;
+  text-shadow: none;
+}
+
+/* Ограниченный эффект размытия внизу скролла — как у posts */
+.page-container.favorites-mode .favorites-scroll-area::after {
+  content: "";
+  position: sticky;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: block;
+  height: 24px;
+  pointer-events: none;
+  z-index: 15;
+  background: linear-gradient(to top, rgba(255,255,255,0.12), rgba(255,255,255,0));
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+  margin-top: -24px;
 }

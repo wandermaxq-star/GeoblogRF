@@ -1,0 +1,504 @@
+// components/BottomNavigation.tsx
+import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import './BottomNavigation.css';
+
+interface NavItem {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  path: string;
+}
+
+interface SpeedDialItem {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  path: string;
+  color?: string;
+}
+
+const BottomNavigation: React.FC = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Основные 4 кнопки (постоянные)
+  const mainNavItems: NavItem[] = [
+    {
+      id: 'map',
+      label: 'Карта',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+          <line x1="8" y1="2" x2="8" y2="18" />
+          <line x1="16" y1="6" x2="16" y2="22" />
+        </svg>
+      ),
+      path: '/map',
+    },
+    {
+      id: 'posts',
+      label: 'Посты',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+          <polyline points="10 9 9 9 8 9" />
+        </svg>
+      ),
+      path: '/posts',
+    },
+    {
+      id: 'favorites',
+      label: 'Избранное',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+        </svg>
+      ),
+      path: '/favorites',
+    },
+    {
+      id: 'profile',
+      label: 'Профиль',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      ),
+      path: '/profile',
+    },
+  ];
+
+  // Кнопки раскрывающегося меню (4 дополнительные)
+  const speedDialItems: SpeedDialItem[] = [
+    {
+      id: 'routes',
+      label: 'Маршруты',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>
+      ),
+      path: '/routes',
+      color: '#4CAF50',
+    },
+    {
+      id: 'events',
+      label: 'События',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+      ),
+      path: '/events',
+      color: '#FF9800',
+    },
+    {
+      id: 'activity',
+      label: 'Активность',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>
+      ),
+      path: '/activity',
+      color: '#2196F3',
+    },
+    {
+      id: 'pro',
+      label: 'Pro & Влияние',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+        </svg>
+      ),
+      path: '/pro',
+      color: '#9C27B0',
+    },
+  ];
+
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    setIsMenuOpen(false);
+  };
+
+  const isActive = (path: string) => location.pathname === path;
+
+  return (
+    <div className="bottom-navigation">
+      {/* Раскрывающееся меню */}
+      <div className={`speed-dial ${isMenuOpen ? 'open' : ''}`}>
+        {speedDialItems.map((item, index) => {
+          const angle = ((index - speedDialItems.length / 2 + 0.5) * 30) * (Math.PI / 180);
+          const radius = isMenuOpen ? 100 : 0;
+          const x = Math.sin(angle) * radius;
+          const y = -Math.cos(angle) * radius - 20;
+
+          return (
+            <button
+              key={item.id}
+              className="speed-dial-item"
+              style={{
+                transform: `translate(${x}px, ${y}px)`,
+                opacity: isMenuOpen ? 1 : 0,
+                transitionDelay: `${index * 50}ms`,
+              }}
+              onClick={() => handleNavigation(item.path)}
+            >
+              <div className="speed-dial-icon" style={{ backgroundColor: item.color || '#333' }}>
+                {item.icon}
+              </div>
+              <span className="speed-dial-label">{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Основная навигация */}
+      <div className="nav-bar">
+        {mainNavItems.map((item) => (
+          <button
+            key={item.id}
+            className={`nav-item ${isActive(item.path) ? 'active' : ''}`}
+            onClick={() => handleNavigation(item.path)}
+          >
+            <div className="nav-icon">{item.icon}</div>
+            <span className="nav-label">{item.label}</span>
+          </button>
+        ))}
+
+        {/* Центральная кнопка + */}
+        <button
+          className={`nav-item center-button ${isMenuOpen ? 'open' : ''}`}
+          onClick={toggleMenu}
+        >
+          <div className="plus-icon">
+            <span className="plus-line plus-vertical"></span>
+            <span className="plus-line plus-horizontal"></span>
+          </div>
+        </button>
+      </div>
+
+      {/* Затемнение фона при открытом меню */}
+      {isMenuOpen && (
+        <div className="overlay" onClick={toggleMenu}></div>
+      )}
+    </div>
+  );
+};
+
+export default BottomNavigation;
+
+###
+
+.bottom-navigation {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* Основная панель навигации */
+.nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: white;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+  padding: 8px 0;
+  width: 100%;
+  max-width: 500px;
+  pointer-events: all;
+  position: relative;
+  z-index: 2;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 16px;
+  transition: all 0.3s ease;
+  color: #666;
+  flex: 1;
+}
+
+.nav-item:hover {
+  color: #2196F3;
+  transform: translateY(-2px);
+}
+
+.nav-item.active {
+  color: #2196F3;
+}
+
+.nav-icon {
+  width: 24px;
+  height: 24px;
+  margin-bottom: 4px;
+}
+
+.nav-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.nav-label {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Центральная кнопка + */
+.center-button {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  box-shadow: 0 4px 15px rgba(238, 90, 111, 0.4);
+  margin: -20px 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: all;
+}
+
+.center-button:hover {
+  transform: scale(1.1) translateY(-2px);
+  box-shadow: 0 6px 20px rgba(238, 90, 111, 0.6);
+}
+
+.center-button.open {
+  transform: rotate(45deg);
+  background: linear-gradient(135deg, #ee5a6f 0%, #ff6b6b 100%);
+}
+
+.plus-icon {
+  position: relative;
+  width: 24px;
+  height: 24px;
+}
+
+.plus-line {
+  position: absolute;
+  background: white;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.plus-vertical {
+  width: 4px;
+  height: 24px;
+  left: 10px;
+  top: 0;
+}
+
+.plus-horizontal {
+  width: 24px;
+  height: 4px;
+  left: 0;
+  top: 10px;
+}
+
+/* Раскрывающееся меню (Speed Dial) */
+.speed-dial {
+  position: absolute;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 120px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.speed-dial-item {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  pointer-events: all;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.speed-dial-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-bottom: 4px;
+  transition: all 0.3s ease;
+}
+
+.speed-dial-icon svg {
+  width: 24px;
+  height: 24px;
+  color: white;
+}
+
+.speed-dial-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #333;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(5px);
+  transition: all 0.3s ease;
+}
+
+.speed-dial.open .speed-dial-item {
+  pointer-events: all;
+}
+
+.speed-dial.open .speed-dial-label {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.speed-dial-item:hover .speed-dial-icon {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* Затемнение фона */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 0;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Адаптивность для маленьких экранов */
+@media (max-width: 380px) {
+  .nav-label {
+    font-size: 10px;
+  }
+  
+  .nav-icon {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .center-button {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .speed-dial {
+    bottom: 60px;
+  }
+}
+
+/* Safe area для iPhone с челкой */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .nav-bar {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+###
+
+// App.tsx или ваш основной компонент
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import BottomNavigation from './components/BottomNavigation';
+import MapPage from './pages/MapPage';
+import PostsPage from './pages/PostsPage';
+import FavoritesPage from './pages/FavoritesPage';
+import ProfilePage from './pages/ProfilePage';
+import RoutesPage from './pages/RoutesPage';
+import EventsPage from './pages/EventsPage';
+import ActivityPage from './pages/ActivityPage';
+import ProPage from './pages/ProPage';
+
+const App: React.FC = () => {
+  return (
+    <Router>
+      <div className="app">
+        <Routes>
+          <Route path="/map" element={<MapPage />} />
+          <Route path="/posts" element={<PostsPage />} />
+          <Route path="/favorites" element={<FavoritesPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/routes" element={<RoutesPage />} />
+          <Route path="/events" element={<EventsPage />} />
+          <Route path="/activity" element={<ActivityPage />} />
+          <Route path="/pro" element={<ProPage />} />
+        </Routes>
+        
+        <BottomNavigation />
+      </div>
+    </Router>
+  );
+};
+
+export default App;
+
+###
+
+И вот что надо сделать: 
+// Упрощённая логика swap
+const handleDragEnd = (event: DragEndEvent) => {
+  const { active, over } = event;
+  
+  if (!over) return;
+
+  const items = [...navItems];
+  const draggedIndex = items.findIndex(i => i.id === active.id);
+  const targetIndex = items.findIndex(i => i.id === over.id);
+
+  // Просто меняем местами!
+  [items[draggedIndex], items[targetIndex]] = 
+  [items[targetIndex], items[draggedIndex]];
+
+  saveConfig(items);
+};

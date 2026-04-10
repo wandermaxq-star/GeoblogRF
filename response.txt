@@ -1,0 +1,1 @@
+{"features":{"basicLevels":true,"basicXP":true,"basicAchievements":true,"dailyGoals":true,"qualityAchievements":true,"streak":true,"leaderboards":false,"specialEvents":false,"advancedBoosts":false},"stage":2,"userCount":112}

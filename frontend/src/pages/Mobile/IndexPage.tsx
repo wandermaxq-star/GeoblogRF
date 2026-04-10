@@ -18,6 +18,7 @@ const MiniMapRoute = lazy(() => import('../../components/Posts/MiniMapRoute'));
 const MiniEventCard = lazy(() => import('../../components/Posts/MiniEventCard'));
 
 const IndexPage: React.FC = () => {
+  // placeholder main page; could also redirect to posts or show mixed feed
   const navigate = useNavigate();
   const [posts, setPosts] = useState<PostDTO[]>([]);
   const [activities, setActivities] = useState<ActivityItem[]>([]);

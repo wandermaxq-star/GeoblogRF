@@ -157,6 +157,52 @@ export async function addXPForMarker(markerId: string, options: {
 }
 
 /**
+ * Добавить XP за создание события.
+ * ВАЖНО: XP начисляется бэкендом при ОДОБРЕНИИ модератором (requiresModeration: true).
+ * Эта функция предназначена для специальных случаев (например, события без модерации).
+ * Не вызывается из AddEventModal при создании — бэкенд всё делает сам после approve.
+ */
+export async function addXPForEvent(eventId: string, options: {
+  hasDescription?: boolean;
+  hasLocation?: boolean;
+  hasPhoto?: boolean;
+  userId?: string;
+}): Promise<void> {
+  try {
+    const userId = options.userId;
+    if (!userId) {
+      console.warn('GamificationHelper: userId не указан, пропускаем начисление XP');
+      return;
+    }
+
+    await gamificationFacade.addXP({
+      userId,
+      source: 'event_created',
+      amount: 50,
+      contentId: eventId,
+      contentType: 'event',
+      metadata: {
+        hasPhoto: options.hasPhoto,
+        hasMarker: options.hasLocation,
+      },
+    });
+
+    if (options.hasPhoto) {
+      await gamificationFacade.addXP({
+        userId,
+        source: 'event_with_photo',
+        amount: 25,
+        contentId: eventId,
+        contentType: 'event',
+        metadata: { hasPhoto: true },
+      });
+    }
+  } catch (error) {
+    console.error('GamificationHelper.addXPForEvent error:', error);
+  }
+}
+
+/**
  * Добавить XP за одобрение модерацией
  */
 export async function addXPForApproval(contentId: string, options: {

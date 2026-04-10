@@ -6,6 +6,7 @@
 import React from 'react';
 import { Check, Gift, Zap, PenLine, MapPin, Camera, Sparkles, BadgeCheck, Target, ClipboardList } from 'lucide-react';
 import { useGamification } from '../../contexts/GamificationContext';
+import { DailyGoal } from '../../types/gamification';
 
 const GOAL_ICONS: Record<string, React.ReactNode> = {
   create_posts: <PenLine className="w-4 h-4 text-blue-400" />,

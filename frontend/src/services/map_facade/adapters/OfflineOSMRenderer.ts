@@ -23,7 +23,7 @@ import type {
   LatLng,
 } from '../IMapRenderer';
 import type { DomainGeoPoint, PolylineStyle, IMapObjectHandle } from '../types';
-import L from 'leaflet';
+import * as L from 'leaflet';
 
 /** Расширенный конфиг для офлайн-рендерера */
 export interface OfflineMapConfig extends MapConfig {

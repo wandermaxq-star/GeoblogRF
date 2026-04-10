@@ -27,10 +27,12 @@
 
 @keyframes glowing {
   from {
-    box-shadow: 0 0 12px 2px var(--state-favorite), 0 0 20px 4px rgba(255, 152, 0, 0.3);
+    box-shadow: 0 0 12px 2px var(--state-favorite), 
+                0 0 20px 4px var(--state-favorite-glow);
   }
   to {
-    box-shadow: 0 0 16px 3px var(--state-favorite), 0 0 30px 6px rgba(255, 152, 0, 0.5);
+    box-shadow: 0 0 16px 3px var(--state-favorite), 
+                0 0 30px 6px rgba(255, 152, 0, 0.5);
   }
 }
 
@@ -47,6 +49,54 @@
 .leaflet-popup.selected .leaflet-popup-content-wrapper {
   border-radius: 8px !important;
 }
+
+/* ===== FONT AWESOME ICONS IN MARKERS ===== */
+/* Гарантируем видимость Font Awesome иконок в маркерах */
+
+/* Force Font Awesome styles for marker icons */
+.leaflet-marker-pane i,
+.leaflet-marker-icon i,
+.marker-category-attraction i,
+.marker-category-restaurant i,
+.marker-category-hotel i,
+.marker-category-nature i,
+.marker-category-culture i,
+.marker-category-entertainment i,
+.marker-category-transport i,
+.marker-category-shopping i,
+.marker-category-healthcare i,
+.marker-category-education i,
+.marker-category-service i,
+.marker-category-other i,
+.marker-category-event i,
+.marker-category-blog i,
+.marker-category-route i,
+.marker-category-chat i,
+.marker-category-user_poi i,
+.event-marker-icon i,
+.route-marker-icon i {
+  display: inline-block !important;
+  font-family: 'Font Awesome 6 Free', 'Font Awesome 6 Pro' !important;
+  font-weight: 900 !important;
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1 !important;
+  width: auto !important;
+  height: auto !important;
+  color: inherit !important;
+}
+
+/* Ensure marker containers display properly */
+.leaflet-marker-pane div[style*="display: flex"],
+.leaflet-marker-icon div[style*="display: flex"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
 
 .leaflet-popup.selected .leaflet-popup-content {
   border-radius: 8px !important;

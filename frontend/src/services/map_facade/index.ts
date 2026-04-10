@@ -80,7 +80,7 @@ export { MapContextFacade } from './MapContextFacade';
 export type { MapConfig, MapMarker, Route, RouteStats, Bounds, MapContext, DateRange, GeoPoint, PersistedRoute, UnifiedMarker, MapFacadeDependencies } from './IMapRenderer';
 
 // Единый объект INTERNAL, который будет разделён между экспортом и инстансом
-const _INTERNAL: any = {};
+const _INTERNAL: Record<string, any> = {};
 export const INTERNAL = _INTERNAL;
 
 // Re-export real service so import is actually used (keeps intent clear)

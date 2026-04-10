@@ -1171,6 +1171,9 @@ html, body, #root {
 /* ======== MAP STYLES ======== */
 
 /* Глобальные стили для карты - ВСЕГДА на весь экран */
+/* ВАЖНО: pointer-events: none — facade-контейнер является пустой обёрткой.
+   Реальная карта и маркеры рендерятся в #global-map-root.
+   Facade НЕ должен перехватывать клики/hover — иначе карта «за стеклом». */
 .facade-map-root {
   position: fixed !important;
   top: var(--facade-map-top, 0px);
@@ -1183,7 +1186,7 @@ html, body, #root {
   padding: 0 !important;
   z-index: 0;
   overflow: visible !important;
-  pointer-events: auto;
+  pointer-events: none !important;
   max-width: none !important;  /* Убираем любые ограничения */
 }
 

@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Zap, Flame, Trophy, MapPin, FileText, Navigation, MessageSquare } from 'lucide-react';
-import { Avatar, AvatarFallback } from '../ui/avatar';
+import { UserAvatar } from '../UserAvatar';
 import { UserLevel, Achievement } from '../../types/gamification';
 import { getRankInfo } from '../../utils/xpCalculator';
 import apiClient from '../../api/apiClient';
@@ -169,11 +169,11 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({ userId, onClose }) =>
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <Avatar className="w-11 h-11 border-2 border-white/20">
-              <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-sm">
-                {userInitials}
-              </AvatarFallback>
-            </Avatar>
+            <UserAvatar
+              username={profile.username}
+              avatarUrl={profile.username ? `/api/users/${profile.userId}/avatar` : undefined}
+              className="w-11 h-11 border-2 border-white/20"
+            />
           </div>
           <div className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold border-2 border-black/20">
             {profile.level}

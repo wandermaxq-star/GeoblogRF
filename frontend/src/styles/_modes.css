@@ -44,6 +44,22 @@
   padding: 0;
 }
 
+/* Контейнер карты планировщика (десктоп) — растягиваем на всю доступную высоту */
+.planner-mode .map-content-container,
+.planner-mode .map-area,
+.planner-mode .full-height-content,
+.planner-mode #planner-map-container {
+  height: 100% !important;
+  min-height: 100% !important;
+  max-height: 100% !important;
+}
+
+/* Убедимся, что карта занимает всю область без прокрутки */
+.planner-mode .map-area {
+  position: relative;
+  flex: 1 1 auto;
+}
+
 /* --- Map / Planner modes (минимальные правила) --- */
 .page-container.map-mode,
 .page-container.planner-mode {
@@ -53,7 +69,7 @@
 /* Facade map root fills viewport and respects topbar offset */
 /* pointer-events: none — facade-контейнер пустой обёрткой,
    реальная карта и маркеры рендерятся в #global-map-root.
-   Facade НЕ должен перехватывать клики/hover. */
+   Facade НЕ должен перехватывать клики/hover — иначе вся карта "за стеклом". */
 .facade-map-root {
   position: fixed;
   top: var(--facade-map-top, 0px);
@@ -63,8 +79,26 @@
   width: 100vw;
   height: calc(100vh - var(--facade-map-top, 0px));
   z-index: var(--z-map);
-  pointer-events: auto;
+  pointer-events: none !important;
   overflow: visible;
+}
+
+/* Портал реальной Leaflet-карты — должен быть интерактивен на ВСЕХ viewport-ах.
+   На мобилке дублируется в _mobile-glass.css (z-index:0). На десктопе z-index:1
+   чтобы гарантированно быть выше facade (z-index:0) и ниже UI-панелей (z>=1100).
+   Ограничено body.map-mode чтобы не блокировать клики на страницах без карты. */
+body.map-mode #global-map-root {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+/* .map-with-sidebar-container в режиме карты не должен перехватывать клики —
+   пропускаем их к #global-map-root. Дочерние элементы (sidebar, toolbar)
+   переопределяют pointer-events: auto самостоятельно. */
+.map-with-sidebar-container.map-mode {
+  pointer-events: none;
 }
 
 /* When a page is in map-mode or planner-mode, the container should be full viewport */
@@ -137,6 +171,72 @@
 /* Leaflet контролы (zoom и др.) — смещаем ниже topbar */
 .facade-map-root .leaflet-control-container .leaflet-top {
   top: var(--topbar-height, 64px);
+}
+
+@media (max-width: 767px) {
+  /* Позиция zoom-контролов по центру экрана */
+  body.map-mode #global-map-root .leaflet-control-container .leaflet-top,
+  body.map-mode .leaflet-control-container .leaflet-top,
+  .facade-map-root .leaflet-control-container .leaflet-top {
+    top: calc(50% - 44px) !important;
+    left: 10px !important;
+  }
+
+  /* Контейнер zoom — те же переменные что у m-glass-btn, тема переключается автоматически */
+  body.map-mode #global-map-root .leaflet-control-zoom.leaflet-bar,
+  body.map-mode #global-map-root .leaflet-control-container .leaflet-control-zoom,
+  body.map-mode .leaflet-control-container .leaflet-top .leaflet-control-zoom,
+  .facade-map-root .leaflet-control-container .leaflet-top .leaflet-control-zoom {
+    width: 34px !important;
+    height: 78px !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    background: var(--glass-l2-bg) !important;
+    border: 1px solid var(--glass-l2-border) !important;
+    box-shadow: var(--glass-l2-shadow) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    -webkit-backdrop-filter: var(--glass-blur) !important;
+  }
+
+  /* Кнопки + и - — цвет и разделитель из той же glass-системы */
+  body.map-mode #global-map-root .leaflet-control-zoom.leaflet-bar a,
+  body.map-mode #global-map-root .leaflet-control-container .leaflet-control-zoom a,
+  body.map-mode .leaflet-control-container .leaflet-top .leaflet-control-zoom a,
+  .facade-map-root .leaflet-control-container .leaflet-top .leaflet-control-zoom a {
+    width: 100% !important;
+    height: 50% !important;
+    line-height: 38px !important;
+    font-size: 20px !important;
+    color: var(--glass-text) !important;
+    text-align: center !important;
+    display: block !important;
+    border: none !important;
+    border-bottom: 1px solid var(--glass-l2-border) !important;
+    background: transparent !important;
+    box-sizing: border-box !important;
+  }
+  body.map-mode #global-map-root .leaflet-control-zoom.leaflet-bar a:last-child,
+  body.map-mode .leaflet-control-container .leaflet-top .leaflet-control-zoom a:last-child,
+  .facade-map-root .leaflet-control-container .leaflet-top .leaflet-control-zoom a:last-child {
+    border-bottom: none !important;
+  }
+
+  /* Attribution держим над нижней навигацией, но ближе к краю */
+  body.map-mode #global-map-root .leaflet-control-container .leaflet-bottom,
+  body.map-mode .leaflet-control-container .leaflet-bottom,
+  .facade-map-root .leaflet-control-container .leaflet-bottom {
+    bottom: calc(2px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Чуть поднимаем нижнюю навигацию на карте, чтобы оставить attribution видимой */
+  body.map-mode .mobile-floating-nav {
+    bottom: calc(18px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .mobile-map-controls .m-glass-input,
+  .mobile-map-controls .m-glass-input::placeholder {
+    color: #000 !important;
+  }
 }
 
 /* Hover-эффект отключён — карта не должна сдвигаться при наведении */

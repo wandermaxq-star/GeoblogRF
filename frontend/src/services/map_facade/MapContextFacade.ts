@@ -14,6 +14,7 @@ import type {
   MapActionButton,
   DateRange,
 } from './IMapRenderer';
+import type { DomainGeoBounds } from './types';
 
 // Адаптеры карт (каноничные расположения)
 import { OSMMapRenderer } from './adapters/OSMMapRenderer';
@@ -127,6 +128,9 @@ export class MapContextFacade {
           set: (val: any) => {
             _externalMarkers = val;
             try {
+              // Не пробрасываем внешние маркеры map.tsx в YandexPlannerRenderer:
+              // планировщик управляет своими метками самостоятельно.
+              if ((this.currentRenderer as any)?.isYandexPlanner) return;
               const toUnified = (m: any) => ({ id: m.id || crypto.randomUUID(), name: m.name ?? m.title, coordinates: { lat: m.lat ?? m.latitude, lon: m.lon ?? m.longitude }, title: m.title || m.name });
               const arr = Array.isArray(val) ? val.map(toUnified) : [];
               if (this.currentRenderer?.renderMarkers) {
@@ -139,6 +143,17 @@ export class MapContextFacade {
         });
       }
     } catch (error_) { console.debug('[MapContextFacade] Ignored error during constructor setup:', error_); }
+
+    // Validate critical dependencies
+    if (!this.deps.gamificationFacade?.recordAction) {
+      console.warn('[MapContextFacade] Gamification facade recordAction not available - gamification may not work');
+    }
+    if (!this.deps.offlineContentQueue?.saveDraft) {
+      console.warn('[MapContextFacade] Offline content queue saveDraft not available - offline features may not work');
+    }
+    if (!this.deps.moderationService?.submitPost) {
+      console.warn('[MapContextFacade] Moderation service submitPost not available - post submission may fail');
+    }
 
     this.switchToRenderer(this.activeContext);
   }
@@ -170,6 +185,8 @@ export class MapContextFacade {
   }
 
   private switchToRenderer(context: MapContext): void {
+    console.log(`[MapContextFacade] Switching to renderer: ${context}, online: ${this.isOnline}`);
+
     // КРИТИЧНО: Сохраняем маркеры ПЕРЕД переключением рендерера
     const savedMarkers = this.pendingExternalMarkers.length > 0
       ? [...this.pendingExternalMarkers]
@@ -253,7 +270,7 @@ export class MapContextFacade {
         r.onMapClick((e: any) => {
           const coords: [number, number] = [e.latlng.lat, e.latlng.lng];
           this.clickHandlers.forEach(h => {
-            try { h(coords); } catch (error_) { console.debug('[MapContextFacade] click handler error:', error_); }
+            try { h(coords); } catch (error_) { console.warn('[MapContextFacade] Click handler error:', error_); }
           });
         });
       }
@@ -262,7 +279,7 @@ export class MapContextFacade {
       if (r.onRouteGeometry && this.routeGeometryHandlers.length > 0) {
         r.onRouteGeometry((coords: Array<[number, number]>) => {
           this.routeGeometryHandlers.forEach(h => {
-            try { h(coords); } catch (error_) { console.debug('[MapContextFacade] routeGeometry handler error:', error_); }
+            try { h(coords); } catch (error_) { console.warn('[MapContextFacade] Route geometry handler error:', error_); }
           });
         });
       }
@@ -271,7 +288,7 @@ export class MapContextFacade {
       if (r.onMapMove && this.moveHandlers.length > 0) {
         r.onMapMove(() => {
           this.moveHandlers.forEach(h => {
-            try { h(); } catch (error_) { console.debug('[MapContextFacade] move handler error:', error_); }
+            try { h(); } catch (error_) { console.warn('[MapContextFacade] Move handler error:', error_); }
           });
         });
       }
@@ -280,7 +297,7 @@ export class MapContextFacade {
       if (r.onMapZoom && this.zoomHandlers.length > 0) {
         r.onMapZoom(() => {
           this.zoomHandlers.forEach(h => {
-            try { h(); } catch (error_) { console.debug('[MapContextFacade] zoom handler error:', error_); }
+            try { h(); } catch (error_) { console.warn('[MapContextFacade] Zoom handler error:', error_); }
           });
         });
       }
@@ -289,7 +306,7 @@ export class MapContextFacade {
       if (r.onMapMoveStart && this.moveStartHandlers.length > 0) {
         r.onMapMoveStart(() => {
           this.moveStartHandlers.forEach(h => {
-            try { h(); } catch (error_) { console.debug('[MapContextFacade] moveStart handler error:', error_); }
+            try { h(); } catch (error_) { console.warn('[MapContextFacade] Move start handler error:', error_); }
           });
         });
       }
@@ -298,7 +315,7 @@ export class MapContextFacade {
       if (r.onMapZoomStart && this.zoomStartHandlers.length > 0) {
         r.onMapZoomStart(() => {
           this.zoomStartHandlers.forEach(h => {
-            try { h(); } catch (error_) { console.debug('[MapContextFacade] zoomStart handler error:', error_); }
+            try { h(); } catch (error_) { console.warn('[MapContextFacade] Zoom start handler error:', error_); }
           });
         });
       }
@@ -401,12 +418,12 @@ export class MapContextFacade {
 
      const track: TrackedRoute = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      points: [], // <--- ИСПРАВЛЕНО: Заменено на пустой массив, так как переменная 'points' не была объявлена. Если есть данные для точек, укажи их здесь.
-      startTime: new Date(),
-      endTime: new Date(),
-      distance: 0,
-      duration: 0,
-      bbox: null,
+      points: this.trackingPoints,
+      startTime: this.trackingStartTime || new Date(),
+      endTime: now,
+      distance: distance,
+      duration: duration,
+      bbox: bbox,
       metadata: {},
       waypoints: [],
     };
@@ -416,8 +433,6 @@ export class MapContextFacade {
       await this.deps.offlineContentQueue.saveDraft?.('route', { id: track.id, track, isTracked: true });
       // notify
       this.deps.notificationService?.notify?.({ type: 'info', title: 'Трек сохранён', message: `Дистанция ${(distance / 1000).toFixed(2)} км` });
-      // Gamification: award XP using helper
-      await this.awardXPForTrack(track, distance);
     } catch (saveError) {
       console.error('[MapContextFacade] Failed to save draft route, falling back to storage:', saveError instanceof Error ? saveError.message : String(saveError));
       if (this.deps.storageService.saveRoute) { try { this.deps.storageService.saveRoute(track as any); } catch (err) { console.debug('[MapContextFacade] storageService.saveRoute fallback failed:', err); } }
@@ -488,7 +503,7 @@ export class MapContextFacade {
     return sum;
   }
 
-  private calculateBBox(points: GeoPoint[]) {
+  private calculateBBox(points: GeoPoint[]): DomainGeoBounds | null {
     if (!points || points.length === 0) return null;
     let minLat = Infinity, minLon = Infinity, maxLat = -Infinity, maxLon = -Infinity;
     for (const p of points) {
@@ -497,7 +512,7 @@ export class MapContextFacade {
       if (p.lat > maxLat) maxLat = p.lat;
       if (p.lon > maxLon) maxLon = p.lon;
     }
-    return { south: minLat, west: minLon, north: maxLat, east: maxLon };
+    return [[minLat, minLon], [maxLat, maxLon]];
   }
 
   private estimateAccuracy(points: GeoPoint[]): number {
@@ -562,6 +577,31 @@ export class MapContextFacade {
       size: 'medium',
     };
     this.currentRenderer?.renderMarkers([unified]);
+  }
+
+  renderMarkers(markers: MapMarker[]): void {
+    const unified = markers.map((marker) => {
+      const category = marker.category ? getCategoryByKey(marker.category) : null;
+      const color = (marker as any).color || category?.color || '#3B82F6';
+      const icon = (marker as any).icon || category?.icon || 'map-pin';
+      const position = marker.position
+        ? marker.position
+        : { lat: (marker as any).lat ?? (marker as any).latitude, lon: (marker as any).lon ?? (marker as any).longitude };
+      return {
+        id: marker.id || crypto.randomUUID(),
+        name: marker.title || undefined,
+        coordinates: { lat: position.lat, lon: position.lon },
+        type: marker.type || 'marker',
+        shape: marker.type === 'post' ? 'droplet' : 'circle',
+        color,
+        icon,
+        size: 'medium',
+        title: marker.title,
+        category: marker.category,
+      } as UnifiedMarker;
+    });
+
+    this.currentRenderer?.renderMarkers(unified);
   }
 
   // --- Facade helpers wrapping Leaflet operations for components that still need low-level access ---
@@ -775,11 +815,38 @@ export class MapContextFacade {
     const persisted: PersistedRoute = {
       id: route.id || crypto.randomUUID(),
       waypoints: route.points.map(p => ({ lat: p.lat, lon: p.lon })),
-      geometry: route,
+      geometry: undefined as any,
+      distance: route.distance || 0,
+      duration: route.duration || 0,
+      createdAt: new Date(),
+    };
+    console.log('[MapContextFacade] drawRoute called with:', {
+      routeId: persisted.id,
+      pointCount: route.points.length,
+      waypointCount: persisted.waypoints.length,
+      waypoints: persisted.waypoints,
+    });
+    this.currentRenderer?.renderRoute(persisted);
+  }
+
+  /**
+   * Render a route on the map from raw geometry points.
+   * Accepts {id, geometry: [lat,lon][], color} — used by Planner.tsx for favorite routes.
+   */
+  renderRoute(opts: { id: string; geometry: Array<[number, number]>; color?: string }): void {
+    const persisted: PersistedRoute = {
+      id: opts.id || crypto.randomUUID(),
+      waypoints: opts.geometry.map(p => ({ lat: p[0], lon: p[1] })),
+      geometry: opts.geometry,
       distance: 0,
       duration: 0,
       createdAt: new Date(),
     };
+    (persisted as any).color = opts.color;
+    console.log('[MapContextFacade] renderRoute called:', {
+      routeId: persisted.id,
+      pointCount: opts.geometry.length,
+    });
     this.currentRenderer?.renderRoute(persisted);
   }
 
@@ -823,6 +890,30 @@ export class MapContextFacade {
       return (this.currentRenderer as any)?.getCenter?.() ?? null;
     } catch {
       return null;
+    }
+  }
+
+  getZoom(): number | null {
+    try {
+      return (this.currentRenderer as any)?.getZoom?.() ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  on(event: string, handler: (...args: any[]) => void): void {
+    try {
+      (this.currentRenderer as any)?.on?.(event, handler);
+    } catch {
+      // ignore
+    }
+  }
+
+  off(event: string, handler: (...args: any[]) => void): void {
+    try {
+      (this.currentRenderer as any)?.off?.(event, handler);
+    } catch {
+      // ignore
     }
   }
 
@@ -994,6 +1085,8 @@ export class MapContextFacade {
    */
   updateExternalMarkers(markers: any[]): void {
     try {
+      // Планировщик (Yandex) управляет своими метками сам — игнорируем вызовы from map.tsx.
+      if ((this.currentRenderer as any)?.isYandexPlanner) return;
       (this as any).INTERNAL = (this as any).INTERNAL || {};
       (this as any).INTERNAL.externalMarkers = Array.isArray(markers) ? markers : [];
     } catch (err) {
@@ -1151,7 +1244,7 @@ export class MapContextFacade {
         const result = await this.currentRenderer?.init(containerId, cfg);
         
         // Сохраняем containerId в результат для последующей проверки
-        if (result) {
+        if (result != null) {
             (result as any).containerId = containerId;
             this.rendererMeta[ctx] = { containerId };
         }
@@ -1220,6 +1313,9 @@ export class MapContextFacade {
 
   private renderExternalMarkers(markers: any): void {
     try {
+      // Не пробрасываем внешние маркеры в YandexPlannerRenderer:
+      // планировщик управляет своими метками самостоятельно.
+      if ((this.currentRenderer as any)?.isYandexPlanner) return;
       const arr = Array.isArray(markers) ? markers.map((m: any) => this.toUnifiedMarker(m)) : [];
       if (this.currentRenderer?.renderMarkers) {
         this.currentRenderer.renderMarkers(arr);

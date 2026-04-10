@@ -76,7 +76,13 @@ const ActivePointsList: React.FC<ActivePointsListProps> = ({
         </div>
       ) : (
         <div className="space-y-1">
-          {points.map((point, index) => (
+          {(() => {
+            let activeCount = 0;
+            return points.map((point, index) => {
+              const isActive = point.isActive !== false;
+              // Нумерация совпадает с маркерами на карте: считаем только активные
+              const displayNum = isActive ? ++activeCount : null;
+            return (
             <div
               key={point.id}
               className={`px-2 py-1.5 rounded border transition-all ${
@@ -90,7 +96,7 @@ const ActivePointsList: React.FC<ActivePointsListProps> = ({
                   {/* Номер и иконка источника */}
                   <div className="flex items-center space-x-1">
                     <span className="text-xs font-medium text-gray-600 w-4">
-                      {index + 1}
+                      {displayNum ?? '—'}
                     </span>
                     {getSourceIcon(point.source)}
                   </div>
@@ -158,7 +164,9 @@ const ActivePointsList: React.FC<ActivePointsListProps> = ({
                 </div>
               </div>
             </div>
-          ))}
+            );
+          });
+        })()}
         </div>
       )}
 

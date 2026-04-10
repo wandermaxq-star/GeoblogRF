@@ -4,40 +4,30 @@
  */
 
 import React, { useState } from 'react';
-import { Lock, ChevronDown, ChevronUp, Award, Map, Camera, PenLine, MessageCircle, Flame, Zap, Star, Crown, Trophy } from 'lucide-react';
+import { Lock, ChevronDown, ChevronUp, Award, Trophy } from 'lucide-react';
 import { useGamification } from '../../contexts/GamificationContext';
 import { useAchievements } from '../../hooks/useAchievements';
 import { Achievement } from '../../types/gamification';
 import AchievementsDashboard from '../Achievements/AchievementsDashboard';
 
-/** Маппинг эмодзи-строк из бэкенда в React-иконки */
-const ICON_MAP: Record<string, React.ReactNode> = {
-  '🗺️': <Map className="w-6 h-6" />,
-  '📸': <Camera className="w-6 h-6" />,
-  '✍️': <PenLine className="w-6 h-6" />,
-  '💬': <MessageCircle className="w-6 h-6" />,
-  '🔥': <Flame className="w-6 h-6" />,
-  '⚡': <Zap className="w-6 h-6" />,
-  '⭐': <Star className="w-6 h-6" />,
-  '👑': <Crown className="w-6 h-6" />,
-};
+// shared icon resolver, keeps preview & dashboard in sync
+import { getAchievementIcon } from '../Achievements/achievementIcons';
 
-const getAchievementIcon = (iconStr: string): React.ReactNode => {
-  return ICON_MAP[iconStr] || <Trophy className="w-6 h-6" />;
-};
 
-const RARITY_COLORS: Record<string, string> = {
-  common: 'ring-gray-400/40',
-  rare: 'ring-blue-500/50',
-  epic: 'ring-purple-500/50',
-  legendary: 'ring-yellow-500/50',
-};
 
 const RARITY_GLOW: Record<string, string> = {
   common: '',
   rare: 'shadow-[0_0_8px_rgba(59,130,246,0.3)]',
   epic: 'shadow-[0_0_8px_rgba(139,92,246,0.3)]',
   legendary: 'shadow-[0_0_12px_rgba(245,158,11,0.4)]',
+};
+
+// text color for unlocked icons
+const RARITY_TEXT: Record<string, string> = {
+  common: 'text-gray-300',
+  rare: 'text-blue-400',
+  epic: 'text-purple-400',
+  legendary: 'text-yellow-400',
 };
 
 interface CentreAchievementsRowProps {
@@ -52,24 +42,26 @@ const CentreAchievementsRow: React.FC<CentreAchievementsRowProps> = ({ externalA
   const { achievements: hookAchievements } = useAchievements();
   const [expanded, setExpanded] = useState(false);
 
-  // Приоритет: external → context (API) → hook (local)
-  const achievements = externalAchievements || (ctxAchievements.length > 0 ? ctxAchievements : []);
-  // useAchievements содержит полную систему с прогрессом — используем для дашборда
-  const hasHookAchievements = hookAchievements.length > 0;
+  // Приоритет: external → hook (local) → context (API)
+  // чтобы превью и развёрнутый дашборд всегда брал одну и ту же коллекцию.
+  const achievements = externalAchievements || (hookAchievements.length > 0 ? hookAchievements : ctxAchievements);
+  const hasHookAchievements = hookAchievements.length > 0; // по прежнему нужен для условия сообщения
 
   const unlockedCount = achievements.length > 0
     ? achievements.filter(a => a.unlocked).length
     : hookAchievements.filter(a => a.unlocked).length;
   const totalCount = achievements.length > 0 ? achievements.length : hookAchievements.length;
 
-  // Для превью: покажем топ-6 достижений (заработанные первыми)
-  const previewAchievements = achievements.length > 0
-    ? [...achievements].sort((a, b) => {
-        if (a.unlocked && !b.unlocked) return -1;
-        if (!a.unlocked && b.unlocked) return 1;
-        return 0;
-      }).slice(0, 6)
-    : [];
+  // Для превью: используем массив, который затем передаётся в компонент
+  // дашборда (hookAchievements), чтобы иконки/порядок совпадали.
+  const sourceAchievements = achievements.length > 0 ? achievements : hookAchievements;
+  // показываем до 12 элементов, последние идут вторая строка
+  // отсортировать: сначала разблокированные, потом заблокированные
+  const sorted = [...sourceAchievements].sort((a, b) => {
+    if (a.unlocked === b.unlocked) return 0;
+    return a.unlocked ? -1 : 1;
+  });
+  const previewAchievements = sorted.slice(0, 12);
 
   if (achievements.length === 0 && !hasHookAchievements) {
     return (
@@ -119,24 +111,12 @@ const CentreAchievementsRow: React.FC<CentreAchievementsRowProps> = ({ externalA
       ) : (
         /* Компактные бейджи */
         <div
-          className="flex flex-wrap gap-3 overflow-y-auto flex-1"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          className="grid grid-cols-6 justify-items-center gap-2 overflow-y-auto flex-1 pt-1"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', overflowX: 'visible', paddingRight: '8px' }}
         >
           {previewAchievements.map((achievement) => (
-            <AchievementBadge key={achievement.id} achievement={achievement} />
+            <AchievementBadge key={achievement.id} achievement={achievement} compact />
           ))}
-          {achievements.length > 6 && (
-            <button
-              onClick={() => setExpanded(true)}
-              className="flex flex-col items-center gap-1.5 flex-shrink-0 group"
-            >
-              <div className="w-14 h-14 rounded-full ring-2 ring-white/20 flex items-center justify-center
-                bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
-                <span className="text-sm font-bold cg-text-muted">+{achievements.length - 6}</span>
-              </div>
-              <span className="text-[10px] cg-text-muted">Ещё</span>
-            </button>
-          )}
         </div>
       )}
     </div>
@@ -145,34 +125,60 @@ const CentreAchievementsRow: React.FC<CentreAchievementsRowProps> = ({ externalA
 
 interface AchievementBadgeProps {
   achievement: Achievement;
+  compact?: boolean; // скрывать текст под значком (для превью)
 }
 
-const AchievementBadge: React.FC<AchievementBadgeProps> = ({ achievement }) => {
-  const ringColor = RARITY_COLORS[achievement.rarity] || RARITY_COLORS.common;
+// helper replicates styles from AchievementsDashboard.AchievementCard
+function computePreviewStyles(a: Achievement) {
+  if (a.unlocked) {
+    switch (a.rarity) {
+      case 'common':
+        return { bg: 'linear-gradient(135deg, #CD7F32, #A0522D)', color: '#FFD700' };
+      case 'rare':
+        return { bg: 'linear-gradient(135deg, #C0C0C0, #A8A8A8)', color: '#FFD700' };
+      case 'epic':
+        return { bg: 'linear-gradient(135deg, #FFD700, #FFA500)', color: '#FFD700' };
+      case 'legendary':
+        return { bg: 'linear-gradient(135deg, #9932CC, #8B008B)', color: '#FFD700' };
+      default:
+        return { bg: 'linear-gradient(135deg, #FFD700, #FFA500)', color: '#FFD700' };
+    }
+  }
+  if (a.progress.current && a.progress.current > 0) {
+    return { bg: 'linear-gradient(135deg, #9CA3AF, #6B7280)', color: '#6B7280' };
+  }
+  return { bg: 'linear-gradient(135deg, #f9fafb, #f3f4f6)', color: '#9CA3AF' };
+}
+
+const AchievementBadge: React.FC<AchievementBadgeProps> = ({ achievement, compact = false }) => {
   const glow = achievement.unlocked ? (RARITY_GLOW[achievement.rarity] || '') : '';
   const isLegendary = achievement.rarity === 'legendary' && achievement.unlocked;
+  const { bg, color } = computePreviewStyles(achievement);
 
   return (
-    <div className="flex flex-col items-center gap-1.5 flex-shrink-0 group relative" title={achievement.title}>
+    <div className="flex flex-col items-center gap-1 flex-shrink-0 group relative" title={achievement.title}>
       {/* Иконка */}
       <div
-        className={`w-14 h-14 rounded-full ring-2 ${ringColor} flex items-center justify-center text-2xl
+        className={`w-10 h-10 rounded-full flex items-center justify-center text-xl
           ${achievement.unlocked ? glow : 'centre-achievement-locked'}
           ${isLegendary ? 'centre-rarity-legendary' : ''}
           transition-transform group-hover:scale-110`}
+        style={{ background: bg, color }}
       >
         {achievement.unlocked ? (
-          <span className="text-current">{getAchievementIcon(achievement.icon)}</span>
+          getAchievementIcon(achievement.icon)
         ) : (
-          <Lock className="w-5 h-5 cg-text-muted" />
+          <Lock className="w-4 h-4 cg-text-muted" />
         )}
       </div>
 
       {/* Название */}
-      <span className={`text-[10px] text-center max-w-[60px] leading-tight
-        ${achievement.unlocked ? 'cg-text-dim' : 'cg-text-muted'}`}>
-        {achievement.title}
-      </span>
+      {!compact && (
+        <span className={`text-[10px] text-center max-w-[60px] leading-tight
+          ${achievement.unlocked ? 'cg-text-dim' : 'cg-text-muted'}`}>
+          {achievement.title.split(' ')[0] /* показать только первое слово */}
+        </span>
+      )}
 
       {/* Тултип при ховере */}
       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-gray-900/90 backdrop-blur-sm rounded-lg

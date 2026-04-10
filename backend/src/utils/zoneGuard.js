@@ -113,15 +113,16 @@ function persistToDisk() {
 /**
  * Автозагрузка зон из файла при старте сервера.
  * Вызывается один раз из server.js.
- * @returns {number} количество загруженных зон
+ * Асинхронная версия — не блокирует event loop.
+ * @returns {Promise<number>} количество загруженных зон
  */
-export function loadZonesFromDisk() {
+export async function loadZonesFromDisk() {
   try {
     if (!fs.existsSync(ZONES_FILE)) {
       console.log('[ZoneGuard] Файл зон не найден — пропускаем автозагрузку');
       return 0;
     }
-    const raw = fs.readFileSync(ZONES_FILE, 'utf8');
+    const raw = await fs.promises.readFile(ZONES_FILE, 'utf8');
     const geojson = JSON.parse(raw);
     const count = addZonesFromGeoJSON(geojson, /* persist= */ false);
     console.log(`[ZoneGuard] Автозагрузка: ${count} зон из ${ZONES_FILE}`);

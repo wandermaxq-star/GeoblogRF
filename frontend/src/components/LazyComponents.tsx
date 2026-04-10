@@ -11,7 +11,7 @@ export const LazyPlanner = lazy(() => {
     throw error;
   });
 });
-export const LazyCalendar = lazy(() => import('../pages/Calendar'));
+export const LazyCalendar = lazy(() => Promise.resolve({ default: () => null })); // удалено — /calendar теперь Navigate redirect
 // Posts загружается СТАТИЧЕСКИ в PageLayer.tsx для немедленной загрузки при открытии проекта
 // export const LazyPosts = lazy(() => import('../pages/Posts')); // УДАЛЕНО: теперь статический импорт
 // Blog page removed — export harmless placeholder
@@ -21,6 +21,7 @@ export const LazyActivity = lazy(() => import('../pages/Activity'));
 export const LazyCentrePage = lazy(() => import('../pages/CentrePage'));
 export const LazyFriends = lazy(() => import('../pages/Friends'));
 export const LazyTest = lazy(() => import('../pages/Test'));
+export const LazyFavorites = lazy(() => import('../pages/Favorites'));
 // Удалён статический профиль (Анна Петрова). Используем модальный ProfilePanel.
 
 // Lazy loading для аналитики
@@ -30,6 +31,8 @@ export const LazyAnalyticsDashboard = lazy(() => import('../analytics/dashboard/
 export const LazyModerationPage = lazy(() => import('../pages/ModerationPage'));
 // Админ - подписки
 export const LazyAdminSubscriptionsPage = lazy(() => import('../pages/AdminSubscriptionsPage'));
+// Админ - главная панель
+export const LazyAdminDashboard = lazy(() => import('./Admin/AdminDashboard'));
 
 // Lazy loading для правовых страниц
 export const LazyUserAgreement = lazy(() => import('../pages/UserAgreement'));
@@ -40,7 +43,8 @@ export const LazyPrivacyPolicy = lazy(() => import('../pages/PrivacyPolicy'));
 export const LazyBlogConstructor = lazy(() => Promise.resolve({ default: () => null }));
 export const LazyBlogEditor = lazy(() => Promise.resolve({ default: () => null }));
 export const LazyBookView = lazy(() => Promise.resolve({ default: () => null }));
-export const LazyTravelCalendar = lazy(() => import('../components/TravelCalendar/TravelCalendar'));
+// TravelCalendar активно используется EventPanel/EventBottomSheet/Map — не удаляем
+// export const LazyTravelCalendar = ...  // удалено — не используется как lazy компонент
 export const LazyPerformanceMonitor = lazy(() => import('../components/PerformanceMonitor'));
 
 // Lazy loading для модерации

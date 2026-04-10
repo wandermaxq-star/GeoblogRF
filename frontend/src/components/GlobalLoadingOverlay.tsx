@@ -18,6 +18,16 @@ const badgeStyle: React.CSSProperties = {
 };
 
 export default function GlobalLoadingOverlay() {
+  // This component was originally added as a **test indicator** to show which
+  // page/window was active and if any global loading was happening.  After
+  // stabilization the overlay became noisy and is no longer needed.
+  //
+  // Keep the component around only for ad-hoc debugging in development,
+  // otherwise render nothing.
+  if (process.env.NODE_ENV !== 'development') {
+    return null;
+  }
+
   let loading = false;
   try {
     const ctx = useLoading();

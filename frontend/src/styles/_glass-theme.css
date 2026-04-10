@@ -1,7 +1,7 @@
 /* ============================================
    GLASS THEME — Единая система стекла
    
-   4 состояния:
+   2 состояния:
    ┌────────────┬──────────────────────────────┬──────────────────────────────┐
    │            │ LIGHT                        │ DARK                         │
    ├────────────┼──────────────────────────────┼──────────────────────────────┤
@@ -62,17 +62,131 @@
   --glass-shadow-hover: 0 6px 20px rgba(0, 0, 0, 0.2);
   --glass-shadow-container: 0 8px 32px rgba(0, 0, 0, 0.1);
   --region-dropdown-bg: rgba(255, 255, 255, 0.18);
+
+  /* --- Accent состояния: favorite (избранное) --- */
+  --state-favorite: #ff9800;
+  --state-favorite-glow: rgba(255, 152, 0, 0.3);
 }
+
 
 /* === DARK ===
    Зеркало light, но rgba(0,0,0,...) вместо rgba(255,255,255,...)
    Эталон: glass-dark из _content.css (панель постов)
    ============================================ */
+
+/* ------------------------------------------------------------------
+   «map-mode» всегда требует чёрный текст/иконки независимо от темы.
+   Применяется к любому узлу с классом map-mode (включая body) – это значит
+   что на картах (и в любом элементе внутри) все текстовые переменные сбрасываются
+   в чёрный, а также иконки принудительно становятся чёрными.
+   ------------------------------------------------------------------ */
+.map-mode:not(.solo-page-active),
+.page-container.map-mode:not(.solo-page-active),
+.page-layout-container.map-mode:not(.solo-page-active),
+.page-left-panel.map-mode:not(.solo-page-active),
+.page-right-panel.map-mode:not(.solo-page-active) {
+  /* only apply when not on solo pages */
+  --glass-text: #000000;
+  --glass-text-secondary: #000000;
+  --glass-text-muted: #000000;
+  --glass-card-text: #000000;
+  --glass-card-text-secondary: #000000;
+  --glass-card-text-muted: #000000;
+}
+
+/* дополнительные правила с !important на случай специфичности иеераций */
+.page-container.map-mode .glass-l1,
+.page-container.map-mode .glass-l2,
+.page-left-panel.map-mode .glass-l1,
+.page-left-panel.map-mode .glass-l2,
+.page-right-panel.map-mode .glass-l1,
+.page-right-panel.map-mode .glass-l2 {
+  color: #000000 !important;
+}
+
+/* Иконки/векторные элементы тоже чёрные в map-mode, даже если они заданы
+   напрямую (FontAwesome, lucide, svg и т.п.). Это позволяет сайдбару,
+   который может находиться внутри panel с map-mode, менять цвет автомагически. */
+.map-mode:not(.solo-page-active) svg,
+.map-mode:not(.solo-page-active) i,
+.map-mode:not(.solo-page-active) .fa,
+.page-container.map-mode:not(.solo-page-active) svg,
+.page-container.map-mode:not(.solo-page-active) i,
+.page-container.map-mode:not(.solo-page-active) .fa,
+.page-layout-container.map-mode:not(.solo-page-active) svg,
+.page-layout-container.map-mode:not(.solo-page-active) i,
+.page-layout-container.map-mode:not(.solo-page-active) .fa,
+.page-left-panel.map-mode:not(.solo-page-active) svg,
+.page-left-panel.map-mode:not(.solo-page-active) i,
+.page-left-panel.map-mode:not(.solo-page-active) .fa,
+.page-right-panel.map-mode:not(.solo-page-active) svg,
+.page-right-panel.map-mode:not(.solo-page-active) i,
+.page-right-panel.map-mode:not(.solo-page-active) .fa {
+  color: #000000 !important;
+}
+
+/* Переопределяем текстовые переменные на чёрный для map-mode только на desktop.
+   На mobile TopBar и m-glass-контролы должны оставаться theme-aware и брать цвета
+   из общей glass-системы без принудительного чёрного текста. */
+@media (min-width: 768px) {
+  body.map-mode {
+    --glass-text: #000000 !important;
+    --glass-text-secondary: rgba(0, 0, 0, 0.7) !important;
+    --glass-text-muted: rgba(0, 0, 0, 0.5) !important;
+    --glass-card-text: #000000 !important;
+    --glass-card-text-secondary: rgba(0, 0, 0, 0.7) !important;
+    --glass-card-text-muted: rgba(0, 0, 0, 0.5) !important;
+  }
+}
+
+/* solo-страницы (centre, pro, partner, admin, legal):
+   Светлая тема → чёрный текст, тёмная тема → белый текст.
+   Точно как в браузерной версии. */
+body.solo-page-active {
+  --glass-text: #000000 !important;
+  --glass-text-secondary: rgba(0, 0, 0, 0.7) !important;
+  --glass-text-muted: rgba(0, 0, 0, 0.5) !important;
+  --glass-card-text: #000000 !important;
+  --glass-card-text-secondary: rgba(0, 0, 0, 0.7) !important;
+  --glass-card-text-muted: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Тёмная тема + solo-страница → белый текст */
+[data-theme="dark"] body.solo-page-active {
+  --glass-text: #ffffff !important;
+  --glass-text-secondary: rgba(255, 255, 255, 0.85) !important;
+  --glass-text-muted: rgba(255, 255, 255, 0.6) !important;
+  --glass-card-text: #ffffff !important;
+  --glass-card-text-secondary: rgba(255, 255, 255, 0.85) !important;
+  --glass-card-text-muted: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* SVG-иконки (lucide, fa) используют currentColor — чёрные в светлой теме на desktop. */
+@media (min-width: 768px) {
+  body.map-mode .glass-l1 svg,
+  body.map-mode .glass-l2 svg,
+  body.map-mode .glass-l1-strong svg {
+    color: #000000 !important;
+  }
+}
+/* SVG solo-страниц: цвет по теме */
+body.solo-page-active .glass-l1 svg,
+body.solo-page-active .glass-l2 svg,
+body.solo-page-active .glass-l1-strong svg {
+  color: #000000 !important;
+}
+[data-theme="dark"] body.solo-page-active .glass-l1 svg,
+[data-theme="dark"] body.solo-page-active .glass-l2 svg,
+[data-theme="dark"] body.solo-page-active .glass-l1-strong svg {
+  color: #ffffff !important;
+}
+
+
 [data-theme="dark"] {
   /* --- Layer 1: контейнеры --- */
-  --glass-l1-bg: linear-gradient(135deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.05) 100%);
-  --glass-l1-border: rgba(0, 0, 0, 0.12);
-  --glass-l1-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --glass-l1-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
+  --glass-l1-border: rgba(255, 255, 255, 0.12);
+  --glass-l1-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 
   /* --- Layer 2: кнопки, инпуты --- */
   --glass-l2-bg: rgba(0, 0, 0, 0.06);
@@ -86,9 +200,9 @@
   /* --- Общие --- */
   --glass-blur: blur(10px) saturate(180%);
   --glass-blur-strong: blur(16px) saturate(180%);
-  --glass-text: rgba(0, 0, 0, 0.85);
-  --glass-text-secondary: rgba(0, 0, 0, 0.6);
-  --glass-text-muted: rgba(0, 0, 0, 0.4);
+  --glass-text: #ffffff;
+  --glass-text-secondary: rgba(255, 255, 255, 0.85);
+  --glass-text-muted: rgba(255, 255, 255, 0.6);
   --glass-card-text: #ffffff;
   --glass-card-text-secondary: rgba(255, 255, 255, 0.85);
   --glass-card-text-muted: rgba(255, 255, 255, 0.6);
@@ -109,6 +223,10 @@
   --glass-shadow-hover: 0 6px 20px rgba(0, 0, 0, 0.25);
   --glass-shadow-container: 0 8px 32px rgba(0, 0, 0, 0.15);
   --region-dropdown-bg: rgba(0, 0, 0, 0.12);
+
+  /* --- Accent состояния: favorite (избранное) --- */
+  --state-favorite: #ff9800;
+  --state-favorite-glow: rgba(255, 152, 0, 0.3);
 }
 
 /* ============================================

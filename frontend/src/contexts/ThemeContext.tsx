@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import storageService from '../services/storageService';
+import React, { createContext, useContext } from 'react';
+import { useThemeStore } from '../stores/themeStore';
 
 interface ThemeContextType {
   isDarkMode: boolean;
@@ -14,19 +14,8 @@ const ThemeContext = createContext<ThemeContextType>({
 export const useTheme = () => useContext(ThemeContext);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedTheme = storageService.getItem('theme');
-    return savedTheme === 'dark';
-  });
-
-  useEffect(() => {
-    storageService.setItem('theme', isDarkMode ? 'dark' : 'light');
-    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
-  }, [isDarkMode]);
-
-  const toggleTheme = () => {
-    setIsDarkMode(prev => !prev);
-  };
+  const { theme, toggleTheme } = useThemeStore();
+  const isDarkMode = theme === 'dark';
 
   return (
     <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>

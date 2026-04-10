@@ -27,19 +27,21 @@ import { RouteData, EnhancedRouteData } from '../types/route';
 import { getRoutes, createRoute, deleteRoute, updateRoute } from '../api/routes';
 import { useAuth } from '../contexts/AuthContext';
 import { useFavorites } from '../contexts/FavoritesContext';
+import { useFavoritesPanel } from '../hooks/useFavoritesPanel';
 import { getRouteVisualClasses, getMarkerVisualClasses } from '../utils/visualStates';
 import { activityService } from '../services/activityService';
 import ReportButton from './Moderation/ReportButton';
 
 import RouteEditor from './Planner/RouteEditor';
 import { GlassPanel, GlassHeader, GlassButton } from './Glass';
+import { usePackBuilderStore } from '../stores/packBuilderStore';
 import './FavoritesPanel.css';
 
 type GroupType = 'all' | 'category';
 
 interface FavoritesPanelProps {
-  favorites: MarkerData[];
-  routes: RouteData[];
+  favorites?: MarkerData[];
+  routes?: RouteData[];
   isVip: boolean;
   onRemove: (id: string) => void;
   onClose: () => void;
@@ -51,13 +53,15 @@ interface FavoritesPanelProps {
   onRouteToggle?: (route: RouteData, checked: boolean, mode: 'map' | 'planner') => void;
   initialTab?: 'places' | 'routes' | 'events';
   onRouteSaved?: () => void;
-  selectedMarkerIds: string[];
-  onSelectedMarkersChange: (ids: string[]) => void;
-  selectedRouteIds: string[];
-  onSelectedRouteIdsChange: (ids: string[]) => void;
+  selectedMarkerIds?: string[];
+  onSelectedMarkersChange?: (ids: string[]) => void;
+  selectedRouteIds?: string[];
+  onSelectedRouteIdsChange?: (ids: string[]) => void;
   isOpen?: boolean;
   /** Ограничить панель активной зоной карты (для двухоконного режима) */
   constrainToMapArea?: boolean;
+  /** Скрыть заголовок панели (для страницы избранного где заголовок в L1) */
+  showHeader?: boolean;
 }
 
 const groupOptions = [
@@ -69,6 +73,7 @@ const tabOptions = [
   { key: 'places', label: 'Метки', icon: <FaMapMarkerAlt /> },
   { key: 'routes', label: 'Маршруты', icon: <FaRoute /> },
   { key: 'events', label: 'События', icon: <FaCalendarAlt /> },
+  { key: 'builder', label: 'Сборщик', icon: <FaClipboardList /> },
 ];
 
 const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
@@ -91,9 +96,12 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
   onSelectedRouteIdsChange,
   isOpen,
   constrainToMapArea = false,
+  showHeader = true,
 }) => {
 
-  const [activeTab, setActiveTab] = useState<'places' | 'routes' | 'events'>(initialTab as any);
+  const [activeTab, setActiveTab] = useState<'places' | 'routes' | 'events' | 'builder'>(initialTab as any);
+  const [builderSelectedIds, setBuilderSelectedIds] = useState<string[]>([]);
+  const openPackBuilder = usePackBuilderStore((s) => s.open);
   const [groupBy, setGroupBy] = useState<GroupType>('all');
   const [search, setSearch] = useState('');
   const [routes, setRoutes] = useState<RouteData[]>([]);
@@ -105,7 +113,6 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
   
   // Состояния для работы с событиями
   const [eventSearch, setEventSearch] = useState('');
-  const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
   
   // Новые состояния для работы с маршрутами
   const [editingRoute, setEditingRoute] = useState<EnhancedRouteData | null>(null);
@@ -117,24 +124,44 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
   const navigate = useNavigate();
   const layoutContext = useLayoutState();
   const favoritesContext = useFavorites();
+  // Ref для доступа к favoritesContext в loadRoutes без включения в deps
+  // (favoritesContext меняется при каждом изменении selectedRouteIds и вызывает лишний API-запрос)
+  const favoritesContextRef = React.useRef(favoritesContext);
+  favoritesContextRef.current = favoritesContext;
 
-  // Проверяем, что все контексты загружены
-  if (!authContext || !layoutContext || !favoritesContext) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Загрузка панели избранного...</p>
-        </div>
-      </div>
-    );
-  }
+  // integrate shared favorites panel hook for toggle/select logic
+  const fbHook = useFavoritesPanel();
+  const hpFavorites = fbHook.favoritePlaces || [];
+  const hpSelectedMarkerIds = fbHook.selectedMarkerIds || [];
+  const hpSetSelectedMarkerIds = fbHook.setSelectedMarkerIds;
+  const hpSelectedRouteIds = fbHook.selectedRouteIds || [];
+  const hpSetSelectedRouteIds = fbHook.setSelectedRouteIds;
+  const hpSelectedEventIds = fbHook.selectedEventIds || [];
+  const hpSetSelectedEventIds = fbHook.setSelectedEventIds;
+  const hpMarkerToggle = fbHook.markerToggle;
+  const hpRouteToggle = fbHook.routeToggle;
+  const hpEventToggle = fbHook.eventToggle;
+  const hpHandleItemClick = fbHook.handleItemClick;
 
-  const { token } = authContext;
+  // effective values prefer hook data when available
+  const effectiveFavorites = hpFavorites.length ? hpFavorites : (favorites || []);
+  const effectiveSelectedMarkerIds = hpSelectedMarkerIds;
+  const effectiveSetSelectedMarkerIds = hpSetSelectedMarkerIds || onSelectedMarkersChange;
+  const effectiveSelectedRouteIds = hpSelectedRouteIds;
+  const effectiveSetSelectedRouteIds = hpSetSelectedRouteIds || onSelectedRouteIdsChange;
+  const effectiveSelectedEventIds = hpSelectedEventIds;
+  const effectiveSetSelectedEventIds = hpSetSelectedEventIds;
+  const effectiveMarkerToggle = hpMarkerToggle;
+  const effectiveRouteToggle = hpRouteToggle;
+  const effectiveEventToggle = hpEventToggle;
+  const effectiveHandleItemClick = hpHandleItemClick;
+
+  // безопасные деструктуризации, чтобы не ломаться до гидратации
+  const token = authContext?.token;
   // Используем store для управления панелями (если нужно)
   // const setLeftContent = useContentStore((state) => state.setLeftContent);
-  const { clearDuplicates } = favoritesContext;
-  const favoriteEvents = favoritesContext.favoriteEvents || [];
+  const { clearDuplicates } = favoritesContext || {} as any;
+  const favoriteEvents = favoritesContext?.favoriteEvents || [];
 
   // Диагностика дубликатов в избранном (c защитой от некорректных координат)
   const duplicateInfo = useMemo(() => {
@@ -143,7 +170,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
     const seenIds = new Set<string>();
     const seenCoordTitle = new Set<string>();
     let duplicates = 0;
-    for (const m of favorites) {
+    for (const m of effectiveFavorites) {
         if (!m) continue;
         const idKey = String(m.id ?? '');
         const latNum = Number((m as any).latitude);
@@ -158,13 +185,14 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
       seenIds.add(idKey);
       seenCoordTitle.add(comboKey);
     }
-    const total = favorites.length;
+    const total = effectiveFavorites.length;
     const uniqueCount = total - duplicates;
     return { hasDuplicates: duplicates > 0, duplicates, uniqueCount, total };
     } catch {
-      return { hasDuplicates: false, duplicates: 0, uniqueCount: favorites.length, total: favorites.length };
+      const total = effectiveFavorites.length;
+      return { hasDuplicates: false, duplicates: 0, uniqueCount: total, total };
     }
-  }, [favorites]);
+  }, [effectiveFavorites]);
 
   // Инициализируем маршрутами из пропсов (например, из FavoritesContext)
   // Используем useMemo для предотвращения бесконечного цикла
@@ -195,7 +223,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
     try {
       const loadedRoutes = await getRoutes();
       // Нормализуем точки маршрутов в единое поле route.points
-      const byFavId = new Map(favorites.map(m => [String(m.id), m]));
+      const byFavId = new Map(effectiveFavorites.map(m => [String(m.id), m]));
       const normalize = (r: RouteData): RouteData => {
         try {
           const rdRaw: any = (r as any).route_data;
@@ -290,14 +318,25 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
       setRoutes(finalRoutes);
 
       // Синхронизируем в FavoritesContext → Личный кабинет (автодобавление)
+      // Используем ref чтобы не включать favoritesContext в deps loadRoutes
       try {
-        const fr = (favoritesContext as any)?.favoriteRoutes || [];
-        const byIdFav = new Set(fr.map((r: any) => String(r.id)));
+        const ctx = favoritesContextRef.current;
+        const fr = (ctx as any)?.favoriteRoutes || [];
+        const byIdFav = new Map(fr.map((r: any) => [String(r.id), r]));
         finalRoutes.forEach((r: RouteData) => {
           const rid = String(r.id);
-          if (!byIdFav.has(rid)) {
-            const pts = (r.points || []).map((p: any, idx: number) => ({ id: p.id || `pt-${idx}` , latitude: Number(p.latitude ?? p?.lat ?? (Array.isArray(p?.coordinates)?p.coordinates[0]:undefined)), longitude: Number(p.longitude ?? p?.lon ?? p?.lng ?? (Array.isArray(p?.coordinates)?p.coordinates[1]:undefined)) }));
-            (favoritesContext as any)?.addFavoriteRoute?.({
+          // Извлекаем точки из r.points, затем fallback на route_data.points
+          let rawPts = r.points || [];
+          if ((!Array.isArray(rawPts) || rawPts.length === 0) && (r as any).route_data) {
+            const rd = typeof (r as any).route_data === 'string' ? JSON.parse((r as any).route_data) : (r as any).route_data;
+            if (Array.isArray(rd?.points)) rawPts = rd.points;
+          }
+          const pts = (rawPts || []).map((p: any, idx: number) => ({ id: p.id || `pt-${idx}` , latitude: Number(p.latitude ?? p?.lat ?? (Array.isArray(p?.coordinates)?p.coordinates[0]:undefined)), longitude: Number(p.longitude ?? p?.lon ?? p?.lng ?? (Array.isArray(p?.coordinates)?p.coordinates[1]:undefined)) }));
+
+          const existing = byIdFav.get(rid);
+          if (!existing) {
+            // Новый маршрут — добавляем
+            (ctx as any)?.addFavoriteRoute?.({
               id: rid,
               title: r.title || 'Без названия',
               distance: 0,
@@ -312,7 +351,16 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
               created_at: r.createdAt || new Date().toISOString(),
               updated_at: r.updatedAt || new Date().toISOString(),
               points: pts,
+              route_data: (r as any).route_data || null,
+              waypoints: (r as any).waypoints || [],
               categories: { personal: true, post: false, event: false }
+            });
+          } else if ((!(existing as any).points || (existing as any).points.length === 0) && pts.length > 0) {
+            // Существующий маршрут без точек — обновляем данные
+            (ctx as any)?.updateFavoriteRoute?.(rid, {
+              points: pts,
+              route_data: (r as any).route_data || null,
+              waypoints: (r as any).waypoints || [],
             });
           }
         });
@@ -323,7 +371,9 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
     } finally {
       setLoadingRoutes(false);
     }
-  }, [token, favorites, routesFromPropsMemoized, favoritesContext]);
+  // ВАЖНО: favoritesContext убран из deps — используем favoritesContextRef.
+  // Иначе каждый клик чекбокса (selectedRouteIds) пересоздаёт loadRoutes и вызывает лишний API-запрос.
+  }, [token, favorites, routesFromPropsMemoized]);
 
   // Загрузка маршрутов при открытии вкладки 'Маршруты'
   useEffect(() => {
@@ -403,7 +453,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
       await deleteRoute(id, token);
       // Локально убираем из списка маршрутов и из выбранных
       setRoutes(prev => prev.filter(r => r.id !== id));
-      onSelectedRouteIdsChange(selectedRouteIds.filter(rid => rid !== id));
+      effectiveSetSelectedRouteIds(effectiveSelectedRouteIds.filter(rid => rid !== id));
       // Синхронизируем с избранным профиля, если там хранились копии
       try { (favoritesContext as any).removeFavoriteRoute?.(id); } catch {}
       if (onRouteSaved) onRouteSaved();
@@ -428,7 +478,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
         if (Math.abs(la) < 0.0001 && Math.abs(lo) < 0.0001) return false;
         return true;
       };
-      const toRemove = favorites.filter(m => isBadTitle((m as any).title) || !isValidCoord((m as any).latitude, (m as any).longitude));
+      const toRemove = effectiveFavorites.filter(m => isBadTitle((m as any).title) || !isValidCoord((m as any).latitude, (m as any).longitude));
       if (toRemove.length === 0) {
         alert('Битых технических меток не найдено');
         return;
@@ -440,8 +490,8 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
       } catch {}
       // Снять выделение удалённых
       try {
-        const remaining = selectedMarkerIds.filter(id => !toRemove.some(m => m.id === id));
-        onSelectedMarkersChange(remaining);
+        const remaining = effectiveSelectedMarkerIds.filter(id => !toRemove.some(m => m.id === id));
+        effectiveSetSelectedMarkerIds(remaining);
       } catch {}
       alert(`Удалено ${toRemove.length} меток`);
     } catch (e) {
@@ -505,17 +555,17 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
 
   // Создание нового маршрута из выбранных меток
   const handleCreateRoute = async () => {
-    if (selectedMarkerIds.length === 0 || !token) return;
+    if (effectiveSelectedMarkerIds.length === 0 || !token) return;
     
     try {
       setLoadingRoutes(true);
       
       // Получаем данные выбранных меток
-      const selectedMarkers = favorites.filter(marker => selectedMarkerIds.includes(marker.id));
+      const selectedMarkers = effectiveFavorites.filter(marker => effectiveSelectedMarkerIds.includes(marker.id));
       
       // Создаем маршрут с расширенными данными
       const routeData = {
-        title: `Маршрут из ${selectedMarkerIds.length} мест`,
+        title: `Маршрут из ${effectiveSelectedMarkerIds.length} мест`,
         description: `Автоматически созданный маршрут: ${selectedMarkers.map(m => m.title || '').join(', ')}`,
         route_data: {
           points: selectedMarkers.map(marker => ({
@@ -537,7 +587,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
             isPublic: true
           }
         },
-        waypoints: selectedMarkerIds.map((id, index) => ({
+        waypoints: effectiveSelectedMarkerIds.map((id, index) => ({
           marker_id: id,
           order_index: index
         }))
@@ -552,7 +602,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
         newRoute.id,
         {
           title: newRoute.title,
-          pointsCount: selectedMarkerIds.length,
+          pointsCount: effectiveSelectedMarkerIds.length,
           markers: selectedMarkers.map(m => ({ id: m.id, title: m.title }))
         }
       );
@@ -561,7 +611,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
       // Убираем добавление в избранное здесь; добавляем после выбора категории в Planner.handleCategoryConfirm
       
       if (onRouteSaved) onRouteSaved();
-      onSelectedMarkersChange([]);
+      effectiveSetSelectedMarkerIds([]);
       
       // Показываем уведомление об успехе
       alert(`✅ Маршрут "${newRoute.title || 'Без названия'}" успешно создан!`);
@@ -608,7 +658,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
     }
     // Фолбэк: восстанавливаем точки из waypoints по избранным меткам
     if ((!Array.isArray(derivedPoints) || derivedPoints.length === 0) && Array.isArray(route.waypoints) && route.waypoints.length > 0) {
-      const markersById = new Map(favorites.map(m => [m.id, m]));
+      const markersById = new Map(effectiveFavorites.map(m => [m.id, m]));
       derivedPoints = route.waypoints
         .map(wp => markersById.get(wp.marker_id))
         .filter(Boolean)
@@ -663,7 +713,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
 
     // Фиксация пропущенных координат по избранным меткам и ID
     try {
-      const byFavId = new Map(favorites.map(m => [m.id, m]));
+      const byFavId = new Map(effectiveFavorites.map(m => [m.id, m]));
       derivedPoints = (derivedPoints || []).map((p: any, idx: number) => {
         const hasLat = Number.isFinite(Number(p?.latitude));
         const hasLon = Number.isFinite(Number(p?.longitude));
@@ -808,8 +858,8 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
   };
 
   // Группировка меток
-  const groupedMarkers = useMemo(() => {
-    let filtered = favorites;
+  const groupedMarkers = useMemo<Record<string, MarkerData[]>>(() => {
+    let filtered = effectiveFavorites;
     if (search.trim()) {
       filtered = filtered.filter(m => (m.title || '').toLowerCase().includes(search.trim().toLowerCase()));
     }
@@ -823,13 +873,13 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
       }, {} as Record<string, MarkerData[]>);
     }
     return { 'Все': filtered };
-  }, [favorites, groupBy, search]);
+  }, [effectiveFavorites, groupBy, search]);
 
   const handleSelect = (id: string) => {
-    const newIds = selectedMarkerIds.includes(id)
-      ? selectedMarkerIds.filter(i => i !== id)
-      : [...selectedMarkerIds, id];
-    onSelectedMarkersChange(newIds);
+    const newIds = effectiveSelectedMarkerIds.includes(id)
+      ? effectiveSelectedMarkerIds.filter(i => i !== id)
+      : [...effectiveSelectedMarkerIds, id];
+    effectiveSetSelectedMarkerIds(newIds);
     try { localStorage.setItem('favorites-selected-ids', JSON.stringify(newIds)); } catch {}
   };
 
@@ -838,7 +888,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
   // Не накапливаем призрачные ID.
   useEffect(() => {
     if (!isOpen) return;
-    const existingIds = new Set(favorites.map(f => f.id));
+    const existingIds = new Set(effectiveFavorites.map(f => f.id));
     try {
       const raw = localStorage.getItem('favorites-selected-ids');
       const stored: string[] = raw ? JSON.parse(raw) : [];
@@ -847,16 +897,16 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
         const validStored = stored.filter(id => existingIds.has(id));
         // Сохраняем очищенный список обратно
         localStorage.setItem('favorites-selected-ids', JSON.stringify(validStored));
-        onSelectedMarkersChange(validStored);
+        effectiveSetSelectedMarkerIds(validStored);
       }
     } catch {
-      onSelectedMarkersChange([]);
+      effectiveSetSelectedMarkerIds([]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const handleBuildRouteClick = () => {
-    onBuildRoute(selectedMarkerIds);
+    onBuildRoute(effectiveSelectedMarkerIds);
     if (mode === 'map') {
       // Только навигация: панели не трогаем, пусть ими управляет сайдбар
       navigate('/planner');
@@ -864,12 +914,12 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
   };
 
   const handleMarkersAddToBlog = () => {
-    if (selectedMarkerIds.length === 0) {
+    if (effectiveSelectedMarkerIds.length === 0) {
       alert('Выберите метки для добавления в блог');
       return;
     }
     try {
-      const selectedMarkers = favorites.filter(m => selectedMarkerIds.includes(m.id));
+      const selectedMarkers = effectiveFavorites.filter(m => effectiveSelectedMarkerIds.includes(m.id));
       localStorage.setItem('post-insert-markers', JSON.stringify(selectedMarkers));
       navigate('/posts');
     } catch {
@@ -878,15 +928,15 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
   };
 
   const handleMoveToPlanner = () => {
-    if (selectedMarkerIds.length === 0) {
+    if (effectiveSelectedMarkerIds.length === 0) {
       alert('Выберите метки для планировщика');
       return;
     }
     try {
       // Синхронизируем выбор в глобальном контексте перед переходом
-      try { onSelectedMarkersChange(Array.from(new Set(selectedMarkerIds))); } catch {}
+      try { effectiveSetSelectedMarkerIds(Array.from(new Set(effectiveSelectedMarkerIds))); } catch {}
       // Передаём выбранные ID наверх (Map/Planner свяжут точки через контекст RoutePlanner)
-      onMoveToPlanner(selectedMarkerIds);
+      onMoveToPlanner(effectiveSelectedMarkerIds);
       // Переход в планировщик - Sidebar сам откроет панель при навигации
       navigate('/planner');
     } catch {
@@ -896,14 +946,14 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
 
   const handleMoveToMap = () => {
     if (!onMoveToMap) return;
-    if (selectedMarkerIds.length === 0) {
+    if (effectiveSelectedMarkerIds.length === 0) {
       alert('Выберите метки для карты');
       return;
     }
     try {
       localStorage.setItem('ui-favorites-open', '1');
     } catch {}
-    onMoveToMap(selectedMarkerIds);
+    onMoveToMap(effectiveSelectedMarkerIds);
   };
 
   // Функции экспорта и переупорядочивания удалены - теперь FavoritesPanel это чистый селектор
@@ -942,7 +992,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
   
   // Выбор/снятие выбора события
   const handleSelectEvent = (eventId: string) => {
-    setSelectedEventIds(prev => 
+    effectiveSetSelectedEventIds(prev => 
       prev.includes(eventId) 
         ? prev.filter(id => id !== eventId)
         : [...prev, eventId]
@@ -951,7 +1001,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
 
   // Добавление событий в блог
   const handleEventAddToBlog = () => {
-    if (selectedEventIds.length === 0) {
+    if (effectiveSelectedEventIds.length === 0) {
       alert('Выберите события для добавления в блог');
       return;
     }
@@ -959,7 +1009,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
     try {
       // Получаем выбранные события
       const selectedEvents = filteredEvents.filter((event: any) => 
-        selectedEventIds.includes(event.id)
+        effectiveSelectedEventIds.includes(event.id)
       );
 
       // Сохраняем в localStorage для передачи в блог
@@ -969,7 +1019,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
       navigate('/posts');
       
       // Очищаем выбор
-      setSelectedEventIds([]);
+      effectiveSetSelectedEventIds([]);
       
       alert(`✅ ${selectedEvents.length} событий добавлено в блог!`);
     } catch (error) {
@@ -979,7 +1029,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
 
   // Создание поста Q&A из событий
   const handleEventCreatePost = () => {
-    if (selectedEventIds.length === 0) {
+    if (effectiveSelectedEventIds.length === 0) {
       alert('Выберите события для создания поста');
       return;
     }
@@ -987,7 +1037,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
     try {
       // Получаем выбранные события
       const selectedEvents = filteredEvents.filter((event: any) => 
-        selectedEventIds.includes(event.id)
+        effectiveSelectedEventIds.includes(event.id)
       );
 
       // Формируем данные для поста
@@ -1005,7 +1055,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
       navigate('/posts');
       
       // Очищаем выбор
-      setSelectedEventIds([]);
+      effectiveSetSelectedEventIds([]);
       
       alert(`✅ Пост Q&A создан для ${selectedEvents.length} событий!`);
     } catch (error) {
@@ -1015,7 +1065,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
 
   // Поделиться событиями
   const handleEventShare = () => {
-    if (selectedEventIds.length === 0) {
+    if (effectiveSelectedEventIds.length === 0) {
       alert('Выберите события для публикации');
       return;
     }
@@ -1023,7 +1073,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
     try {
       // Получаем выбранные события
       const selectedEvents = filteredEvents.filter((event: any) => 
-        selectedEventIds.includes(event.id)
+        effectiveSelectedEventIds.includes(event.id)
       );
 
       // Формируем текст для публикации
@@ -1036,7 +1086,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
       // Копируем в буфер обмена
       navigator.clipboard.writeText(fullShareText).then(() => {
         alert('🔗 Информация о событиях скопирована в буфер обмена!');
-        setSelectedEventIds([]);
+        effectiveSetSelectedEventIds([]);
       }).catch(() => {
         // Fallback для старых браузеров
         const textArea = document.createElement('textarea');
@@ -1046,7 +1096,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
         document.execCommand('copy');
         document.body.removeChild(textArea);
         alert('🔗 Информация о событиях скопирована в буфер обмена!');
-        setSelectedEventIds([]);
+        effectiveSetSelectedEventIds([]);
       });
     } catch (error) {
       alert('❌ Ошибка при подготовке данных для публикации');
@@ -1074,24 +1124,38 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
     }
   }, [activeTab]);
 
+  // показываем спиннер пока контексты не готовы — но все хуки уже зарегистрированы
+  if (!authContext || !layoutContext || !favoritesContext || !favoritesContext.isHydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Загрузка панели избранного...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <GlassPanel
       isOpen={isOpen !== false}
       onClose={onClose}
       position="right"
-      width="400px"
+      width="100%"
       closeOnOverlayClick={true}
       showCloseButton={false}
       className="favorites-panel-glass"
       constrainToMapArea={constrainToMapArea}
     >
-      {/* Заголовок в стиле стекла */}
-      <GlassHeader
-        title="Избранное"
-        count={favorites.length}
-        onClose={onClose}
-        showCloseButton={true}
-      />
+      {/* Заголовок в стиле стекла - скрыт на странице избранного (L1 заголовок в page-main-panel) */}
+      {showHeader !== false && (
+        <GlassHeader
+          title="Избранное"
+          count={effectiveFavorites.length}
+          onClose={onClose}
+          showCloseButton={true}
+        />
+      )}
 
       {/* Вкладки в стиле стекла */}
       <div className="favorites-tabs-glass" style={{ flexShrink: 0, display: 'flex', gap: '8px', padding: '16px 24px', borderBottom: '1px solid rgba(255, 255, 255, 0.2)' }}>
@@ -1173,8 +1237,8 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
                   <button 
                     className="selection-btn"
                     onClick={() => {
-                      const allIds = favorites.map(m => m.id);
-                      onSelectedMarkersChange(allIds);
+                      const allIds = effectiveFavorites.map(m => m.id);
+                      effectiveSetSelectedMarkerIds(allIds);
                       try { localStorage.setItem('favorites-selected-ids', JSON.stringify(allIds)); } catch {}
                     }}
                     title="Выбрать все метки"
@@ -1184,7 +1248,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
                   <button 
                     className="selection-btn"
                     onClick={() => {
-                      onSelectedMarkersChange([]);
+                      effectiveSetSelectedMarkerIds([]);
                       try { localStorage.setItem('favorites-selected-ids', '[]'); } catch {}
                     }}
                     title="Снять выбор со всех меток"
@@ -1204,18 +1268,18 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
             
             {/* Список меток - занимает всё оставшееся место */}
             <div className="markers-list-container">
-                {favorites.length === 0 ? (
+                {effectiveFavorites.length === 0 ? (
                   <div className="empty-state">
                     <p>Нет избранных меток</p>
           </div>
                 ) : (
                   <div className="markers-list">
-                    {Object.entries(groupedMarkers).map(([groupName, groupMarkers]) => (
+                    {Object.entries(groupedMarkers as Record<string, MarkerData[]>).map(([groupName, groupMarkers]) => (
                       <div key={groupName} className="markers-group">
                         {groupBy === 'category' && (
                           <div className="group-title">{groupName}</div>
                         )}
-                        {groupMarkers.map(marker => {
+                        {groupMarkers.map((marker: MarkerData) => {
                           // Определяем визуальные состояния метки
                           const markerVisualClasses = getMarkerVisualClasses({
                             isFavorite: true,
@@ -1223,7 +1287,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
                             usedInBlogs: (marker as any).used_in_blogs
                           });
                           
-                          const isSelected = selectedMarkerIds.includes(marker.id);
+                          const isSelected = effectiveSelectedMarkerIds.includes(marker.id);
                           return (
                           <div key={marker.id} className={`marker-item ${isSelected ? 'selected' : ''}`}>
                             <label className="marker-checkbox">
@@ -1268,6 +1332,100 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
         </>
       )}
 
+      {activeTab === 'builder' && (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '16px 16px 0', overflowY: 'auto' }}>
+          <div style={{ marginBottom: 12, color: 'rgba(255,255,255,0.55)', fontSize: 13, lineHeight: 1.5 }}>
+            Отметьте метки избранного, которые войдут в пак.
+            Сборщик построит маршрут через них автоматически.
+          </div>
+
+          {effectiveFavorites.length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 13, marginTop: 32 }}>
+              У вас пока нет избранных меток.
+            </div>
+          ) : (
+            effectiveFavorites.map(m => (
+              <div
+                key={m.id}
+                onClick={() => setBuilderSelectedIds(prev =>
+                  prev.includes(m.id) ? prev.filter(id => id !== m.id) : [...prev, m.id]
+                )}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 12px', borderRadius: 10, marginBottom: 6, cursor: 'pointer',
+                  background: builderSelectedIds.includes(m.id)
+                    ? 'rgba(34,211,238,0.15)'
+                    : 'rgba(255,255,255,0.04)',
+                  border: builderSelectedIds.includes(m.id)
+                    ? '1px solid rgba(34,211,238,0.5)'
+                    : '1px solid rgba(255,255,255,0.08)',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <div style={{
+                  width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                  border: '2px solid',
+                  borderColor: builderSelectedIds.includes(m.id) ? '#22d3ee' : 'rgba(255,255,255,0.25)',
+                  background: builderSelectedIds.includes(m.id) ? '#22d3ee' : 'transparent',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, color: '#0f172a', fontWeight: 700,
+                }}>
+                  {builderSelectedIds.includes(m.id) ? '✓' : ''}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {m.title}
+                  </div>
+                  {m.address && (
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {m.address}
+                    </div>
+                  )}
+                </div>
+                {/* Неоновый пин-индикатор */}
+                <div style={{
+                  width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+                  background: builderSelectedIds.includes(m.id)
+                    ? 'radial-gradient(circle, #22d3ee 30%, rgba(34,211,238,0.2) 70%)'
+                    : 'rgba(255,255,255,0.15)',
+                  boxShadow: builderSelectedIds.includes(m.id) ? '0 0 8px #22d3ee' : 'none',
+                  transition: 'all 0.2s',
+                }} />
+              </div>
+            ))
+          )}
+
+          <div style={{ position: 'sticky', bottom: 0, paddingTop: 12, paddingBottom: 16, background: 'var(--glass-bg, rgba(15,23,42,0.95))' }}>
+            <div style={{ marginBottom: 8, fontSize: 12, color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>
+              {builderSelectedIds.length < 2
+                ? `Выберите минимум 2 точки (${builderSelectedIds.length}\u00a0/\u00a02)`
+                : `Выбрано: ${builderSelectedIds.length} меток`
+              }
+            </div>
+            <button
+              disabled={builderSelectedIds.length < 2}
+              onClick={() => {
+                const selected = effectiveFavorites.filter(m => builderSelectedIds.includes(m.id));
+                openPackBuilder({ sourceMarkers: selected });
+              }}
+              style={{
+                width: '100%', padding: '12px 0', borderRadius: 12, border: 'none',
+                fontFamily: 'inherit', fontWeight: 700, fontSize: 15,
+                cursor: builderSelectedIds.length < 2 ? 'not-allowed' : 'pointer',
+                background: builderSelectedIds.length < 2
+                  ? 'rgba(255,255,255,0.08)'
+                  : 'linear-gradient(135deg, #22d3ee, #a78bfa)',
+                color: builderSelectedIds.length < 2 ? 'rgba(255,255,255,0.3)' : '#fff',
+                boxShadow: builderSelectedIds.length >= 2 ? '0 0 24px rgba(34,211,238,0.4)' : 'none',
+                transition: 'all 0.3s',
+              }}
+            >
+              ✨ Собрать маршрут
+            </button>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'events' && (
         <>
           {/* Простой список событий с поиском */}
@@ -1291,7 +1449,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
                 ) : (
                   <div className="markers-list">
                     {filteredEvents.map((ev: any) => {
-                      const isSelected = selectedEventIds.includes(ev.id);
+                      const isSelected = effectiveSelectedEventIds.includes(ev.id);
                       return (
                         <div key={ev.id} className={`event-item ${isSelected ? 'selected' : ''}`}>
                           <label className="marker-checkbox">
@@ -1396,7 +1554,7 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
                         ? route.points
                         : (Array.isArray(rd.points) ? rd.points : []);
                       if ((!Array.isArray(effectivePoints) || effectivePoints.length === 0) && Array.isArray(route.waypoints) && route.waypoints.length > 0) {
-                        const markersById = new Map(favorites.map(m => [m.id, m]));
+                        const markersById = new Map(effectiveFavorites.map(m => [m.id, m]));
                         effectivePoints = route.waypoints
                           .map(wp => markersById.get(wp.marker_id))
                           .filter(Boolean)
@@ -1464,10 +1622,18 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
                           <label className="route-checkbox-top">
                           <input
                             type="checkbox"
-                            checked={selectedRouteIds.includes(route.id)}
+                            checked={effectiveSelectedRouteIds.includes(route.id)}
                             onChange={(e) => {
                               const checked = e.target.checked;
-                                try { onRouteToggle && onRouteToggle(route, checked, mode); } catch {}
+                              // КРИТИЧНО: Сначала обновляем глобальное состояние selectedRouteIds
+                              // Это обеспечит синхронизацию с Map/Planner страницами
+                              effectiveSetSelectedRouteIds(
+                                checked 
+                                  ? [...effectiveSelectedRouteIds, route.id]
+                                  : effectiveSelectedRouteIds.filter(id => id !== route.id)
+                              );
+                              // Затем вызываем кастомный обработчик если есть
+                              try { onRouteToggle && onRouteToggle(route, checked, mode); } catch {}
                             }}
                           />
                           <span className="checkmark"></span>
@@ -1517,8 +1683,8 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
         <div className="selection-info">
           {activeTab === 'places' && (
             <div className="info-text">
-              {selectedMarkerIds.length > 0 ? (
-                <>✓ Выбрано {selectedMarkerIds.length} меток. Используйте нижние действия.</>
+              {effectiveSelectedMarkerIds.length > 0 ? (
+                <>✓ Выбрано {effectiveSelectedMarkerIds.length} меток. Используйте нижние действия.</>
               ) : (
                 <>Выберите метки для использования в других разделах проекта</>
               )}
@@ -1527,16 +1693,16 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
           {activeTab === 'routes' && (
             <>
               <div className="info-text">
-                {selectedRouteIds.length > 0 && (
-                  <>✓ Выбрано {selectedRouteIds.length} маршрутов. Используйте нижние действия.</>
+                {effectiveSelectedRouteIds.length > 0 && (
+                  <>✓ Выбрано {effectiveSelectedRouteIds.length} маршрутов. Используйте нижние действия.</>
                 )}
             </div>
             </>
           )}
           {activeTab === 'events' && (
             <div className="info-text">
-              {selectedEventIds.length > 0 ? (
-                <>✓ Выбрано {selectedEventIds.length} событий</>
+              {effectiveSelectedEventIds.length > 0 ? (
+                <>✓ Выбрано {effectiveSelectedEventIds.length} событий</>
               ) : (
                 <>События для добавления в контент</>
           )}
@@ -1548,12 +1714,12 @@ const FavoritesPanel: React.FC<FavoritesPanelProps> = ({
         {activeTab === 'places' && (
           <div className="footer-actions" style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
             {mode === 'map' && (
-              <button className="action-btn secondary" onClick={handleMoveToPlanner} disabled={selectedMarkerIds.length === 0}>
+              <button className="action-btn secondary" onClick={handleMoveToPlanner} disabled={effectiveSelectedMarkerIds.length === 0}>
                 <FaCompass style={{ marginRight: 6 }} /> Добавить в маршрут
                       </button>
             )}
             {mode === 'planner' && (
-              <button className="action-btn secondary" onClick={handleMoveToMap} disabled={selectedMarkerIds.length === 0}>
+              <button className="action-btn secondary" onClick={handleMoveToMap} disabled={effectiveSelectedMarkerIds.length === 0}>
                 <FaCompass style={{ marginRight: 6 }} /> На карту
                       </button>
             )}

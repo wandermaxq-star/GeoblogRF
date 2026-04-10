@@ -573,11 +573,12 @@ export const getFeatures = async (req, res) => {
     });
   } catch (error) {
     logger.error('getFeatures error:', error);
-    res.status(500).json({ 
+    res.status(200).json({ 
       error: 'Failed to get features',
       features: getActiveFeatures(1), // Fallback к этапу 1
       stage: 1,
       userCount: 0,
+      fallback: true,
     });
   }
 };
@@ -849,7 +850,7 @@ export const getUserProfile = async (req, res) => {
     ).catch(() => ({ rows: [{ count: 0 }] }));
 
     const routesCount = await pool.query(
-      'SELECT COUNT(*) FROM routes WHERE user_id = $1',
+      'SELECT COUNT(*) FROM travel_routes WHERE creator_id = $1',
       [userId]
     ).catch(() => ({ rows: [{ count: 0 }] }));
 

@@ -36,7 +36,7 @@ export default defineConfig({
   base: './',
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: false,
     minify: 'esbuild',
     target: 'esnext',
     chunkSizeWarningLimit: 600,

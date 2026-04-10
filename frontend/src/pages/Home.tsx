@@ -22,11 +22,10 @@ const Home: React.FC = () => {
     );
   }
 
-  // Используем store для управления панелями (если нужно)
-  // const setLeftContent = useContentStore((state) => state.setLeftContent);
+  const setRightContent = useContentStore((state) => state.setRightContent);
+  const setLeftContent = useContentStore((state) => state.setLeftContent);
 
   const handleNavigateToMap = () => {
-    // Панели управляются через сайдбар; здесь только навигация
     navigate('/map');
   };
 
@@ -35,7 +34,9 @@ const Home: React.FC = () => {
   };
 
   const handleNavigateToCalendar = () => {
-    navigate('/calendar');
+    setLeftContent('map');
+    setRightContent('calendar');
+    navigate('/map');
   };
 
   return (

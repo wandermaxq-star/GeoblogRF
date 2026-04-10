@@ -85,6 +85,16 @@ const STORE_FAVORITES = 'favorites';
 class StorageService {
   private db: IDBDatabase | null = null;
 
+  private normalizeFavoriteItem(item: any) {
+    if (item && (item.id !== undefined && item.id !== null && String(item.id).trim() !== '')) {
+      return item;
+    }
+    return {
+      ...item,
+      id: crypto.randomUUID(),
+    };
+  }
+
   async init(): Promise<void> {
     if (this.db) return;
     this.db = await new Promise((resolve, reject) => {
@@ -109,7 +119,7 @@ class StorageService {
     await this.init();
     return new Promise((res, rej) => {
       const store = this.txn(STORE_FAVORITES, 'readwrite');
-      const req = store.put(item);
+      const req = store.put(this.normalizeFavoriteItem(item));
       req.onsuccess = () => res();
       req.onerror = () => rej(req.error);
     });
@@ -180,7 +190,7 @@ class StorageService {
       const store = tx.objectStore(STORE_FAVORITES);
       const clearReq = store.clear();
       clearReq.onsuccess = () => {
-        for (const it of items) store.put(it);
+        for (const it of items) store.put(this.normalizeFavoriteItem(it));
       };
       tx.oncomplete = () => res();
       tx.onerror = () => rej(tx.error);

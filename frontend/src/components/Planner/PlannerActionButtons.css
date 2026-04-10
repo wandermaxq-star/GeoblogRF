@@ -5,25 +5,20 @@
   top: 50%;
   transform: translateY(-50%);
   z-index: 1200;
-  
-  /* Fallback для старых браузеров */
-  background: rgba(255, 255, 255, 0.1);
-  
-  /* Стеклянный эффект */
-  backdrop-filter: blur(10px) saturate(180%);
-  -webkit-backdrop-filter: blur(10px) saturate(180%); /* Для Safari */
-  
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+
+  background: var(--glass-l1-bg);
+  border: 1px solid var(--glass-l1-border);
+  border-radius: var(--glass-radius);
+  box-shadow: var(--glass-l1-shadow);
   padding: 12px 8px;
-  
-  /* Градиент для читаемости */
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    rgba(255, 255, 255, 0.05) 100%
-  );
+
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
   
   /* Анимация появления */
   animation: slideInFromRight 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -81,10 +76,10 @@
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px) saturate(180%);
-  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border: 1px solid var(--glass-l2-border);
+  background: var(--glass-l2-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   
   display: flex;
   align-items: center;
@@ -93,7 +88,7 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   
   /* Иконка */
-  color: rgba(0, 0, 0, 0.8);
+  color: var(--glass-text);
   font-size: 20px;
   
   /* Тень */
@@ -273,4 +268,160 @@
     display: none; /* Мобильная версия использует свой интерфейс */
   }
 }
+
+/* ─── Разделитель между кнопкой режима и остальными ─── */
+.planner-action-divider {
+  width: 36px;
+  height: 1px;
+  background: var(--glass-l2-border);
+  align-self: center;
+  border-radius: 1px;
+}
+
+/* ─── Индикатор текущего режима (цветная точка на кнопке) ─── */
+.planner-route-mode-badge {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  pointer-events: none;
+}
+
+/* ─── Поповер режима маршрута ─── */
+.planner-route-popover {
+  position: absolute;
+  right: calc(100% + 14px);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1400;
+
+  background: var(--glass-l1-bg);
+  backdrop-filter: var(--glass-blur-strong);
+  -webkit-backdrop-filter: var(--glass-blur-strong);
+  border: 1px solid var(--glass-l1-border);
+  box-shadow: var(--glass-l1-shadow), 0 8px 32px rgba(0,0,0,0.18);
+  border-radius: 14px;
+  padding: 8px;
+  min-width: 210px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  animation: popoverSlideIn 0.18s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Стрелка поповера */
+.planner-route-popover::after {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 7px solid transparent;
+  border-left-color: var(--glass-l1-border);
+}
+
+@keyframes popoverSlideIn {
+  from { opacity: 0; transform: translateY(-50%) translateX(8px); }
+  to   { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
+
+.planner-route-popover-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--glass-text-secondary);
+  padding: 2px 8px 6px;
+  border-bottom: 1px solid var(--glass-l2-border);
+  margin-bottom: 2px;
+}
+
+.planner-route-popover-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  text-align: left;
+}
+
+.planner-route-popover-option:hover {
+  background: var(--glass-l2-bg-hover);
+}
+
+.planner-route-popover-option.selected {
+  background: var(--glass-l2-bg-active);
+  border-color: var(--glass-l2-border-active);
+}
+
+.planner-route-popover-option:focus {
+  outline: 2px solid rgba(59, 130, 246, 0.5);
+  outline-offset: 2px;
+}
+
+.planner-route-popover-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.planner-route-popover-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.planner-route-popover-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--glass-text);
+  line-height: 1.3;
+}
+
+.planner-route-popover-hint {
+  font-size: 11px;
+  color: var(--glass-text-secondary);
+  line-height: 1.3;
+}
+
+.planner-route-popover-check {
+  color: #22c55e;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* Тёмная тема поповера */
+.planner-route-popover.dark {
+  background: linear-gradient(135deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.10) 100%);
+  border-color: rgba(255,255,255,0.08);
+}
+
+.planner-route-popover.dark::after {
+  border-left-color: rgba(255,255,255,0.08);
+}
+
+.planner-route-popover-option.dark:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+.planner-route-popover-option.dark.selected {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
 

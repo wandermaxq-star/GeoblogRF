@@ -520,8 +520,13 @@ const SimpleActivityFeedComponent: React.FC<SimpleActivityFeedProps> = ({
     );
   }, []);
 
+  // Используем ref чтобы не пересоздавать loadActivities при каждом изменении activities
+  const activitiesLengthRef = React.useRef(0);
+
   const loadActivities = useCallback(async (reset = false) => {
-    // Убираем проверку user - гости тоже могут видеть активность
+    // КРИТИЧНО: Гости видят только моковые данные, API требует авторизацию
+    const useMockOnly = !user;
+    
     try {
       if (reset) {
         setLoading(true);
@@ -530,7 +535,19 @@ const SimpleActivityFeedComponent: React.FC<SimpleActivityFeedProps> = ({
         setLoadingMore(true);
       }
 
-      const offset = reset ? 0 : activities.length;
+      // Для гостей показываем только моковые данные
+      if (useMockOnly) {
+        if (reset) {
+          setActivities(filteredMock);
+        }
+        setHasMore(false);
+        setLoading(false);
+        setLoadingMore(false);
+        return;
+      }
+
+      // Используем ref вместо activities.length чтобы избежать пересоздания функции
+      const offset = reset ? 0 : activitiesLengthRef.current;
       const limit = filters.limit ?? 20;
       const currentFilters = { ...filters, offset, limit };
 
@@ -538,7 +555,7 @@ const SimpleActivityFeedComponent: React.FC<SimpleActivityFeedProps> = ({
       try {
         const response = await activityService.getActivityFeed(currentFilters);
         // Фильтруем blog/chat из реальных данных тоже
-        realData = (response.data || []).filter(a =>
+        realData = (response.data || []).filter((a: ActivityItem) =>
           !a.activity_type.startsWith('blog_') &&
           !a.activity_type.startsWith('chat_') &&
           a.activity_type !== 'post_published'
@@ -552,23 +569,29 @@ const SimpleActivityFeedComponent: React.FC<SimpleActivityFeedProps> = ({
 
       if (reset) {
         setActivities(dataToUse);
+        activitiesLengthRef.current = dataToUse.length;
       } else {
-        setActivities(prev => [...prev, ...dataToUse]);
+        setActivities(prev => {
+          const merged = [...prev, ...dataToUse];
+          activitiesLengthRef.current = merged.length;
+          return merged;
+        });
       }
       
       setHasMore(realData.length === currentFilters.limit);
     } catch (err) {
       console.error('Ошибка загрузки активности:', err);
       // При ошибке всё равно показываем моки
-      if (activities.length === 0) {
+      if (activitiesLengthRef.current === 0) {
         setActivities(filteredMock);
+        activitiesLengthRef.current = filteredMock.length;
       }
       setError(null); // Не показываем ошибку — есть моки
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [filters, activities.length, filteredMock]);
+  }, [filters, filteredMock, user]);
 
   const markAsRead = useCallback(async (activityId: string) => {
     try {

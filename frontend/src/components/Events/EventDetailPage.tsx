@@ -6,6 +6,9 @@ import {
 } from 'lucide-react';
 import { ExternalEvent } from '../../services/externalEventsService';
 import { useEventsStore } from '../../stores/eventsStore';
+import { useContentStore } from '../../stores/contentStore';
+import { useNavigate } from 'react-router-dom';
+import { useIsMobile } from '../../hooks/use-mobile';
 import { MockEvent } from '../TravelCalendar/mockEvents';
 import { useFavorites } from '../../contexts/FavoritesContext';
 import ReportButton from '../Moderation/ReportButton';
@@ -17,19 +20,52 @@ interface EventDetailPageProps {
   event: ExternalEvent;
   onClose: () => void;
   onBack: () => void;
+  /** Когда true — рендерится без overlay-обёртки (для использования внутри GlassPanel на карте) */
+  standalone?: boolean;
 }
 
 export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   event,
   onClose,
-  onBack
+  onBack,
+  standalone = false,
 }) => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentEvent, setCurrentEvent] = useState(event);
-  const { addOpenEvent, setSelectedEvent } = useEventsStore();
+  const { addOpenEvent, setSelectedEvent, setFocusEvent } = useEventsStore();
+  const setLeftContent = useContentStore(state => state.setLeftContent);
+  const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const favorites = useFavorites();
+
+  const handleShowMap = () => {
+    // Убедиться, что событие выбрано в глобальном хранилище для карты
+    if (currentEvent.location?.latitude && currentEvent.location?.longitude) {
+      const mockEvent: MockEvent = {
+        id: parseInt(currentEvent.id) || 0,
+        title: currentEvent.title,
+        description: currentEvent.description || '',
+        date: currentEvent.start_date,
+        categoryId: currentEvent.category || 'festival',
+        hashtags: [],
+        location: currentEvent.location?.address || '',
+        latitude: currentEvent.location.latitude,
+        longitude: currentEvent.location.longitude
+      };
+      
+      addOpenEvent(mockEvent);
+      setSelectedEvent(mockEvent);
+      setFocusEvent(mockEvent);
+      
+      if (isMobile) {
+        navigate('/map');
+      } else {
+        setLeftContent('map');
+      }
+    }
+  };
 
   useEffect(() => {
     const mockEvent: MockEvent = {
@@ -45,7 +81,11 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     };
 
     addOpenEvent(mockEvent);
-    setSelectedEvent(mockEvent);
+    // В standalone-режиме Map.tsx сам управляет selectedEvent через store.
+    // Вызов setSelectedEvent здесь вызывает бесконечный цикл перерендеров.
+    if (!standalone) {
+      setSelectedEvent(mockEvent);
+    }
 
     if (favorites && event.id) {
       setIsFavorite(favorites.isEventFavorite(event.id.toString()));
@@ -54,9 +94,11 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     setCurrentEvent(event);
 
     return () => {
-      setSelectedEvent(null);
+      if (!standalone) {
+        setSelectedEvent(null);
+      }
     };
-  }, [event, addOpenEvent, setSelectedEvent, favorites]);
+  }, [event, addOpenEvent, setSelectedEvent, favorites, standalone]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -170,13 +212,16 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const endDate = currentEvent.end_date ? formatDate(currentEvent.end_date) : null;
 
   return (
-    <div className="event-detail-overlay" onClick={(e) => {
-      if (e.target === e.currentTarget) {
-        setSelectedEvent(null);
-        onClose();
-      }
-    }}>
-      <div className="event-detail-container" onClick={(e) => e.stopPropagation()}>
+    <div
+      className={standalone ? 'event-detail-standalone' : 'event-detail-overlay'}
+      onClick={standalone ? undefined : (e) => {
+        if (e.target === e.currentTarget) {
+          setSelectedEvent(null);
+          onClose();
+        }
+      }}
+    >
+      <div className={standalone ? 'event-detail-container event-detail-container--standalone' : 'event-detail-container'} onClick={(e) => e.stopPropagation()}>
         {/* Заголовок с кнопками */}
         <div className="event-detail-header">
           <button
@@ -434,9 +479,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 
                 <div className="event-actions-list">
                   {currentEvent.location?.latitude && currentEvent.location?.longitude && (
-                    <button className="event-action-btn-primary">
-                      <Map className="w-5 h-5" />
-                      <span>Показать на карте</span>
+                      <button className="event-action-btn-primary" onClick={handleShowMap}>                        <Map className="w-5 h-5" />                      <span>Показать на карте</span>
                     </button>
                   )}
                   

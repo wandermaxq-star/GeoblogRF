@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { storageService } from '../services/storageService';
 import { MarkerData } from '../types/marker';
 
@@ -117,6 +117,9 @@ export interface FavoriteEvent {
 // FavoriteBlog removed during cleanup
 
 interface FavoritesContextType {
+  // Hydration flag. true when initial load from storage has completed.
+  isHydrated: boolean;
+
   // Маршруты
   favoriteRoutes: FavoriteRoute[];
   addFavoriteRoute: (route: Omit<FavoriteRoute, 'addedAt'>) => void;
@@ -159,6 +162,14 @@ interface FavoritesContextType {
   selectedMarkerIds: string[];
   setSelectedMarkerIds: React.Dispatch<React.SetStateAction<string[]>>;
 
+  // Глобально выбранные ID маршрутов в избранном (чекбоксы)
+  selectedRouteIds: string[];
+  setSelectedRouteIds: React.Dispatch<React.SetStateAction<string[]>>;
+
+  // Глобально выбранные ID событий в избранном (чекбоксы)
+  selectedEventIds: string[];
+  setSelectedEventIds: React.Dispatch<React.SetStateAction<string[]>>;
+
   // Открытость панели избранного (единое состояние для map/planner)
   favoritesOpen: boolean;
   setFavoritesOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -172,6 +183,11 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [favoritePlaces, setFavoritePlaces] = useState<FavoritePlace[]>([]);
   const [favoriteEvents, setFavoriteEvents] = useState<FavoriteEvent[]>([]);
 
+  // флаг, который становится true когда первоначальная загрузка из IndexedDB
+  // завершена. Без него перваяuseEffect ниже будет записывать пустой массив в
+  // базу, что стирает настоящие данные до их чтения.
+  const [isHydrated, setIsHydrated] = useState(false);
+
   // Миграция: при монтировании переносим данные из localStorage в IndexedDB и загружаем
   useEffect(() => {
     (async () => {
@@ -179,9 +195,20 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         await storageService.migrateFromLocalStorage();
         const items = await storageService.getFavorites();
         if (items && items.length) {
-          const routes = items.filter((i: any) => i.type === 'route');
-          const events = items.filter((i: any) => i.type === 'event');
-          const places = items.filter((i: any) => i.type !== 'route' && i.type !== 'event');
+          // Нормализуем items: добавляем type если его нет, основываясь на структуре
+          const normalized = items.map((i: any) => {
+            if (!i.type) {
+              // Угадываем тип по структуре
+              if (i.points && Array.isArray(i.points)) i.type = 'route';
+              else if (i.date || i.time) i.type = 'event';
+              else i.type = 'place';
+            }
+            return i;
+          });
+          
+          const routes = normalized.filter((i: any) => i.type === 'route');
+          const events = normalized.filter((i: any) => i.type === 'event');
+          const places = normalized.filter((i: any) => i.type !== 'route' && i.type !== 'event');
           const normalizePurpose = (value: any): FavoriteEvent['purpose'] => (value === 'post' || value === 'event' || value === 'draft') ? value : 'personal';
           setFavoriteRoutes(routes.map((r: any) => ({ ...r, addedAt: r.addedAt ? new Date(r.addedAt) : new Date() })));
           setFavoriteEvents(events.map((e: any) => ({ ...e, purpose: normalizePurpose(e.purpose), addedAt: e.addedAt ? new Date(e.addedAt) : new Date() })));
@@ -189,25 +216,28 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
       } catch (e) {
         // ignore
+      } finally {
+        setIsHydrated(true);
       }
     })();
   }, []);
 
-  // Сохраняем все избранные в IndexedDB при изменении
+  // Сохраняем все избранные в IndexedDB при изменении (только после гидратации)
   useEffect(() => {
+    if (!isHydrated) return;
     (async () => {
       try {
         const combined = [
-          ...favoritePlaces,
-          ...favoriteRoutes,
-          ...favoriteEvents
+          ...favoritePlaces.map((p: any) => ({ ...p, type: 'place' })),
+          ...favoriteRoutes.map((r: any) => ({ ...r, type: 'route' })),
+          ...favoriteEvents.map((e: any) => ({ ...e, type: 'event' }))
         ];
         await storageService.setFavorites(combined as any[]);
       } catch (e) {
         // noop
       }
     })();
-  }, [favoritePlaces, favoriteRoutes, favoriteEvents]);
+  }, [favoritePlaces, favoriteRoutes, favoriteEvents, isHydrated]);
 
   // Глобальное состояние выбранных чекбоксов избранных меток (не сохраняем между сессиями)
   const [selectedMarkerIds, _setSelectedMarkerIds] = useState<string[]>([]);
@@ -216,7 +246,36 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     _setSelectedMarkerIds(prev => {
       const resolved = typeof next === 'function' ? (next as (p: string[]) => string[])(prev) : next;
       const safeArray = Array.isArray(resolved) ? resolved : [];
-      return Array.from(new Set(safeArray));
+      const deduped = Array.from(new Set(safeArray));
+      // Возвращаем prev если содержимое не изменилось — предотвращает лишние ре-рендеры
+      if (deduped.length === prev.length && deduped.every((id, i) => id === prev[i])) return prev;
+      return deduped;
+    });
+  };
+
+  // Глобальное состояние выбранных чекбоксов избранных маршрутов
+  const [selectedRouteIds, _setSelectedRouteIds] = useState<string[]>([]);
+
+  const setSelectedRouteIds: React.Dispatch<React.SetStateAction<string[]>> = (next) => {
+    _setSelectedRouteIds(prev => {
+      const resolved = typeof next === 'function' ? (next as (p: string[]) => string[])(prev) : next;
+      const safeArray = Array.isArray(resolved) ? resolved : [];
+      const deduped = Array.from(new Set(safeArray));
+      // Возвращаем prev если содержимое не изменилось
+      if (deduped.length === prev.length && deduped.every((id, i) => id === prev[i])) return prev;
+      return deduped;
+    });
+  };
+
+  const [selectedEventIds, _setSelectedEventIds] = useState<string[]>([]);
+
+  const setSelectedEventIds: React.Dispatch<React.SetStateAction<string[]>> = (next) => {
+    _setSelectedEventIds(prev => {
+      const resolved = typeof next === 'function' ? (next as (p: string[]) => string[])(prev) : next;
+      const safeArray = Array.isArray(resolved) ? resolved : [];
+      const deduped = Array.from(new Set(safeArray));
+      if (deduped.length === prev.length && deduped.every((id, i) => id === prev[i])) return prev;
+      return deduped;
     });
   };
 
@@ -228,31 +287,6 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   // Совместимый API для Map.tsx и FavoritesPanel
-  const setFavorites = useState<any[]>(() => 
-    favoritePlaces.map(place => ({
-      id: place.id,
-      title: place.name,
-      latitude: place.coordinates[0],
-      longitude: place.coordinates[1],
-      category: place.type,
-      address: place.location
-    }))
-  )[1];
-
-  // Обновляем favorites при изменении favoritePlaces
-  useEffect(() => {
-    setFavorites(
-      favoritePlaces.map(place => ({
-        id: place.id,
-        title: place.name,
-        latitude: place.coordinates[0],
-        longitude: place.coordinates[1],
-        category: place.type,
-        address: place.location
-      }))
-    );
-  }, [favoritePlaces]);
-
   // (сохранение маршрутов/прочих реализовано в общем эффекте выше)
 
   // Делаем функцию исправления координат доступной глобально
@@ -292,6 +326,7 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const safePoints = Array.isArray(incoming.points) ? incoming.points : [];
     const newRoute: FavoriteRoute = {
       ...(incoming as any),
+      type: 'route', // ← КРИТИЧНО: ДОБАВЛЕН type для фильтрации при загрузке
       categories,
       purpose: inferredPurpose,
       category: incoming.category || inferredPurpose,
@@ -322,15 +357,52 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   // Функции для мест
   const addFavoritePlace = (place: Omit<FavoritePlace, 'addedAt'>) => {
-    const newPlace: FavoritePlace = {
+    const coordinates = (() => {
+      if (Array.isArray(place.coordinates) && place.coordinates.length >= 2) {
+        return [Number(place.coordinates[0]), Number(place.coordinates[1])];
+      }
+      if (typeof place.coordinates === 'string') {
+        const parts = (place.coordinates as string).split(',').map((s: string) => Number(s.trim()));
+        if (parts.length >= 2 && Number.isFinite(parts[0]) && Number.isFinite(parts[1])) {
+          return [parts[0], parts[1]];
+        }
+      }
+      if (place.latitude != null && place.longitude != null) {
+        return [Number(place.latitude), Number(place.longitude)];
+      }
+      return [null, null];
+    })();
+
+    const newPlace: FavoritePlace & { type: string } = {
       ...place,
+      coordinates,
+      latitude: coordinates[0] ?? place.latitude,
+      longitude: coordinates[1] ?? place.longitude,
+      type: 'place', // ← КРИТИЧНО: ДОБАВЛЕН type для фильтрации при загрузке
       addedAt: new Date()
-    };
-    setFavoritePlaces(prev => [...prev, newPlace]);
+    } as any;
+
+    setFavoritePlaces(prev => {
+      const next = [...prev, newPlace as FavoritePlace];
+      storageService.setFavorites([
+        ...next.map(p => ({ ...p, type: 'place' })),
+        ...favoriteRoutes.map(r => ({ ...r, type: 'route' })),
+        ...favoriteEvents.map(e => ({ ...e, type: 'event' }))
+      ]).catch(() => {});
+      return next;
+    });
   };
 
   const removeFavoritePlace = (id: string) => {
-    setFavoritePlaces(prev => prev.filter(place => place.id !== id));
+    setFavoritePlaces(prev => {
+      const next = prev.filter(place => place.id !== id);
+      storageService.setFavorites([
+        ...next.map(p => ({ ...p, type: 'place' })),
+        ...favoriteRoutes.map(r => ({ ...r, type: 'route' })),
+        ...favoriteEvents.map(e => ({ ...e, type: 'event' }))
+      ]).catch(() => {});
+      return next;
+    });
   };
 
   const updateFavoritePlace = (id: string, updates: Partial<FavoritePlace>) => {
@@ -345,11 +417,12 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   // Функции для событий
   const addFavoriteEvent = (event: Omit<FavoriteEvent, 'addedAt'>) => {
-    const newEvent: FavoriteEvent = {
+    const newEvent: FavoriteEvent & { type: string } = {
       ...event,
+      type: 'event', // ← КРИТИЧНО: ДОБАВЛЕН type для фильтрации при загрузке
       addedAt: new Date()
-    };
-    setFavoriteEvents(prev => [...prev, newEvent]);
+    } as any;
+    setFavoriteEvents(prev => [...prev, newEvent as FavoriteEvent]);
   };
 
   const removeFavoriteEvent = (id: string) => {
@@ -375,160 +448,105 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
   };
 
+  // Мемоизируем favorites чтобы не создавать новый массив на каждый ре-рендер провайдера
+  // Без этого filteredMarkers в Map.tsx пересчитывался при каждом ре-рендере FavoritesProvider
+  const memoizedFavorites = useMemo(() => favoritePlaces.map(place => {
+    // some favorite items may store coordinates as [lat, lon], others as separate fields
+    const coordsFromArray = Array.isArray(place.coordinates) && place.coordinates.length >= 2
+      ? [Number(place.coordinates[0]), Number(place.coordinates[1])]
+      : [undefined, undefined];
 
+    const coordsFromString = typeof place.coordinates === 'string'
+      ? (place.coordinates as string).split(',').map((s: string) => Number(s.trim()))
+      : [undefined, undefined];
 
-  return (
-    <FavoritesContext.Provider
-      value={{
-        favoriteRoutes,
-        addFavoriteRoute,
-        removeFavoriteRoute,
-        updateFavoriteRoute,
-        isRouteFavorite,
-        clearAllRoutes,
-        favoritePlaces,
-        addFavoritePlace,
-        removeFavoritePlace,
-        updateFavoritePlace,
-        isPlaceFavorite,
-        favoriteEvents,
-        addFavoriteEvent,
-        removeFavoriteEvent,
-        isEventFavorite,
-        getFavoritesStats,
-        // Совместимый API для Map.tsx и FavoritesPanel
-        favorites: favoritePlaces.map(place => ({
-          id: place.id,
-          latitude: place.coordinates[0],
-          longitude: place.coordinates[1],
-          title: place.name,
-          description: place.description || '',
-          address: place.location || '',
-          category: place.type || 'other',
-          subcategory: '',
-          rating: place.rating || 0,
-          rating_count: 0,
-          photo_urls: [],
-          hashtags: [],
-          author_name: place.name || '',
-          created_at: (place.created_at as string) || new Date().toISOString(),
-          updated_at: (place.updated_at as string) || new Date().toISOString(),
-          likes_count: 0,
-          comments_count: 0,
-          shares_count: 0,
-          visibility: 'private',
-          marker_type: 'standard'
-        } as MarkerData)),
-        setFavorites: (newFavorites: MarkerData[] | ((prev: MarkerData[]) => MarkerData[])) => {
-          // Если это функция (как в setState), вызываем её с текущим состоянием
-          if (typeof newFavorites === 'function') {
-            setFavoritePlaces(prev => {
-              const prevAsMarkers: MarkerData[] = prev.map(place => ({
-                id: place.id,
-                latitude: place.coordinates[0],
-                longitude: place.coordinates[1],
-                title: place.name,
-                description: place.description || '',
-                address: place.location || '',
-                category: place.type || 'other',
-                subcategory: '',
-                rating: place.rating || 0,
-                rating_count: 0,
-                photo_urls: [],
-                hashtags: [],
-                author_name: place.name || '',
-                created_at: (place.created_at as string) || new Date().toISOString(),
-                updated_at: (place.updated_at as string) || new Date().toISOString(),
-                likes_count: 0,
-                comments_count: 0,
-                shares_count: 0,
-                visibility: 'private',
-                marker_type: 'standard'
-              }));
+    const lat = Number(
+      place.latitude ??
+      coordsFromArray[0] ??
+      coordsFromString[0]
+    );
+    const lon = Number(
+      place.longitude ??
+      coordsFromArray[1] ??
+      coordsFromString[1]
+    );
 
-              const updatedFavorites = newFavorites(prevAsMarkers);
+    return {
+      id: place.id,
+      latitude: Number.isFinite(lat) ? lat : undefined,
+      longitude: Number.isFinite(lon) ? lon : undefined,
+      title: place.name,
+      description: place.description || '',
+      address: place.location || '',
+      category: place.type || 'other',
+      subcategory: '',
+      rating: place.rating || 0,
+      rating_count: 0,
+      photo_urls: [],
+      hashtags: [],
+      author_name: place.name || '',
+      created_at: (place.created_at as string) || new Date().toISOString(),
+      updated_at: (place.updated_at as string) || new Date().toISOString(),
+      likes_count: 0,
+      comments_count: 0,
+      shares_count: 0,
+      visibility: 'private',
+      marker_type: 'standard'
+    } as MarkerData;
+  }), [favoritePlaces]);
 
-              // Преобразуем обратно в FavoritePlace
-              const newPlaces: FavoritePlace[] = updatedFavorites.map((marker: MarkerData) => ({
-                id: marker.id,
-                name: marker.title || marker.author_name || 'Без названия',
-                location: marker.address || marker.description || '',
-                type: marker.category || 'other',
-                rating: marker.rating || 0,
-                addedAt: new Date(),
-                coordinates: [marker.latitude, marker.longitude],
-                latitude: marker.latitude,
-                longitude: marker.longitude,
-                created_at: marker.created_at || new Date().toISOString(),
-                updated_at: marker.updated_at || new Date().toISOString(),
-                categories: {
-                  personal: true,
-                  post: false,
-                  event: false
-                },
-                purpose: 'personal',
-                tags: marker.hashtags || [],
-                description: marker.description || '',
-                visibility: marker.visibility as any || 'private',
-                usageCount: 0,
-                relatedContent: {}
-              }));
+  const contextValue = useMemo(() => ({
+    isHydrated,
+    favoriteRoutes,
+    addFavoriteRoute,
+    removeFavoriteRoute,
+    updateFavoriteRoute,
+    isRouteFavorite,
+    clearAllRoutes,
+    favoritePlaces,
+    addFavoritePlace,
+    removeFavoritePlace,
+    updateFavoritePlace,
+    isPlaceFavorite,
+    favoriteEvents,
+    addFavoriteEvent,
+    removeFavoriteEvent,
+    isEventFavorite,
+    getFavoritesStats,
+    // Совместимый API для Map.tsx и FavoritesPanel
+    // memoizedFavorites стабилен — меняется только при изменении favoritePlaces
+    favorites: memoizedFavorites,
+    setFavorites: (newFavorites: MarkerData[] | ((prev: MarkerData[]) => MarkerData[])) => {
+      // Если это функция (как в setState), вызываем её с текущим состоянием
+      if (typeof newFavorites === 'function') {
+        setFavoritePlaces(prev => {
+          const prevAsMarkers: MarkerData[] = prev.map(place => ({
+            id: place.id,
+            latitude: place.coordinates[0],
+            longitude: place.coordinates[1],
+            title: place.name,
+            description: place.description || '',
+            address: place.location || '',
+            category: place.type || 'other',
+            subcategory: '',
+            rating: place.rating || 0,
+            rating_count: 0,
+            photo_urls: [],
+            hashtags: [],
+            author_name: place.name || '',
+            created_at: (place.created_at as string) || new Date().toISOString(),
+            updated_at: (place.updated_at as string) || new Date().toISOString(),
+            likes_count: 0,
+            comments_count: 0,
+            shares_count: 0,
+            visibility: 'private',
+            marker_type: 'standard'
+          }));
 
-              return newPlaces;
-            });
-          } else if (Array.isArray(newFavorites)) {
-            // Если это массив, заменяем полностью
-            const newPlaces: FavoritePlace[] = newFavorites.map((marker: MarkerData) => ({
-              id: marker.id,
-              name: marker.title || marker.author_name || 'Без названия',
-              location: marker.address || marker.description || '',
-              type: marker.category || 'other',
-              rating: marker.rating || 0,
-              addedAt: new Date(),
-              coordinates: [marker.latitude, marker.longitude],
-              latitude: marker.latitude,
-              longitude: marker.longitude,
-              created_at: marker.created_at || new Date().toISOString(),
-              updated_at: marker.updated_at || new Date().toISOString(),
-              categories: {
-                personal: true,
-                post: false,
-                event: false
-              },
-              purpose: 'personal', // Оставляем для совместимости
-              tags: marker.hashtags || [],
-              description: marker.description || '',
-              visibility: marker.visibility as any || 'private',
-              usageCount: 0,
-              relatedContent: {}
-            }));
-            setFavoritePlaces(newPlaces);
-          }
-        },
-        clearDuplicates: () => {
-          // Удаляем дубликаты по ID
-          setFavoritePlaces(prev => {
-            
-            const seen = new Set();
-            return prev.filter(place => {
-              if (seen.has(place.id)) {
-                return false;
-              }
-              seen.add(place.id);
-              return true;
-            });
-          });
-        },
-        addToFavorites: (marker: MarkerData, category: string = 'personal') => {
-          // Проверяем, что метка не уже в избранном
-          const isAlreadyFavorite = favoritePlaces.some(place => place.id === marker.id);
-          if (isAlreadyFavorite) {
-            return;
-          }
-          
-          // Создаем новое место из метки
-          const normalizedPurpose = (category === 'post' || category === 'event' || category === 'draft') ? category : 'personal';
-          const newPlace: FavoritePlace = {
+          const updatedFavorites = newFavorites(prevAsMarkers);
+
+          // Преобразуем обратно в FavoritePlace
+          const newPlaces: FavoritePlace[] = updatedFavorites.map((marker: MarkerData) => ({
             id: marker.id,
             name: marker.title || marker.author_name || 'Без названия',
             location: marker.address || marker.description || '',
@@ -538,32 +556,139 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             coordinates: [marker.latitude, marker.longitude],
             latitude: marker.latitude,
             longitude: marker.longitude,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            
-            // Новые поля для категоризации
+            created_at: marker.created_at || new Date().toISOString(),
+            updated_at: marker.updated_at || new Date().toISOString(),
             categories: {
               personal: true,
-              post: normalizedPurpose === 'post',
-              event: normalizedPurpose === 'event'
+              post: false,
+              event: false
             },
-            purpose: normalizedPurpose, // Оставляем для совместимости
-            tags: [],
+            purpose: 'personal',
+            tags: marker.hashtags || [],
             description: marker.description || '',
-            visibility: 'private',
+            visibility: marker.visibility as any || 'private',
             usageCount: 0,
             relatedContent: {}
-          };
-          
-          setFavoritePlaces(prev => [...prev, newPlace]);
+          }));
+
+          return newPlaces;
+        });
+      } else if (Array.isArray(newFavorites)) {
+        // Если это массив, заменяем полностью
+        const newPlaces: FavoritePlace[] = newFavorites.map((marker: MarkerData) => ({
+          id: marker.id,
+          name: marker.title || marker.author_name || 'Без названия',
+          location: marker.address || marker.description || '',
+          type: marker.category || 'other',
+          rating: marker.rating || 0,
+          addedAt: new Date(),
+          coordinates: [marker.latitude, marker.longitude],
+          latitude: marker.latitude,
+          longitude: marker.longitude,
+          created_at: marker.created_at || new Date().toISOString(),
+          updated_at: marker.updated_at || new Date().toISOString(),
+          categories: {
+            personal: true,
+            post: false,
+            event: false
+          },
+          purpose: 'personal', // Оставляем для совместимости
+          tags: marker.hashtags || [],
+          description: marker.description || '',
+          visibility: marker.visibility as any || 'private',
+          usageCount: 0,
+          relatedContent: {}
+        }));
+        setFavoritePlaces(newPlaces);
+      }
+    },
+    clearDuplicates: () => {
+      // Удаляем дубликаты по ID
+      setFavoritePlaces(prev => {
+        
+        const seen = new Set();
+        return prev.filter(place => {
+          if (seen.has(place.id)) {
+            return false;
+          }
+          seen.add(place.id);
+          return true;
+        });
+      });
+    },
+    addToFavorites: (marker: MarkerData, category: string = 'personal') => {
+      // Проверяем, что метка не уже в избранном
+      const isAlreadyFavorite = favoritePlaces.some(place => place.id === marker.id);
+      if (isAlreadyFavorite) {
+        return;
+      }
+      
+      // Создаем новое место из метки
+      const normalizedPurpose = (category === 'post' || category === 'event' || category === 'draft') ? category : 'personal';
+      const newPlace: FavoritePlace = {
+        id: marker.id,
+        name: marker.title || marker.author_name || 'Без названия',
+        location: marker.address || marker.description || '',
+        type: marker.category || 'other',
+        rating: marker.rating || 0,
+        addedAt: new Date(),
+        coordinates: [marker.latitude, marker.longitude],
+        latitude: marker.latitude,
+        longitude: marker.longitude,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        
+        // Новые поля для категоризации
+        categories: {
+          personal: true,
+          post: normalizedPurpose === 'post',
+          event: normalizedPurpose === 'event'
         },
-        // Глобальное состояние выбранных чекбоксов
-        selectedMarkerIds,
-        setSelectedMarkerIds,
-        // Открытость панели избранного
-        favoritesOpen,
-        setFavoritesOpen,
-      } as any}
+        purpose: normalizedPurpose, // Оставляем для совместимости
+        tags: [],
+        description: marker.description || '',
+        visibility: 'private',
+        usageCount: 0,
+        relatedContent: {}
+      };
+      
+      setFavoritePlaces(prev => {
+          const next = [...prev, newPlace];
+          storageService.setFavorites([
+            ...next.map(p => ({ ...p, type: 'place' })),
+            ...favoriteRoutes.map(r => ({ ...r, type: 'route' })),
+            ...favoriteEvents.map(e => ({ ...e, type: 'event' }))
+          ]).catch(() => {});
+          return next;
+        });
+    },
+    // Глобальное состояние выбранных чекбоксов
+    selectedMarkerIds,
+    setSelectedMarkerIds,
+    // Глобальное состояние выбранных маршрутов
+    selectedRouteIds,
+    setSelectedRouteIds,
+    // Глобальное состояние выбранных событий
+    selectedEventIds,
+    setSelectedEventIds,
+    // Открытость панели избранного
+    favoritesOpen,
+    setFavoritesOpen,
+  }), [
+    isHydrated,
+    favoriteRoutes,
+    favoritePlaces,
+    favoriteEvents,
+    memoizedFavorites,
+    selectedMarkerIds,
+    selectedRouteIds,
+    selectedEventIds,
+    favoritesOpen,
+  ]);
+
+  return (
+    <FavoritesContext.Provider
+      value={contextValue}
     >
       {children}
     </FavoritesContext.Provider>
@@ -576,6 +701,7 @@ export const useFavorites = () => {
     // Возвращаем заглушку вместо undefined для предотвращения блокировки рендеринга
     return {
       _isStub: true,
+      isHydrated: false,
       favoriteRoutes: [],
       favoritePlaces: [],
       favoriteEvents: [],
@@ -606,6 +732,10 @@ export const useFavorites = () => {
       setFavorites: () => {},
       selectedMarkerIds: [],
       setSelectedMarkerIds: () => {},
+      selectedRouteIds: [],
+      setSelectedRouteIds: () => {},
+      selectedEventIds: [],
+      setSelectedEventIds: () => {},
       favoritesOpen: false,
       setFavoritesOpen: () => {},
     };

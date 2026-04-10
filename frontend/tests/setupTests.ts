@@ -1,3 +1,4 @@
+import '@testing-library/jest-dom/vitest';
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 // Global test setup: provide a minimal localStorage shim and any globals tests need.
 (globalThis as any).localStorage = (globalThis as any).localStorage || {
@@ -52,3 +53,9 @@
 (globalThis as any).alert = (msg?: any) => {
   // no-op in tests
 };
+
+// provide a default useAuth mock so that components like Header can render without errors
+import { vi } from 'vitest';
+vi.mock('../src/contexts/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 'user-1', role: 'user' } }),
+}));

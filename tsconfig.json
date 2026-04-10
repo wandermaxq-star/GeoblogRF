@@ -1,13 +1,51 @@
 {
+  "$schema": "./schemas/tsconfig.schema.json",
   "compilerOptions": {
+    /* Base */
+    "target": "ES2020",
+    "module": "ESNext",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    
+    /* Type checking - enabled */
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "useUnknownInCatchVariables": true,
+    "alwaysStrict": true,
+    
+    /* Additional checks */
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": false,
+    
+    /* Modules */
+    "moduleResolution": "bundler",
+    "libReplacement": false,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    
+    /* Build */
     "skipLibCheck": true,
     "noEmit": true,
-    "allowJs": true,
-    "checkJs": false,
-    "types": [],
-    "resolveJsonModule": true,
-    "esModuleInterop": true
+    "ignoreDeprecations": "5.0",
+    
+    /* Paths */
+    "paths": {
+      "@/*": ["./frontend/src/*"]
+    }
   },
+  "include": ["frontend/src/**/*"],
   "exclude": [
     "node_modules",
     "dist",
@@ -15,6 +53,7 @@
     "archive",
     "tmp-restore",
     "**/*.spec.ts",
-    "**/*.spec.tsx"
+    "**/*.spec.tsx",
+    "frontend/tests/**/*"
   ]
 }

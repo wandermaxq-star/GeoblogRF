@@ -17,6 +17,18 @@ import { recordGuestAction } from './guestActionsService';
 // gamificationHelper загружается динамически для уменьшения main bundle
 import storageService from './storageService';
 
+const normalizeMarkerList = (payload: unknown): MarkerData[] => {
+  if (Array.isArray(payload)) {
+    return payload as MarkerData[];
+  }
+
+  if (payload && typeof payload === 'object' && Array.isArray((payload as { markers?: unknown }).markers)) {
+    return (payload as { markers: MarkerData[] }).markers;
+  }
+
+  return [];
+};
+
 interface ContentSource {
   id: string;
   type: 'post' | 'event' | 'route' | 'chat' | 'attraction' | 'restaurant' | 'hotel' | 'nature' | 'culture' | 'entertainment' | 'transport' | 'service' | 'other';
@@ -31,12 +43,45 @@ interface ContentSource {
 
 // ProjectManager импортируется напрямую потребителями (Map, Planner, Test)
 
-export const getAllMarkers = async (): Promise<MarkerData[]> => {
-  // В markerService.ts, функция getAllMarkers:
-  const response = await apiClient.get('/markers');
-  console.log('[markerService] Received markers:', response.data?.length || 0);
+interface GetAllMarkersOptions {
+  categories?: string[];
+  pageSize?: number;
+}
 
-  return response.data || [];
+export const getAllMarkers = async (options: GetAllMarkersOptions = {}): Promise<MarkerData[]> => {
+  const { categories = [], pageSize = 500 } = options;
+  const normalizedPageSize = Math.min(Math.max(pageSize, 1), 500);
+  const markers: MarkerData[] = [];
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const params = new URLSearchParams({
+      limit: String(normalizedPageSize),
+      offset: String(offset),
+    });
+
+    if (categories.length > 0) {
+      params.set('categories', categories.join(','));
+    }
+
+    const response = await apiClient.get(`/markers?${params.toString()}`);
+    const pageMarkers = normalizeMarkerList(response.data);
+    const pagination = response.data?.pagination;
+
+    markers.push(...pageMarkers);
+
+    hasMore = Boolean(pagination?.hasMore) && pageMarkers.length > 0;
+    offset += pageMarkers.length;
+
+    if (!pagination) {
+      hasMore = false;
+    }
+  }
+
+  console.log('[markerService] Received markers:', markers.length, 'categories:', categories);
+
+  return markers;
 };
 
 export const getMarkerById = async (markerId: string): Promise<MarkerData | null> => {
@@ -68,7 +113,7 @@ export const getMarkersByBounds = async (bounds: {
     }
 
     const response = await apiClient.get(`/markers/bounds?${params.toString()}`);
-    return response.data || [];
+    return normalizeMarkerList(response.data);
   } catch (error) {
     throw error;
   }
@@ -334,12 +379,7 @@ export const createMarker = async (markerData: {
 
 export const getMarkersByCategories = async (categories: string[]): Promise<MarkerData[]> => {
   try {
-    const params = new URLSearchParams({
-      categories: categories.join(',')
-    });
-
-    const response = await apiClient.get(`/markers?${params.toString()}`);
-    return response.data || [];
+    return await getAllMarkers({ categories });
   } catch (error) {
     throw error;
   }

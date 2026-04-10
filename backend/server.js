@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import pool from './db.js';
+import cookieParser from 'cookie-parser';
+import pool, { isTransientDbConnectionError } from './db.js';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import multer from 'multer';
@@ -13,6 +14,16 @@ import { authenticateToken } from './src/middleware/auth.js';
 // ОТЛАДОЧНЫЙ ЛОГ - проверяем, что сервер запускается из правильного файла
 // logger and minimal core imports remain static
 import logger from './logger.js';
+
+// Отключаем буферизацию stdout/stderr для Windows (чтобы логи появлялись без клика)
+if (process.platform === 'win32') {
+  if (process.stdout._handle) {
+    process.stdout._handle.setBlocking(true);
+  }
+  if (process.stderr._handle) {
+    process.stderr._handle.setBlocking(true);
+  }
+}
 
 // Route modules are loaded dynamically to avoid pulling heavy ESM-only modules into
 // the test runtime (Jest + experimental-vm-modules). Dynamic loading keeps the
@@ -39,8 +50,17 @@ app.use(cors({
 }));
 
 // Middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+app.use(cookieParser());
+
+// store referral code from query param in cookie for later registration
+app.use((req, res, next) => {
+  if (req.query.ref) {
+    res.cookie('referral_code', req.query.ref, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true });
+  }
+  next();
+});
 
 logger.info('Базовые middleware подключены');
 
@@ -49,6 +69,11 @@ app.use((req, res, next) => {
   logger.info(`${req.method} ${req.url} from ${req.ip}`);
   next();
 });
+
+// Защита от повторных запросов (idempotency)
+import { idempotencyMiddleware } from './src/middleware/idempotency.js';
+app.use(idempotencyMiddleware);
+logger.info('Idempotency middleware подключен');
 
 // Статические файлы
 app.use(express.static('public'));
@@ -127,22 +152,34 @@ app.get('/api/test', (req, res) => {
 // API маршруты — регистрируем динамически (в тестах пропускаем тяжёлые роуты)
 (async function registerRoutes() {
   try {
-    // ── Автозагрузка запрещённых зон из файла на диск ──
-    try {
-      const { loadZonesFromDisk, getZonesStats } = await import('./src/utils/zoneGuard.js');
-      const loaded = loadZonesFromDisk();
-      if (loaded > 0) {
-        const stats = getZonesStats();
-        logger.info(`Запрещённые зоны загружены: ${loaded} зон`, { stats });
-      } else {
-        logger.warn('Запрещённые зоны НЕ загружены (файл пуст или не найден). Запустите: node backend/scripts/fetch_zones_rf.cjs');
-      }
-    } catch (zoneErr) {
-      logger.error('Ошибка автозагрузки запрещённых зон', { error: zoneErr?.message });
-    }
+    // ── Автозагрузка запрещённых зон ОТКЛЮЧЕНА ──
+    // Зоны остаются в файле backend/data/zones.geojson и используются на фронтенде для отображения на карте
+    // и проверки маршрутов. Не загружаем их в памяти сервера, чтобы не замораживать event loop.
+    // import('./src/utils/zoneGuard.js').then(async ({ loadZonesFromDisk, getZonesStats }) => {
+    //   try {
+    //     const loaded = await loadZonesFromDisk();
+    //     if (loaded > 0) {
+    //       const stats = getZonesStats();
+    //       logger.info(`Запрещённые зоны загружены: ${loaded} зон`, { stats });
+    //     } else {
+    //       logger.warn('Запрещённые зоны НЕ загружены (файл пуст или не найден). Запустите: node backend/scripts/fetch_zones_rf.cjs');
+    //     }
+    //   } catch (zoneErr) {
+    //     logger.error('Ошибка автозагрузки запрещённых зон', { error: zoneErr?.message });
+    //   }
+    // }).catch(zoneErr => {
+    //   logger.error('Ошибка автозагрузки запрещённых зон', { error: zoneErr?.message });
+    // });
 
     if (process.env.NODE_ENV === 'test') {
       logger.info('Test environment detected — skipping dynamic registration of heavy routes');
+      // lightweight curated packs route is safe to register even in test mode
+      try {
+        const curated = await import('./src/routes/curatedRoutePacks.js');
+        app.use('/api', curated.default || curated);
+      } catch (e) {
+        logger.warn('Failed to load curatedRoutePacks in test mode', { error: e?.message });
+      }
       return;
     }
 
@@ -172,7 +209,12 @@ app.get('/api/test', (req, res) => {
       offlinePostsRoutesModule,
       tileRoutesModule,
       commentRoutesModule,
-      notificationRoutesModule
+      notificationRoutesModule,
+      affiliateRoutesModule,
+      curatedRoutePacksModule,
+      feedbackRoutesModule,
+      routePackSubmissionsModule,
+      hubRoutesModule
     ] = await Promise.all([
       import('./src/routes/userRoutes.js'),
       import('./src/routes/eventRoutes.js'),
@@ -199,7 +241,12 @@ app.get('/api/test', (req, res) => {
       import('./src/routes/offlinePostsRoutes.js'),
       import('./src/routes/tileRoutes.js'),
       import('./src/routes/commentRoutes.js'),
-      import('./src/routes/notificationRoutes.js')
+      import('./src/routes/notificationRoutes.js'),
+      import('./src/routes/affiliateRoutes.js'),
+      import('./src/routes/curatedRoutePacks.js'),
+      import('./src/routes/feedbackRoutes.js'),
+      import('./src/routes/routePackSubmissions.js'),
+      import('./src/routes/hubRoutes.js')
     ]);
 
     app.use('/api/users', userRoutesModule.default || userRoutesModule);
@@ -207,29 +254,32 @@ app.get('/api/test', (req, res) => {
     app.use('/api', markerRoutesModule.default || markerRoutesModule);
     app.use('/api/routes', routesRouterModule.default || routesRouterModule);
     app.use('/api/places', placesRoutesModule.default || placesRoutesModule);
-    app.use('/api/friends', friendsRoutesModule.default || friendsRoutesModule);
-    app.use('/api/blogs', blogRoutesModule.default || blogRoutesModule);
-    app.use('/api/books', bookRoutesModule.default || bookRoutesModule);
-    app.use('/api/activities', activityRoutesModule.default || activityRoutesModule);
-    // Alias: frontend обращается к /api/activity (singular)
-    app.use('/api/activity', activityRoutesModule.default || activityRoutesModule);
+    app.use('/api', friendsRoutesModule.default || friendsRoutesModule);
     app.use('/api/zones', zonesRoutesModule.default || zonesRoutesModule);
     app.use('/api/ratings', ratingsRoutesModule.default || ratingsRoutesModule);
-    app.use('/api/route-ratings', routeRatingsRoutesModule.default || routeRatingsRoutesModule);
-    app.use('/api/marker-completeness', markerCompletenessModule.default || markerCompletenessModule);
-    app.use('/api/marker-duplication', markerDuplicationModule.default || markerDuplicationModule);
-    app.use('/api/event-gamification', eventGamificationModule.default || eventGamificationModule);
+    app.use('/api', routeRatingsRoutesModule.default || routeRatingsRoutesModule);
+    app.use('/api', markerCompletenessModule.default || markerCompletenessModule);
+    app.use('/api', markerDuplicationModule.default || markerDuplicationModule);
+    app.use('/api', eventGamificationModule.default || eventGamificationModule);
+    app.use('/api/blogs', blogRoutesModule.default || blogRoutesModule);
+    app.use('/api/books', bookRoutesModule.default || bookRoutesModule);
+    app.use('/api/activity', activityRoutesModule.default || activityRoutesModule);
     app.use('/api', postsRoutesModule.default || postsRoutesModule);
-    app.use('/api/sms-stats', smsStatsRoutesModule.default || smsStatsRoutesModule);
-    app.use('/api/gamification', gamificationRoutesModule.default || gamificationRoutesModule);
-    app.use('/api/global-goals', globalGoalsRoutesModule.default || globalGoalsRoutesModule);
-    app.use('/api/moderation', moderationRoutesModule.default || moderationRoutesModule);
-    app.use('/api/admin-stats', adminStatsRoutesModule.default || adminStatsRoutesModule);
-    app.use('/api/analytics', analyticsRoutesModule.default || analyticsRoutesModule);
     app.use('/api/offline-posts', offlinePostsRoutesModule.default || offlinePostsRoutesModule);
     app.use('/api/tiles', tileRoutesModule.default || tileRoutesModule);
+    app.use('/api/sms', smsStatsRoutesModule.default || smsStatsRoutesModule);
+    app.use('/api/gamification', gamificationRoutesModule.default || gamificationRoutesModule);
+    app.use('/api/gamification', globalGoalsRoutesModule.default || globalGoalsRoutesModule);
+    app.use('/api/moderation', moderationRoutesModule.default || moderationRoutesModule);
+    app.use('/api/admin', adminStatsRoutesModule.default || adminStatsRoutesModule);
+    app.use('/api/analytics', analyticsRoutesModule.default || analyticsRoutesModule);
     app.use('/api', commentRoutesModule.default || commentRoutesModule);
     app.use('/api/notifications', notificationRoutesModule.default || notificationRoutesModule);
+    app.use('/api/partners', affiliateRoutesModule.default || affiliateRoutesModule);
+    app.use('/api/feedback', feedbackRoutesModule.default || feedbackRoutesModule);
+    app.use('/api', curatedRoutePacksModule.default || curatedRoutePacksModule);
+    app.use('/api', routePackSubmissionsModule.default || routePackSubmissionsModule);
+    app.use('/api', hubRoutesModule.default || hubRoutesModule);
 
     logger.info('Dynamic routes registered');
   } catch (err) {
@@ -395,8 +445,8 @@ app.options('/api/ors/*', (req, res) => {
 app.post('/api/ors/v2/directions/:profile/geojson', async (req, res) => {
   try {
     const { profile } = req.params;
-    const { coordinates, radiuses } = req.body || {};
-    logger.info('ORS proxy request', { profile, coordinatesCount: Array.isArray(coordinates) ? coordinates.length : 0 });
+    const { coordinates, preference, options } = req.body || {};
+    logger.info('ORS proxy request', { profile, preference, coordinatesCount: Array.isArray(coordinates) ? coordinates.length : 0 });
 
     if (!Array.isArray(coordinates) || coordinates.length < 2) {
       return res.status(400).json({ error: 'Invalid coordinates: need at least 2 points [lon,lat]' });
@@ -410,16 +460,19 @@ app.post('/api/ors/v2/directions/:profile/geojson', async (req, res) => {
       return res.status(503).json({ error: 'OpenRouteService API key not configured' });
     }
 
+    // Не задаём radiuses — ORS использует свой умный дефолт (~350м с интеллектуальной привязкой).
+    // Фиксированный radius приводит к ошибкам (слишком мало) или неправильной привязке (слишком много).
+    const orsBody = { coordinates };
+    if (preference) orsBody.preference = preference;
+    if (options && typeof options === 'object') orsBody.options = options;
+
     const response = await fetch(`https://api.openrouteservice.org/v2/directions/${profile}/geojson`, {
       method: 'POST',
       headers: {
         'Authorization': apiKey,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        coordinates,
-        radiuses: radiuses || coordinates.map(() => 500)
-      })
+      body: JSON.stringify(orsBody)
     });
 
     if (!response.ok) {
@@ -470,17 +523,15 @@ async function startServer() {
   try {
     logger.info('Запускаю сервер...');
 
-    // Пробуем заранее пингнуть БД, чтобы выявить проблемы на старте
-    try {
-      if (process.env.SKIP_DB === 'true') {
-        logger.info('SKIP_DB=true — пропускаю проверку соединения с БД (локальный режим без БД)');
-      } else {
+    // Проверяем подключение к БД при старте
+    if (process.env.SKIP_DB !== 'true') {
+      try {
         await pool.query('SELECT 1');
-        logger.info('Соединение с БД успешно проверено');
+        logger.info('✅ Соединение с БД успешно проверено');
+      } catch (dbErr) {
+        logger.error('❌ Ошибка подключения к БД на старте', { error: dbErr?.message });
+        // Не выходим — сервер запустится, но БД недоступна
       }
-    } catch (dbErr) {
-      logger.error('Ошибка подключения к БД на старте', { error: dbErr?.message });
-      // Не выходим, сервер всё равно поднимем, но health покажет проблему
     }
 
     // Загружаем chat роуты (не критично для старта)
@@ -520,6 +571,14 @@ process.on('unhandledRejection', (reason) => {
   logger.error('unhandledRejection', { reason });
 });
 process.on('uncaughtException', (err) => {
+  if (isTransientDbConnectionError(err)) {
+    logger.warn('uncaughtException: transient DB connection reset ignored', {
+      code: err?.code,
+      error: err?.message
+    });
+    return;
+  }
+
   logger.error('uncaughtException', { error: err?.message, stack: err?.stack });
 });
 

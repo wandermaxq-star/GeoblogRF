@@ -22,9 +22,14 @@ class AnalyticsOrchestrator {
 
   /**
    * Трекинг комплексного события пользовательского пути
+   * КРИТИЧНО: Для гостей не отправляем на сервер (требует авторизацию)
    */
   async trackUserJourney(event: UserJourneyEvent): Promise<void> {
     if (!getAnalyticsConsent()) return;
+
+    // ← НОВОЕ: Не отправляем аналитику для гостей (user_id будет undefined)
+    // Гости могут использовать функции app без аналитики
+    if (!event.user_id) return;
 
     try {
       apiClient.post('/analytics/track', {

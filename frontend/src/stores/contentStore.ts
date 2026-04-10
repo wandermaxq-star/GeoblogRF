@@ -13,6 +13,7 @@ export type ContentType =
   | 'feed'
   | 'friends'
   | 'profile'
+  | 'favorites'
   | 'test'
   | null;
 
@@ -27,6 +28,11 @@ export interface ContentState {
   // Показывать ли карту на фоне (если false — карта скрывается)
   showBackgroundMap: boolean;
   setShowBackgroundMap: (show: boolean) => void;
+
+  // Пометка: последний маршрут был solo-страницей (centre/pro/admin/юридичка)
+  // Используется чтобы при выходе из solo-страницы открывать карту/планировщик в однопанельном режиме.
+  lastRouteWasSolo: boolean;
+  setLastRouteWasSolo: (isSolo: boolean) => void;
 
   // Методы для управления левой панелью
   setLeftContent: (content: ContentType) => void;
@@ -56,16 +62,30 @@ export interface ContentState {
 
 export const useContentStore = create<ContentState>()(
   subscribeWithSelector((set, get) => ({
-    // Начальное состояние - посты как главная страница (без карты)
-    // Карта включается через Sidebar или при навигации на /map
+    // Начальное состояние - null для обеих панелей
+    // Карта и посты включаются через Sidebar или при навигации на соответствующие URL
     leftContent: null,
-    rightContent: 'posts',
+    rightContent: null,
     isMobile: typeof window !== 'undefined' ? window.innerWidth < 768 : false,
     // По умолчанию показываем карту на фоне (можно скрыть через setShowBackgroundMap)
     showBackgroundMap: true,
 
+    // Tracks whether the previous route was a solo page (centre/pro/admin/legal/profile).
+    // Used to ensure that transitions out of solo pages open the map/planner in single-panel mode.
+    lastRouteWasSolo: false,
+    setLastRouteWasSolo: (isSolo: boolean) => set({ lastRouteWasSolo: isSolo }),
+
     // Установка левого контента
+    // ЗАЩИТА: map и planner не могут быть одновременно (left + right)
     setLeftContent: (content: ContentType) => {
+      if (content === 'map' || content === 'planner') {
+        const { rightContent } = get();
+        if ((content === 'map' && rightContent === 'planner') ||
+            (content === 'planner' && rightContent === 'map')) {
+          // Нельзя: map+planner одновременно
+          return;
+        }
+      }
       set({ leftContent: content });
     },
 
@@ -96,8 +116,15 @@ export const useContentStore = create<ContentState>()(
     },
 
     // Установка правого контента
-    // КРИТИЧНО: Синхронное обновление
+    // ЗАЩИТА: map и planner не могут быть одновременно (left + right)
     setRightContent: (content: ContentType) => {
+      if (content === 'map' || content === 'planner') {
+        const { leftContent } = get();
+        if ((content === 'map' && leftContent === 'planner') ||
+            (content === 'planner' && leftContent === 'map')) {
+          return;
+        }
+      }
       set({ rightContent: content });
     },
 
@@ -108,8 +135,7 @@ export const useContentStore = create<ContentState>()(
       set({ rightContent: content });
     },
 
-    // Закрытие правой панели — теперь разрешаем закрывать всегда
-    // чтобы пользователь мог оставить только карту на экране.
+    // Закрытие правой панели
     closeRightPanel: () => {
       set({ rightContent: null });
     },

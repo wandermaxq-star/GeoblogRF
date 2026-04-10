@@ -103,9 +103,9 @@
   background: #217dbb;
 }
 .mini-marker-popup-vertical.selected {
-  border: 2px solid #ff9800;
-  box-shadow: 0 0 12px 2px #ff9800, 0 0 20px 4px rgba(255, 152, 0, 0.3);
-  background: #fffbe6;
+  border: 2px solid var(--state-favorite); /* Keep orange glow border for selected state */
+  box-shadow: 0 0 12px 2px var(--state-favorite), 0 0 20px 4px var(--state-favorite-glow);
+  background: var(--glass-l1-bg); /* Preserve glass backdrop even when selected */
   animation: glowing 2s ease-in-out infinite alternate, popupAppear 0.3s ease-out;
 }
 

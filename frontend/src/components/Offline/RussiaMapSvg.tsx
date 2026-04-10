@@ -9,12 +9,15 @@ import {
 } from '../../data/russiaRegionsGeo';
 import { useOfflineTilesStore, type DownloadStatus } from '../../stores/offlineTilesStore';
 import { REGION_PATHS, SVG_WIDTH, SVG_HEIGHT } from '../../data/russiaRegionsPaths';
+import type { CuratedRouteWaypoint } from '../../types/proRoutePacks';
 
 // Реальные контуры: если сгенерировано > 20 регионов — рисуем path, иначе fallback на circle
 const USE_PATHS = Object.keys(REGION_PATHS).length > 20;
 
 interface RussiaMapSvgProps {
   onRegionClick: (regionId: string) => void;
+  highlightedRegionIds?: string[];
+  previewWaypoints?: CuratedRouteWaypoint[];
 }
 
 // ── ViewBox state ────────────────────────────────────────────────────
@@ -40,7 +43,11 @@ function clampViewBox(vb: ViewBox): ViewBox {
   return { x, y, w, h };
 }
 
-const RussiaMapSvg: React.FC<RussiaMapSvgProps> = ({ onRegionClick }) => {
+const RussiaMapSvg: React.FC<RussiaMapSvgProps> = ({
+  onRegionClick,
+  highlightedRegionIds = [],
+  previewWaypoints = [],
+}) => {
   const {
     downloadStatus,
     activeRegionId,
@@ -244,20 +251,35 @@ const RussiaMapSvg: React.FC<RussiaMapSvgProps> = ({ onRegionClick }) => {
       .sort((a, b) => b.geo.area - a.geo.area);
   }, []);
 
+  const highlightedRegions = useMemo(() => new Set(highlightedRegionIds), [highlightedRegionIds]);
+
+  const previewPath = useMemo(() => {
+    if (previewWaypoints.length < 2) return null;
+
+    return previewWaypoints
+      .map((waypoint, index) => {
+        const [x, y] = projectToSvg(waypoint.coordinates[1], waypoint.coordinates[0]);
+        return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+      })
+      .join(' ');
+  }, [previewWaypoints]);
+
   // ── Цвет региона ──────────────────────────────────────────────────
   const getRegionFill = useCallback(
     (regionId: string, status: DownloadStatus | undefined, isActive: boolean, isHovered: boolean) => {
       const geo = REGIONS_GEO[regionId];
       if (!geo) return '#e0e0e0';
       const fdColor = FD_COLORS[geo.federalDistrict];
+      const isHighlighted = highlightedRegions.has(regionId);
 
       if (status === 'downloaded') return fdColor;
       if (status === 'downloading') return fdColor;
       if (isActive) return fdColor + '90';
+      if (isHighlighted) return fdColor + '78';
       if (isHovered) return fdColor + '60';
       return '#d5dbe3';
     },
-    [],
+    [highlightedRegions],
   );
 
   // ── Размер подписей зависит от зума ───────────────────────────────
@@ -387,16 +409,18 @@ const RussiaMapSvg: React.FC<RussiaMapSvgProps> = ({ onRegionClick }) => {
             .region-path { cursor: pointer; pointer-events: all; transition: opacity 0.15s; }
             .region-path:hover { opacity: 0.85; }
             .region-label { pointer-events: none; user-select: none; }
+            .preview-path { pointer-events: none; }
+            .preview-dot { pointer-events: none; }
           `}</style>
         </defs>
 
-        {/* Фон — заливка всего видимого пространства */}
+        {/* Фон — заливка видимого пространства (прозрачный, остаётся фон страницы) */}
         <rect
           x={viewBox.x - 500}
           y={viewBox.y - 500}
           width={viewBox.w + 1000}
           height={viewBox.h + 1000}
-          fill="#f1f5f9"
+          fill="transparent"
         />
 
         {/* Контуры территории (только при fallback на кружки) */}
@@ -449,6 +473,62 @@ const RussiaMapSvg: React.FC<RussiaMapSvgProps> = ({ onRegionClick }) => {
               onMouseEnter={() => setHoveredRegion(id)}
               onMouseLeave={() => setHoveredRegion(null)}
             />
+          );
+        })}
+
+        {/* Превью-маршрут поверх карты */}
+        {previewPath && (
+          <path
+            d={previewPath}
+            className="preview-path"
+            fill="none"
+            stroke="rgba(14, 116, 144, 0.88)"
+            strokeWidth={Math.max(1.8, 3 / Math.sqrt(currentZoom))}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray={`${8 / Math.sqrt(currentZoom)} ${5 / Math.sqrt(currentZoom)}`}
+          />
+        )}
+
+        {previewWaypoints.map((waypoint) => {
+          const [pointX, pointY] = projectToSvg(waypoint.coordinates[1], waypoint.coordinates[0]);
+          const dotRadius = waypoint.isRequired ? Math.max(1.8, 3 / Math.sqrt(currentZoom)) : Math.max(1.5, 2.6 / Math.sqrt(currentZoom));
+          const labelSize = Math.max(2.3, 4.2 / Math.sqrt(currentZoom));
+          const fillColor = waypoint.isRequired ? '#0f766e' : '#f59e0b';
+
+          return (
+            <g key={`preview-${waypoint.id}`} className="preview-dot">
+              <circle
+                cx={pointX}
+                cy={pointY}
+                r={dotRadius * 1.9}
+                fill="rgba(255,255,255,0.78)"
+              />
+              <circle
+                cx={pointX}
+                cy={pointY}
+                r={dotRadius}
+                fill={fillColor}
+                stroke="#ffffff"
+                strokeWidth={Math.max(0.7, 1.2 / Math.sqrt(currentZoom))}
+              />
+              {currentZoom >= 1.2 && (
+                <text
+                  x={pointX}
+                  y={pointY - dotRadius - labelSize * 0.7}
+                  textAnchor="middle"
+                  fontSize={labelSize}
+                  fontWeight={700}
+                  fill="#0f172a"
+                  fontFamily="system-ui, -apple-system, sans-serif"
+                  stroke="#ffffffdd"
+                  strokeWidth={labelSize * 0.18}
+                  paintOrder="stroke"
+                >
+                  {waypoint.title}
+                </text>
+              )}
+            </g>
           );
         })}
 

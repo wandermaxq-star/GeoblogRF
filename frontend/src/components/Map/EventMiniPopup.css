@@ -116,9 +116,9 @@
 }
 
 .event-mini-popup-vertical.selected {
-  border: 2px solid #ff9800;
-  box-shadow: 0 0 12px 2px #ff9800, 0 0 20px 4px rgba(255, 152, 0, 0.3);
-  background: rgba(255, 251, 230, 0.3);
+  border: 2px solid var(--state-favorite);
+  box-shadow: 0 0 12px 2px var(--state-favorite), 0 0 20px 4px var(--state-favorite-glow);
+  background: var(--glass-l1-bg);
   animation: eventPopupGlowing 2s ease-in-out infinite alternate, eventPopupAppear 0.3s ease-out;
 }
 

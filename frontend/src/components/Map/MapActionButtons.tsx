@@ -1,37 +1,58 @@
 import React, { useState } from 'react';
-import { Settings, Heart, Layers, MapPin, Search, Navigation } from 'lucide-react';
+import { Settings, Info, Plus, Search, Navigation, Crosshair, MapPin, LucideIcon } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface MapActionButtonsProps {
   onSettingsClick: () => void;
-  onFavoritesClick: () => void;
-  favoritesCount: number;
   onLegendClick: () => void;
-  onAddMarkerClick: () => void;
-  isAddingMarkerMode: boolean;
+  /** Единая кнопка добавления — открывает MapAddSelector */
+  onAddClick: () => void;
+  /** Активен если выбран режим добавления (метка или событие) */
+  isAddingMode: boolean;
   onSearchClick?: () => void;
   onRecordTrackClick?: () => void;
   isRecording?: boolean;
   /** Двухоконный режим - кнопки должны быть слева от постов */
   isTwoPanelMode?: boolean;
+  /** Режим геолокации */
+  locationMode?: 'auto' | 'manual';
+  onLocationModeToggle?: () => void;
 }
 
 const MapActionButtons: React.FC<MapActionButtonsProps> = ({
   onSettingsClick,
-  onFavoritesClick,
-  favoritesCount,
   onLegendClick,
-  onAddMarkerClick,
-  isAddingMarkerMode,
+  onAddClick,
+  isAddingMode,
   onSearchClick,
   onRecordTrackClick,
   isRecording,
   isTwoPanelMode = false,
+  locationMode = 'auto',
+  onLocationModeToggle,
 }) => {
   const { isDarkMode } = useTheme();
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
 
-  const buttons = [
+  const buttons: Array<{
+    id: string;
+    icon: LucideIcon;
+    label: string;
+    onClick: () => void;
+    ariaLabel: string;
+    isActive?: boolean;
+    isPrimary?: boolean;
+  }> = [
+    // Кнопка геолокации - всегда первая
+    {
+      id: 'location',
+      icon: locationMode === 'auto' ? Crosshair : MapPin,
+      label: locationMode === 'auto' ? 'Геолокация включена' : 'Ручной режим',
+      onClick: onLocationModeToggle ?? (() => { }),
+      ariaLabel: locationMode === 'auto' ? 'Отключить геолокацию' : 'Включить геолокацию',
+      isActive: locationMode === 'auto',
+      isPrimary: true,
+    },
     {
       id: 'settings',
       icon: Settings,
@@ -40,27 +61,19 @@ const MapActionButtons: React.FC<MapActionButtonsProps> = ({
       ariaLabel: 'Открыть настройки карты',
     },
     {
-      id: 'favorites',
-      icon: Heart,
-      label: 'Избранное',
-      onClick: onFavoritesClick,
-      ariaLabel: 'Открыть избранное',
-      badge: favoritesCount > 0 ? favoritesCount : undefined,
-    },
-    {
       id: 'legend',
-      icon: Layers,
+      icon: Info,
       label: 'Легенда карты',
       onClick: onLegendClick,
       ariaLabel: 'Открыть легенду карты',
     },
     {
-      id: 'add-marker',
-      icon: MapPin,
-      label: 'Добавить метку на карту',
-      onClick: onAddMarkerClick,
-      ariaLabel: 'Добавить метку на карту',
-      isActive: isAddingMarkerMode,
+      id: 'add',
+      icon: Plus,
+      label: isAddingMode ? 'Отменить добавление' : 'Добавить метку или событие',
+      onClick: onAddClick,
+      ariaLabel: 'Добавить метку или событие',
+      isActive: isAddingMode,
     },
     {
       id: 'record-track',
@@ -90,12 +103,6 @@ const MapActionButtons: React.FC<MapActionButtonsProps> = ({
     }
   };
 
-  // Расчёт центра области контента постов:
-  // Панель постов: top: 64px (под topbar), bottom: 0px
-  // Центр контента = 64px + (100vh - 64px) / 2
-  // = 64px + 50vh - 32px = 50vh + 32px
-  // Но так как transform: translateY(-50%) центрирует элемент,
-  // нам нужен центр области = 64 + (высота области / 2)
   return (
     <div
       className={`map-action-buttons-container ${isDarkMode ? 'dark' : ''} ${isTwoPanelMode ? 'two-panel-mode' : ''}`}
@@ -107,6 +114,7 @@ const MapActionButtons: React.FC<MapActionButtonsProps> = ({
         const Icon = button.icon;
         const isActive = button.isActive || false;
         const isHovered = hoveredButton === button.id;
+        const isPrimary = button.isPrimary || false;
 
         return (
           <div
@@ -116,7 +124,7 @@ const MapActionButtons: React.FC<MapActionButtonsProps> = ({
             onMouseLeave={() => setHoveredButton(null)}
           >
             <button
-              className={`btn btn-glass btn-circle ${isDarkMode ? 'btn-dark' : ''} ${isActive ? 'btn-active' : ''}`}
+              className={`btn btn-glass btn-circle ${isDarkMode ? 'btn-dark' : ''} ${isActive ? 'btn-active' : ''} ${isPrimary && isActive ? 'btn-primary-active' : ''}`}
               onClick={button.onClick}
               onKeyDown={(e) => handleKeyDown(e, button.onClick)}
               aria-label={button.ariaLabel}
@@ -124,11 +132,6 @@ const MapActionButtons: React.FC<MapActionButtonsProps> = ({
               tabIndex={0}
             >
               <Icon size={20} />
-              {button.badge && (
-                <span className="btn-badge" aria-label={`${favoritesCount} избранных мест`}>
-                  {button.badge}
-                </span>
-              )}
             </button>
             {isHovered && (
               <div className="map-action-tooltip" role="tooltip">
@@ -143,5 +146,4 @@ const MapActionButtons: React.FC<MapActionButtonsProps> = ({
 };
 
 export default MapActionButtons;
-
 

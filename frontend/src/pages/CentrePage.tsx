@@ -16,6 +16,7 @@ import { CentreLevelCard, CentreDailyGoals, CentreAchievementsRow, UserProfileCa
 import CentreBackground from '../components/Centre/CentreBackground';
 import { Trophy, Flame, Star, LogIn, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import GuestPreview from '../components/Centre/GuestPreview';
 
 /* ──────────────── COMPONENT ──────────────── */
 
@@ -82,7 +83,10 @@ function CentrePageDesktop({ selectedUserId, setSelectedUserId, isGuest }: Centr
       <div className="centre-scroll-area">
         <div className="centre-content space-y-5">
           {isGuest ? (
-            <GuestCTA />
+            <>
+              <GuestPreview />
+              <GuestCTA />
+            </>
           ) : (
             <>
               {/* Карточка профиля другого пользователя (overlay) */}
@@ -143,7 +147,10 @@ function CentrePageMobile({ selectedUserId, setSelectedUserId, isGuest }: Centre
     <div className="h-full overflow-y-auto centre-mobile-page">
       <div className="p-4 space-y-3">
         {isGuest ? (
-          <GuestCTA />
+          <>
+            <GuestPreview />
+            <GuestCTA />
+          </>
         ) : (
           <>
             {/* Карточка профиля другого пользователя */}

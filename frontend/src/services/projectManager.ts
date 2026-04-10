@@ -130,6 +130,75 @@ class ProjectManager {
     }
   }
 
+  // Обновление внешних маркеров на карте
+  updateMarkers(markers: any[]) {
+    try {
+      if (this.mapApi && typeof this.mapApi.updateExternalMarkers === 'function') {
+        this.mapApi.updateExternalMarkers(markers);
+      }
+    } catch (e) {
+      console.warn('[ProjectManager] Failed to update markers:', e);
+    }
+  }
+
+  // Запуск GPS-трекинга
+  async startTracking(): Promise<void> {
+    try {
+      if (this.mapApi && typeof this.mapApi.startTracking === 'function') {
+        await this.mapApi.startTracking();
+      }
+    } catch (e) {
+      console.warn('[ProjectManager] Failed to start tracking:', e);
+      throw e;
+    }
+  }
+
+  // Остановка GPS-трекинга
+  async stopTracking(): Promise<any> {
+    try {
+      if (this.mapApi && typeof this.mapApi.stopTracking === 'function') {
+        return await this.mapApi.stopTracking();
+      }
+    } catch (e) {
+      console.warn('[ProjectManager] Failed to stop tracking:', e);
+      throw e;
+    }
+  }
+
+  // Планирование маршрута
+  async planRoute(waypoints: any[]): Promise<any> {
+    try {
+      if (this.mapApi && typeof this.mapApi.planRoute === 'function') {
+        return await this.mapApi.planRoute(waypoints);
+      }
+    } catch (e) {
+      console.warn('[ProjectManager] Failed to plan route:', e);
+      throw e;
+    }
+  }
+
+  // Отображение маршрута
+  displayRoute(route: any): void {
+    try {
+      if (this.mapApi && typeof this.mapApi.displayRoute === 'function') {
+        this.mapApi.displayRoute(route);
+      }
+    } catch (e) {
+      console.warn('[ProjectManager] Failed to display route:', e);
+    }
+  }
+
+  // Сохранение маршрута
+  saveRoute(route: any): void {
+    try {
+      if (this.mapApi && typeof this.mapApi.saveRoute === 'function') {
+        this.mapApi.saveRoute(route);
+      }
+    } catch (e) {
+      console.warn('[ProjectManager] Failed to save route:', e);
+    }
+  }
+
   // Можно добавить методы для управления состоянием проекта, картой, маршрутами и т.д.
 }
 

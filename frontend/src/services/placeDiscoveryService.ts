@@ -18,6 +18,7 @@ export interface DiscoveredPlace {
     website?: string;
     openingHours?: string;
     rating?: number;
+    distanceMeters?: number;
   };
 }
 
@@ -37,6 +38,112 @@ interface CacheEntry {
 class PlaceDiscoveryService {
   private cache = new Map<string, CacheEntry>();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 минут
+
+  private normalizeLabel(value: string | undefined | null): string {
+    return String(value || '').trim();
+  }
+
+  private getPrimaryAddressPart(address: string | undefined | null): string {
+    return this.normalizeLabel(address).split(',').map((part) => part.trim()).find(Boolean) || '';
+  }
+
+  private isGenericName(name: string | undefined | null): boolean {
+    const normalized = this.normalizeLabel(name).toLowerCase();
+    if (!normalized) {
+      return true;
+    }
+
+    if (/^место\s*\(/i.test(normalized) || /^координаты:/i.test(normalized)) {
+      return true;
+    }
+
+    if (/^\d+[a-zа-яё\-\/]*$/i.test(normalized)) {
+      return true;
+    }
+
+    return /(улица|ул\.?|проспект|пр-?т|переулок|пер\.?|проезд|шоссе|набережная|бульвар|площадь|дорога|дом|корпус|строение|микрорайон)/i.test(normalized);
+  }
+
+  private hasStrongObjectName(place: DiscoveredPlace | undefined | null): boolean {
+    if (!place) {
+      return false;
+    }
+
+    const name = this.normalizeLabel(place.name);
+    if (!name || this.isGenericName(name)) {
+      return false;
+    }
+
+    const firstAddressPart = this.getPrimaryAddressPart(place.address);
+    return !firstAddressPart || name.toLowerCase() !== firstAddressPart.toLowerCase();
+  }
+
+  private scorePlace(place: DiscoveredPlace, latitude: number, longitude: number): number {
+    let score = place.confidence || 0;
+
+    if (this.hasStrongObjectName(place)) {
+      score += 2;
+    } else if (this.normalizeLabel(place.name)) {
+      score += 0.25;
+    }
+
+    if (place.source === 'osm') {
+      score += 0.2;
+    }
+
+    const distance = this.calculateDistanceMeters(
+      latitude,
+      longitude,
+      place.coordinates.latitude,
+      place.coordinates.longitude
+    );
+
+    if (distance <= 50) {
+      score += 0.8;
+    } else if (distance <= 150) {
+      score += 0.4;
+    } else if (distance > 500) {
+      score -= 0.35;
+    }
+
+    return score;
+  }
+
+  private deduplicatePlaces(places: DiscoveredPlace[]): DiscoveredPlace[] {
+    const uniquePlaces = new Map<string, DiscoveredPlace>();
+
+    for (const place of places) {
+      const name = this.normalizeLabel(place.name).toLowerCase();
+      const lat = Math.round(place.coordinates.latitude * 10000) / 10000;
+      const lng = Math.round(place.coordinates.longitude * 10000) / 10000;
+      const key = `${name}:${lat}:${lng}`;
+      const existing = uniquePlaces.get(key);
+
+      if (!existing || (place.confidence || 0) > (existing.confidence || 0)) {
+        uniquePlaces.set(key, place);
+      }
+    }
+
+    return Array.from(uniquePlaces.values());
+  }
+
+  private pickBestMatch(places: DiscoveredPlace[], latitude: number, longitude: number): DiscoveredPlace | undefined {
+    return [...places]
+      .sort((left, right) => this.scorePlace(right, latitude, longitude) - this.scorePlace(left, latitude, longitude))[0];
+  }
+
+  private calculateDistanceMeters(latitude1: number, longitude1: number, latitude2: number, longitude2: number): number {
+    const toRadians = (degrees: number) => degrees * (Math.PI / 180);
+    const earthRadiusMeters = 6371000;
+    const dLatitude = toRadians(latitude2 - latitude1);
+    const dLongitude = toRadians(longitude2 - longitude1);
+    const a =
+      Math.sin(dLatitude / 2) * Math.sin(dLatitude / 2) +
+      Math.cos(toRadians(latitude1)) * Math.cos(toRadians(latitude2)) *
+      Math.sin(dLongitude / 2) * Math.sin(dLongitude / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return earthRadiusMeters * c;
+  }
 
   /**
    * Валидация координат
@@ -118,16 +225,21 @@ class PlaceDiscoveryService {
 
       // Сначала делаем reverse (Nominatim) через наш API - это более надежно
       const reverse = await this.searchLocalPlaces(latitude, longitude);
-      if (reverse.places.length > 0 && reverse.bestMatch) {
-        this.setCache(cacheKey, reverse);
-        return reverse;
-      }
-
-      // Если reverse не дал результатов, пробуем nearby (Overpass)
       const nearby = await this.searchExternalPlaces(latitude, longitude);
-      if (nearby.places.length > 0) {
-        this.setCache(cacheKey, nearby);
-        return nearby;
+      const combinedPlaces = this.deduplicatePlaces([
+        ...reverse.places,
+        ...nearby.places,
+      ]);
+
+      const bestMatch = this.pickBestMatch(combinedPlaces, latitude, longitude);
+      if (combinedPlaces.length > 0 && bestMatch) {
+        const result = {
+          places: combinedPlaces,
+          bestMatch,
+          totalFound: combinedPlaces.length,
+        };
+        this.setCache(cacheKey, result);
+        return result;
       }
 
       // Если ничего не найдено
@@ -162,6 +274,9 @@ class PlaceDiscoveryService {
       });
       
       const result = response.data || { places: [], totalFound: 0 };
+      if (!result.bestMatch && Array.isArray(result.places) && result.places.length > 0) {
+        result.bestMatch = result.places[0];
+      }
       this.setCache(cacheKey, result);
       return result;
     } catch (error) {
@@ -184,6 +299,9 @@ class PlaceDiscoveryService {
       });
       
       const result = response.data || { places: [], totalFound: 0 };
+      if (!result.bestMatch && Array.isArray(result.places) && result.places.length > 0) {
+        result.bestMatch = this.pickBestMatch(result.places, latitude, longitude) || result.places[0];
+      }
       this.setCache(cacheKey, result);
       return result;
     } catch (error) {

@@ -25,10 +25,7 @@ import { getMarkerVisualClasses } from '../../utils/visualStates';
 import { useFavorites } from '../../contexts/FavoritesContext';
 import ModerationBadge from '../Moderation/ModerationBadge';
 import { useInRouterContext, useNavigate } from 'react-router-dom';
-import { useLayoutState } from '../../contexts/LayoutContext';
-import { useContentStore, ContentState } from '../../stores/contentStore';
 import { MarkerData } from '../../types/marker';
-import { FEATURES } from '../../config/features';
 import StarRating from '../ui/StarRating';
 import { getSummary as getRatingSummary, getUserRating, rate as rateTarget } from '../../services/ratingsService';
 import apiClient from '../../api/apiClient';
@@ -87,7 +84,7 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
       setSummary(s);
     } catch {}
   };
-  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(marker.likes_count || 0);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -97,6 +94,12 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [mainPhotoIdx, setMainPhotoIdx] = useState(0);
   const [isAddPhotoOpen, setIsAddPhotoOpen] = useState(false);
+  
+  // Comments state
+  const [commentsExpanded, setCommentsExpanded] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [loadingComments, setLoadingComments] = useState(false);
   const [newPhotoFile, setNewPhotoFile] = useState<File | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
@@ -106,7 +109,6 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
   const [showSuggestInfo, setShowSuggestInfo] = useState(false);
   const inRouter = useInRouterContext();
   const navigate = inRouter ? useNavigate() : undefined as any;
-  const layoutContext = useLayoutState();
 
   // Функция для форматирования адреса
   const formatAddress = (address: string): string => {
@@ -144,14 +146,14 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
     return result || address; // Если не удалось отформатировать, возвращаем оригинал
   };
   // Используем store для управления панелями
-  const openRightPanel = useContentStore((state: ContentState) => state.openRightPanel);
-
   const currentUserId = "test_creator_id";
   const numericRating = summary.avg || 0;
 
-  const handleDescriptionToggle = useCallback(() => {
-    setIsDescriptionExpanded(prev => !prev);
-  }, []);
+  const handleDescriptionClick = () => {
+    if (marker.description) {
+      setIsDescriptionOpen(true);
+    }
+  };
 
   const renderStars = useMemo(() => {
     return <StarRating value={numericRating} count={summary.count} interactive onChange={handleRate} size={14} />;
@@ -171,43 +173,57 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
     }
   };
 
-  // Share handler
-  const handleShareClick = () => {
-    setShowShareModal(true);
-    setShareStatus(null);
-    setShareValue('');
+  // Discuss/Comments handler
+  const handleDiscussClick = async () => {
+    setCommentsExpanded(!commentsExpanded);
+    if (!commentsExpanded && comments.length === 0) {
+      setLoadingComments(true);
+      try {
+        const response = await apiClient.get(`/markers/${marker.id}/comments`);
+        setComments(response.data || []);
+      } catch (error) {
+        setComments([]);
+      } finally {
+        setLoadingComments(false);
+      }
+    }
   };
+
+  // Submit comment to moderation
+  const handleSubmitComment = async () => {
+    if (!newComment.trim()) return;
+    
+    try {
+      await apiClient.post(`/markers/${marker.id}/comments`, {
+        content: newComment
+      });
+      setNewComment('');
+      // Reload comments
+      const response = await apiClient.get(`/markers/${marker.id}/comments`);
+      setComments(response.data || []);
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+    }
+  };
+
+  // Share handler
   const handleShareSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Example: send shareValue (email or link) to backend
+    if (!shareValue.trim()) {
+      setShareStatus('Пожалуйста, введите email или ссылку');
+      return;
+    }
     try {
       await apiClient.post(`/markers/${marker.id}/share`, { value: shareValue });
       setShareStatus('Ссылка успешно отправлена!');
+      setTimeout(() => {
+        setShowShareModal(false);
+        setShareStatus(null);
+        setShareValue('');
+      }, 1500);
     } catch (e) {
       setShareStatus('Ошибка при отправке.');
     }
-  };
-
-  // Discuss handler
-  const handleDiscussClick = async () => {
-    // Чаты отключены в этой сборке — показываем информативное сообщение
-    try {
-      alert('Чаты отключены в текущей сборке приложения. Обсуждения недоступны.');
-    } catch (error) {
-      // noop
-    }
-  };
-
-  // Build route handler
-  const handleBuildRoute = () => {
-    // Save marker as route point in localStorage or context if needed
-    localStorage.setItem('planner_marker', JSON.stringify({
-      id: marker.id,
-      latitude: marker.latitude,
-      longitude: marker.longitude,
-      title: marker.title,
-    }));
-    if (navigate) navigate('/planner');
   };
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
@@ -315,6 +331,18 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
     }
   };
 
+  const handleEditSubmit = async (formData: any) => {
+    if (!marker.id) return;
+    try {
+      const updatedMarker = await markerService.updateMarker(marker.id, formData);
+      onMarkerUpdate(updatedMarker);
+      setEditModalOpen(false);
+      setSuggestModalOpen(false);
+    } catch (error) {
+      alert("Не удалось сохранить изменения. Попробуйте снова.");
+    }
+  };
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
@@ -336,15 +364,11 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
     usedInBlogs: marker.used_in_blogs
   });
 
-  function handleEditSubmit(_data: Partial<MarkerData>): void {
-    throw new Error('Function not implemented.');
-  }
-
   return (
     <div className={`custom-marker-popup ${isSelected ? 'selected' : ''} ${visualClasses}`}>
       <PopupContainer>
         <CloseButton onClick={onClose}>&times;</CloseButton>
-        <PopupContent>
+        <PopupContent $isExpanded={isDescriptionOpen || commentsExpanded}>
           {!showCategorySelection ? (
             <>
               <PopupHeader>
@@ -491,25 +515,39 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
                 </TitleRatingBlock>
               </div>
               <div style={{ marginBottom: '12px' }}>
-                <Description $isExpanded={isDescriptionExpanded}>
+                <Description 
+                  $isExpanded={isDescriptionOpen}
+                  onClick={!isDescriptionOpen ? handleDescriptionClick : undefined}
+                  style={{
+                    cursor: !isDescriptionOpen ? 'pointer' : 'default',
+                    userSelect: 'none',
+                    pointerEvents: 'auto',
+                  }}
+                >
                   {marker.description}
                 </Description>
-                {marker.description && marker.description.length > 120 && (
-                  <div style={{ textAlign: 'right', margin: 0, padding: 0, lineHeight: 1 }}>
-                    {!isDescriptionExpanded ? (
-                      <button onClick={handleDescriptionToggle} className="text-link-btn">
-                        Читать далее
-                      </button>
-                    ) : (
-                      <button onClick={handleDescriptionToggle} className="text-link-btn">
-                        Скрыть
-                      </button>
-                    )}
-                  </div>
+                {isDescriptionOpen && (
+                  <button
+                    onClick={() => setIsDescriptionOpen(false)}
+                    style={{
+                      display: 'inline-block',
+                      marginTop: '4px',
+                      padding: '2px 8px',
+                      background: 'none',
+                      border: '1px solid var(--glass-l1-border)',
+                      borderRadius: '4px',
+                      color: 'var(--glass-text-secondary)',
+                      cursor: 'pointer',
+                      fontSize: '0.72em',
+                      fontWeight: 600
+                    }}
+                  >
+                    ⬆️ Скрыть
+                  </button>
                 )}
               </div>
-              
-              <div style={{ marginBottom: '12px' }}>
+
+              {!isDescriptionOpen && <div style={{ marginBottom: '12px' }}>
                 {/* Бейдж модерации */}
                 {(marker.status === 'pending' || (marker as any).is_pending) && (
                   <div style={{ marginBottom: '8px' }}>
@@ -535,9 +573,9 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
                   <Author>{marker.author_name}</Author>
                   <DateInfo>{marker.created_at}</DateInfo>
                 </MetaInfo>
-              </div>
-              
-              {marker.hashtags && marker.hashtags.length > 0 && (
+              </div>}
+
+              {!isDescriptionOpen && marker.hashtags && marker.hashtags.length > 0 && (
               <div style={{ marginBottom: '12px' }}>
                 <Hashtags>
                   {marker.hashtags.map((tag: string) => (
@@ -549,8 +587,104 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
               </div>
               )}
               
+              {/* Comments Section */}
+              {commentsExpanded && (
+                <div style={{ marginBottom: '70px' }}>
+                  <h4 style={{ marginBottom: '12px', fontSize: '14px', fontWeight: '600' }}>💬 Комментарии</h4>
+                  
+                  {loadingComments ? (
+                    <div style={{ textAlign: 'center', padding: '12px', color: 'var(--glass-text-secondary)' }}>
+                      Загрузка...
+                    </div>
+                  ) : comments.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '12px', color: 'var(--glass-text-secondary)', fontSize: '12px' }}>
+                      Нет комментариев
+                    </div>
+                  ) : (
+                    <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '12px' }}>
+                      {comments.map((comment: any) => (
+                        <div key={comment.id} style={{ 
+                          padding: '8px', 
+                          borderLeft: '2px solid var(--glass-l1-border)', 
+                          marginBottom: '8px',
+                          fontSize: '12px'
+                        }}>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <strong>{comment.author_name}</strong>
+                            <span style={{ color: 'var(--glass-text-secondary)', fontSize: '11px' }}>
+                              {comment.created_at}
+                            </span>
+                            {comment.status && comment.status !== 'active' && (
+                              <ModerationBadge status={comment.status} className="" />
+                            )}
+                          </div>
+                          <p style={{ margin: '4px 0 0 0' }}>{comment.text || comment.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Add Comment Form */}
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '8px',
+                    padding: '8px',
+                    borderTop: '1px solid var(--glass-l1-border)'
+                  }}>
+                    <textarea
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Добавить комментарий..."
+                      style={{
+                        padding: '8px',
+                        borderRadius: '4px',
+                        border: '1px solid var(--glass-l1-border)',
+                        fontSize: '12px',
+                        minHeight: '60px',
+                        fontFamily: 'inherit',
+                        backgroundColor: 'var(--glass-bg)',
+                        color: 'var(--glass-text-primary)',
+                        resize: 'none'
+                      }}
+                    />
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={() => setNewComment('')}
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: '12px',
+                          borderRadius: '4px',
+                          border: '1px solid var(--glass-l1-border)',
+                          background: 'transparent',
+                          cursor: 'pointer',
+                          color: 'var(--glass-text-secondary)'
+                        }}
+                      >
+                        Отмена
+                      </button>
+                      <button
+                        onClick={handleSubmitComment}
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: '12px',
+                          borderRadius: '4px',
+                          background: '#2ecc71',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: '#fff',
+                          fontWeight: '600'
+                        }}
+                      >
+                        Отправить на модерацию
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {/* Кнопки привязаны к низу попапа */}
-              <div style={{ 
+              {!isDescriptionOpen && <div style={{ 
                 position: 'absolute', 
                 bottom: '3px', 
                 left: '0', 
@@ -566,18 +700,10 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
                   <i className="fas fa-comments"></i>
                   {marker.comments_count > 0 && <span>{marker.comments_count}</span>}
                 </ActionButton>
-                <ActionButton $buttonColor="#f39c12" onClick={handleShareClick}>
+                <ActionButton $buttonColor="#f39c12" onClick={() => setShowShareModal(true)}>
                   <i className="fas fa-share-alt"></i>
                   {marker.shares_count > 0 && <span>{marker.shares_count}</span>}
                 </ActionButton>
-                <ActionButton $buttonColor="#34495e" onClick={handleBuildRoute}>
-                  <i className="fas fa-route"></i>
-                </ActionButton>
-                {onAddToBlog && (
-                  <ActionButton $buttonColor="#9b59b6" onClick={() => onAddToBlog(marker)}>
-                    <i className="fas fa-pen-nib"></i>
-                  </ActionButton>
-                )}
                 <div style={{ position: 'relative', display: 'inline-block' }} ref={settingsRef}>
                   <ActionButton
                     $buttonColor="#888"
@@ -631,7 +757,7 @@ const MarkerPopup: React.FC<MarkerPopupProps> = React.memo(({ marker, onClose, o
                   )}
                 </div>
               </Actions>
-              </div>
+              </div>}
             </>
           ) : (
             /* Форма выбора категории */

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import MobileSlidePanel from './MobileSlidePanel';
 import { X, Filter, Settings2, Layers, Crosshair, MapPin, Flame, Clock, CalendarCheck, Heart, Navigation, FileText, Check, Car, Clock as ClockIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -17,6 +18,13 @@ import {
   FaCar,
   FaWalking,
   FaBicycle,
+  FaMusic,
+  FaImage,
+  FaTrophy,
+  FaFlag,
+  FaCamera,
+  FaPlane,
+  FaBed,
 } from 'react-icons/fa';
 
 // Основные категории для легенды карты (как в MapFilters)
@@ -35,6 +43,20 @@ const LEGEND_CATEGORIES = [
   { key: "other", label: "Другое", icon: FaQuestion, color: "#7f8c8d" },
 ];
 
+// Категории событий для фильтрации
+const EVENT_CATEGORIES = [
+  { key: "festival", label: "Фестиваль", icon: FaFlag, color: "#d946ef" },
+  { key: "concert", label: "Концерт", icon: FaMusic, color: "#6366f1" },
+  { key: "exhibition", label: "Выставка", icon: FaImage, color: "#a855f7" },
+  { key: "sport", label: "Спорт", icon: FaTrophy, color: "#84cc16" },
+  { key: "holiday", label: "Праздник", icon: FaFlag, color: "#ec4899" },
+  { key: "attractions", label: "Достопримечательности", icon: FaCamera, color: "#0ea5e9" },
+  { key: "restaurants", label: "Рестораны", icon: FaUtensils, color: "#10b981" },
+  { key: "transport", label: "Транспорт", icon: FaBus, color: "#8b5cf6" },
+  { key: "hotels", label: "Отели", icon: FaBed, color: "#f97316" },
+  { key: "flights", label: "Авиабилеты", icon: FaPlane, color: "#ef4444" },
+];
+
 const presets = [
   { key: 'nearby', label: 'Рядом со мной', icon: Crosshair },
   { key: 'hot', label: 'Популярное сейчас', icon: Flame },
@@ -46,25 +68,28 @@ const presets = [
   { key: 'user_poi', label: 'Пользовательские метки', icon: MapPin },
 ];
 
+export type MobileMapSettingsState = {
+  mapType: 'light' | 'dark' | 'hybrid';
+  showTraffic: boolean;
+  showBikeLanes: boolean;
+  showHints: boolean;
+  themeColor: string;
+};
+
 interface MobileMapSettingsProps {
   isOpen: boolean;
   onClose: () => void;
   // Фильтры (черновики)
   filters: {
     categories: string[];
+    eventCategories: string[];
     radiusOn: boolean;
     radius: number;
     preset: string | null;
   };
   onFiltersChange: (filters: MobileMapSettingsProps['filters']) => void;
   // Настройки карты (черновики)
-  mapSettings: {
-    mapType: string;
-    showTraffic: boolean;
-    showBikeLanes: boolean;
-    showHints: boolean;
-    themeColor: string;
-  };
+  mapSettings: MobileMapSettingsState;
   onMapSettingsChange: (settings: MobileMapSettingsProps['mapSettings']) => void;
   // Действия
   onApply: () => void;
@@ -126,12 +151,15 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
   // Обработчики для фильтров
   const selectedCategories = filters.categories;
   const setSelectedCategories = (cats: string[]) => {
     onFiltersChange({ ...filters, categories: cats });
+  };
+
+  const selectedEventCategories = filters.eventCategories || [];
+  const setSelectedEventCategories = (cats: string[]) => {
+    onFiltersChange({ ...filters, eventCategories: cats });
   };
 
   const isRadiusOn = filters.radiusOn;
@@ -151,7 +179,7 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
 
   // Обработчики для настроек карты
   const mapType = mapSettings.mapType;
-  const setMapType = (val: string) => {
+  const setMapType = (val: 'light' | 'dark' | 'hybrid') => {
     onMapSettingsChange({ ...mapSettings, mapType: val });
   };
 
@@ -184,7 +212,7 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
     showAlternatives: false,
   };
   const currentRouteSettings = routeSettings || defaultRouteSettings;
-  
+
   const setRouteSetting = (key: keyof typeof currentRouteSettings, value: any) => {
     if (onRouteSettingsChange) {
       onRouteSettingsChange({ ...currentRouteSettings, [key]: value });
@@ -200,26 +228,33 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
     onReset();
   };
 
+  if (!isOpen) return null;
+
   return (
     <>
       {/* Overlay */}
-      {isOpen && (
       <div
-          className="fixed inset-0 m-glass-overlay z-40 transition-opacity"
-          style={{ pointerEvents: 'auto' }}
-        onClick={onClose}
+        className="fixed inset-0 m-glass-overlay z-40 transition-opacity"
+        style={{ pointerEvents: 'none' }}
       />
-      )}
-      
-      {/* Settings Panel - glassmorphism */}
+
+      {/* Settings Panel */}
       <div
         className={cn(
-          "fixed left-1/2 transform -translate-x-1/2 z-50 m-glass-panel rounded-[20px]",
+          "fixed left-1/2 transform -translate-x-1/2 z-50 rounded-[20px]",
           "max-w-[340px] min-w-[280px] w-[calc(100vw-32px)] max-h-[calc(100vh-200px)]",
           "overflow-hidden flex flex-col transition-all duration-300",
           isOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[-20px] pointer-events-none"
         )}
-        style={{ top: 'calc(var(--action-buttons-height) + 40px + 70px + 40px)', pointerEvents: isOpen ? 'auto' : 'none' }}
+        style={{
+          top: 'calc(var(--topbar-height, 64px) + 86px)',
+          pointerEvents: isOpen ? 'auto' : 'none',
+          background: 'var(--glass-l1-bg)',
+          backdropFilter: 'var(--glass-blur)',
+          WebkitBackdropFilter: 'var(--glass-blur)',
+          border: '1px solid var(--glass-l1-border)',
+          boxShadow: 'var(--glass-l1-shadow)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -238,11 +273,16 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
 
         {/* Selected filters indicator - только для режима map */}
         {mode === 'map' && (
-          (selectedCategories.length > 0 || selectedPreset || isRadiusOn) ? (
+          (selectedCategories.length > 0 || selectedEventCategories.length > 0 || selectedPreset || isRadiusOn) ? (
             <div className="min-h-[36px] flex flex-wrap gap-1.5 items-center mx-7 mt-2">
               {selectedCategories.map(catKey => (
                 <button key={catKey} className="bg-[#22c55e] text-white border-none rounded-2xl px-3.5 py-1.5 text-[13px] cursor-pointer transition-all flex items-center gap-1.5">
                   {LEGEND_CATEGORIES.find((cat) => cat.key === catKey)?.label || catKey}
+                </button>
+              ))}
+              {selectedEventCategories.map(catKey => (
+                <button key={`event-${catKey}`} className="bg-[#8b5cf6] text-white border-none rounded-2xl px-3.5 py-1.5 text-[13px] cursor-pointer transition-all flex items-center gap-1.5">
+                  {EVENT_CATEGORIES.find((cat) => cat.key === catKey)?.label || catKey}
                 </button>
               ))}
               {selectedPreset && (
@@ -499,6 +539,55 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                   )}
                 </div>
 
+                {/* Категории событий */}
+                <div className="px-7 pb-4.5 m-glass-accordion-section">
+                  <div
+                    className={cn(
+                      "text-base font-semibold cursor-pointer py-2.5 rounded-lg flex items-center transition-colors",
+                      openSection === 'eventCategories'
+                        ? "m-glass-accordion-header open" 
+                        : "m-glass-accordion-header"
+                    )}
+                    onClick={() => setOpenSection(openSection === 'eventCategories' ? '' : 'eventCategories')}
+                  >
+                    <CalendarCheck className="mr-2" style={{ width: 16, height: 16, color: openSection === 'eventCategories' ? 'white' : '#22c55e' }} />
+                      Категории событий
+                    <span className="ml-auto">{openSection === 'eventCategories' ? '▲' : '▼'}</span>
+                  </div>
+                  {openSection === 'eventCategories' && (
+                    <div className="pt-2 pl-8 max-h-[140px] overflow-y-auto">
+                      <div className="flex flex-wrap gap-2">
+                      {EVENT_CATEGORIES.map((cat) => {
+                        const Icon = cat.icon;
+                        const isSelected = selectedEventCategories.includes(cat.key);
+                        return (
+                          <button
+                            key={cat.key}
+                            onClick={() =>
+                              setSelectedEventCategories(
+                                isSelected
+                                  ? selectedEventCategories.filter(k => k !== cat.key)
+                                  : [...selectedEventCategories, cat.key]
+                              )
+                            }
+                            className={cn(
+                                "border-none rounded-2xl px-3.5 py-1.5 text-[13px] cursor-pointer transition-all flex items-center gap-1.5",
+                              isSelected
+                                  ? "m-glass-chip selected" 
+                                  : "m-glass-chip"
+                            )}
+                            style={{ borderColor: isSelected ? cat.color : undefined }}
+                          >
+                              <Icon className="category-icon" style={{ width: 14, height: 14, color: cat.color }} />
+                              {cat.label}
+                          </button>
+                        );
+                      })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Радиус поиска */}
                 <div className="px-7 pb-4.5 m-glass-accordion-section">
                   <div
@@ -660,59 +749,75 @@ const MobileMapSettings: React.FC<MobileMapSettingsProps> = ({
                   </div>
                   {openSection === 'map' && (
                     <div className="pt-2 pl-8">
-                      <div className="mb-2.5">
-                        <b className="m-glass-text">Вид карты:</b>
-                        <select
-                          value={mapType}
-                          onChange={e => setMapType(e.target.value)}
-                          className="ml-2 rounded-md px-2 py-0.5 border m-glass-input"
-                        >
-                          <option value="light">Светлая</option>
-                          <option value="dark">Тёмная</option>
-                          <option value="satellite">Спутник</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2.5">
-                        <label className="flex items-center gap-2 text-sm m-glass-text">
-                          <input
-                            type="checkbox"
-                            checked={showTraffic}
-                            onChange={e => setShowTraffic(e.target.checked)}
-                            className="w-4 h-4 accent-[#22c55e]"
-                          />
-                          Показывать пробки
-                        </label>
-                        <label className="flex items-center gap-2 text-sm m-glass-text">
-                          <input
-                            type="checkbox"
-                            checked={showBikeLanes}
-                            onChange={e => setShowBikeLanes(e.target.checked)}
-                            className="w-4 h-4 accent-[#22c55e]"
-                          />
-                          Показывать велодорожки
-                        </label>
-                        <label className="flex items-center gap-2 text-sm m-glass-text">
-                          <input
-                            type="checkbox"
-                            checked={showHints}
-                            onChange={e => setShowHints(e.target.checked)}
-                            className="w-4 h-4 accent-[#22c55e]"
-                          />
-                          Подсказки
-                        </label>
-                      </div>
-                      <div className="mt-2.5">
-                        <b className="m-glass-text">Цветовая схема:</b>
-                        <select
-                          value={themeColor}
-                          onChange={e => setThemeColor(e.target.value)}
-                          className="ml-2 rounded-md px-2 py-0.5 border m-glass-input"
-                        >
-                          <option value="green">Зелёная</option>
-                          <option value="blue">Синяя</option>
-                          <option value="custom">Своя</option>
-                        </select>
-                      </div>
+                      {mode === 'planner' ? (
+                        <div className="space-y-2.5">
+                          <label className="flex items-center gap-2 text-sm m-glass-text">
+                            <input
+                              type="checkbox"
+                              checked={showTraffic}
+                              onChange={e => setShowTraffic(e.target.checked)}
+                              className="w-4 h-4 accent-[#22c55e]"
+                            />
+                            Показывать пробки
+                          </label>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="mb-2.5">
+                            <b className="m-glass-text">Вид карты:</b>
+                            <select
+                              value={mapType}
+                              onChange={e => setMapType(e.target.value as 'light' | 'dark' | 'hybrid')}
+                              className="ml-2 rounded-md px-2 py-0.5 border m-glass-input"
+                            >
+                              <option value="light">Светлая</option>
+                              <option value="dark">Тёмная</option>
+                              <option value="hybrid">Спутник</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2.5">
+                            <label className="flex items-center gap-2 text-sm m-glass-text">
+                              <input
+                                type="checkbox"
+                                checked={showTraffic}
+                                onChange={e => setShowTraffic(e.target.checked)}
+                                className="w-4 h-4 accent-[#22c55e]"
+                              />
+                              Показывать пробки
+                            </label>
+                            <label className="flex items-center gap-2 text-sm m-glass-text">
+                              <input
+                                type="checkbox"
+                                checked={showBikeLanes}
+                                onChange={e => setShowBikeLanes(e.target.checked)}
+                                className="w-4 h-4 accent-[#22c55e]"
+                              />
+                              Показывать велодорожки
+                            </label>
+                            <label className="flex items-center gap-2 text-sm m-glass-text">
+                              <input
+                                type="checkbox"
+                                checked={showHints}
+                                onChange={e => setShowHints(e.target.checked)}
+                                className="w-4 h-4 accent-[#22c55e]"
+                              />
+                              Подсказки
+                            </label>
+                          </div>
+                          <div className="mt-2.5">
+                            <b className="m-glass-text">Цветовая схема:</b>
+                            <select
+                              value={themeColor}
+                              onChange={e => setThemeColor(e.target.value)}
+                              className="ml-2 rounded-md px-2 py-0.5 border m-glass-input"
+                            >
+                              <option value="green">Зелёная</option>
+                              <option value="blue">Синяя</option>
+                              <option value="custom">Своя</option>
+                            </select>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>

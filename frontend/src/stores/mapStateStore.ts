@@ -143,9 +143,23 @@ export const useMapStateStore = create<MapStateStore>((set, get) => ({
 export const mapStateHelpers = {
     /**
      * Получить текущий центр и зум для контекста
+     * КРИТИЧНО: Если planner контекст не инициализирован, берём состояние из osm
      */
     getCenterAndZoom: (context: 'osm' | 'planner' | 'offline'): { center: [number, number]; zoom: number } => {
         const state = useMapStateStore.getState().contexts[context];
+        
+        // Если контекст не инициализирован и это planner, пробуем взять состояние из osm
+        if (!state.initialized && context === 'planner') {
+            const osmState = useMapStateStore.getState().contexts['osm'];
+            if (osmState.initialized) {
+                console.log('[mapStateHelpers] planner not initialized, using osm state');
+                return {
+                    center: osmState.center || DEFAULT_CENTER,
+                    zoom: osmState.zoom || DEFAULT_ZOOM,
+                };
+            }
+        }
+        
         return {
             center: state.center || DEFAULT_CENTER,
             zoom: state.zoom || DEFAULT_ZOOM,

@@ -28,9 +28,7 @@ export const usePreload = () => {
       //   import('../pages/Blog');
       //   break;
       case '/calendar':
-        import('../pages/Calendar').then(() => {
-          preloadedRoutes.add(route);
-        });
+        // /calendar теперь redirect → /map, preload не нужен
         break;
       case '/chat':
 // Чаты отключены фичефлагом

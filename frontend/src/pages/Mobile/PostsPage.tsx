@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, no-empty */
 // TODO: temporary — relax lint rules in large files while we migrate types (follow-up task)
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import TopBar from '../../components/Mobile/TopBar';
 import FilterTabs from '../../components/Mobile/FilterTabs';
@@ -9,14 +9,14 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 import OptimizedImage from '../../components/ui/OptimizedImage';
-import { Plus, Heart, MessageCircle, Share2, MapPin, TrendingUp, Clock, Star, Navigation, Calendar } from 'lucide-react';
-import { listPosts, PostDTO, createPost } from '../../services/postsService';
+import { Plus, Heart, MessageCircle, Share2, MapPin, TrendingUp, Clock, Star, Navigation, Calendar, Search, X } from 'lucide-react';
+import { listPosts, PostDTO } from '../../services/postsService';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { getPostImage, getPostLocation } from '../../utils/postUtils';
+import { useFavorites } from '../../contexts/FavoritesContext';
 
 // Lazy load тяжелых компонентов
-const LazyPostConstructor = lazy(() => import('../../components/Posts/PostConstructor'));
 const MiniMapMarker = lazy(() => import('../../components/Posts/MiniMapMarker'));
 const MiniMapRoute = lazy(() => import('../../components/Posts/MiniMapRoute'));
 const MiniEventCard = lazy(() => import('../../components/Posts/MiniEventCard'));
@@ -27,20 +27,24 @@ type SortFilter = 'trending' | 'recent' | 'favorites';
 const PostsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const favorites = useFavorites() as any;
   const [posts, setPosts] = useState<PostDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [contentFilter, setContentFilter] = useState<ContentFilter>('all');
   const [sortFilter, setSortFilter] = useState<SortFilter>('recent');
-  const [showPostConstructor, setShowPostConstructor] = useState(false);
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Предзагружаем MapsGL при загрузке страницы постов
   // НЕ предзагружаем MapsGL - загрузится только когда пользователь увидит карту в посте
 
-  // Проверяем query параметр для открытия конструктора поста
+  // Проверяем query параметр для открытия поиска
   useEffect(() => {
-    if (searchParams.get('create') === 'true') {
-      setShowPostConstructor(true);
-      setSearchParams({}, { replace: true });
+    if (searchParams.get('search') === 'open') {
+      setSearchVisible(true);
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('search');
+      setSearchParams(nextParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 
@@ -115,122 +119,115 @@ const PostsPage: React.FC = () => {
     setTimeout(loadPosts, 1000);
   };
 
-  const handlePostConstructorSave = async (postData: any) => {
-    try {
-      const body = postData.description || postData.body || '';
-      
-      let photoUrls: string | undefined;
-      if (postData.photoUrls) {
-        photoUrls = postData.photoUrls;
-      } else if (postData.images?.items) {
-        const urls = postData.images.items
-          .filter((img: any) => img.src && !img.src.startsWith('blob:') && !img.src.startsWith('data:'))
-          .map((img: any) => img.src);
-        photoUrls = urls.length > 0 ? urls.join(',') : undefined;
-      }
-      
-      let marker_id: string | undefined;
-      let route_id: string | undefined;
-      let event_id: string | undefined;
-      
-      if (postData.map?.elements) {
-        if (postData.map.elements.markers && Array.isArray(postData.map.elements.markers) && postData.map.elements.markers.length > 0) {
-          const firstMarker = postData.map.elements.markers[0];
-          marker_id = firstMarker.id || firstMarker.marker_id || firstMarker.markerId;
-        }
-        
-        if (postData.map.elements.routes && Array.isArray(postData.map.elements.routes) && postData.map.elements.routes.length > 0) {
-          const firstRoute = postData.map.elements.routes[0];
-          route_id = firstRoute.id || firstRoute.route_id || firstRoute.routeId;
-        }
-        
-        if (postData.map.elements.events && Array.isArray(postData.map.elements.events) && postData.map.elements.events.length > 0) {
-          const firstEvent = postData.map.elements.events[0];
-          event_id = firstEvent.id || firstEvent.event_id || firstEvent.eventId;
-        }
-      }
-      
-      if (!postData.title && !body.trim()) {
-        alert('❌ Добавьте заголовок или описание поста');
-        return;
-      }
-      
-      const created = await createPost({
-        title: postData.title?.trim() || undefined,
-        body: body.trim() || undefined,
-        photo_urls: photoUrls,
-        marker_id: marker_id,
-        route_id: route_id,
-        event_id: event_id,
-        template: 'mobile'
-      });
-      
-      handlePostCreated(created);
-      setShowPostConstructor(false);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
-      alert(`❌ Не удалось сохранить пост:\n${errorMessage}`);
-    }
-  };
-
   const tabs = [
     { id: 'trending', label: 'Популярное', icon: <TrendingUp className="w-4 h-4" /> },
     { id: 'recent', label: 'Новое', icon: <Clock className="w-4 h-4" /> },
     { id: 'favorites', label: 'Избранное', icon: <Star className="w-4 h-4" /> },
   ];
 
-  const contentTabs = [
-    { id: 'all', label: 'Все' },
-    { id: 'post', label: 'Посты' },
-    { id: 'guide', label: 'Путеводители' },
-  ];
+  const favoritePostIds = useMemo(() => {
+    const favoritePosts = favorites?.favoritePosts || [];
+    return new Set<string>(favoritePosts.map((post: any) => post.id).filter(Boolean));
+  }, [favorites]);
 
-  const sortedPosts = [...posts].sort((a, b) => {
-    if (sortFilter === 'trending') {
-      return (b.likes_count || 0) - (a.likes_count || 0);
-    }
-    if (sortFilter === 'recent') {
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    }
-    return 0;
-  });
+  const visiblePosts = useMemo(() => {
+    let result = [...posts];
 
-  // Если открыт конструктор постов, показываем его
-  if (showPostConstructor) {
-    return (
-      <div className="flex flex-col h-screen bg-background">
-        <Suspense fallback={<div className="flex items-center justify-center h-full">Загрузка конструктора...</div>}>
-          <LazyPostConstructor
-            onSave={handlePostConstructorSave}
-            onClose={() => setShowPostConstructor(false)}
-          />
-        </Suspense>
-      </div>
-    );
-  }
+    if (sortFilter === 'favorites') {
+      result = result.filter((post) => favoritePostIds.has(post.id));
+    } else {
+      if (sortFilter === 'trending') {
+        result.sort((a, b) => (b.likes_count || 0) - (a.likes_count || 0));
+      } else if (sortFilter === 'recent') {
+        result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      }
+    }
+
+    const term = searchTerm.trim().toLowerCase();
+    if (term) {
+      result = result.filter((post) => {
+        const title = (post.title || '').toLowerCase();
+        const body = (post.body || '').toLowerCase();
+        const author = (post.author_name || '').toLowerCase();
+        const location = (getPostLocation(post) || '').toLowerCase();
+        return [title, body, author, location].some((field) => field.includes(term));
+      });
+    }
+
+    return result;
+  }, [favoritePostIds, posts, searchTerm, sortFilter]);
+
+  const handleSearchClose = () => {
+    setSearchVisible(false);
+    setSearchTerm('');
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('search');
+    setSearchParams(nextParams, { replace: true });
+  };
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen overflow-hidden">
       <FilterTabs 
         tabs={tabs} 
         defaultTab={sortFilter}
         onTabChange={(value) => setSortFilter(value as SortFilter)}
       />
+
+      {searchVisible && (
+        <div className="px-3 pb-2 pt-1">
+          <div className="flex items-center gap-2 rounded-2xl border border-border bg-background/70 backdrop-blur px-3 py-2 shadow-sm">
+            <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              autoFocus
+              placeholder="Поиск по постам, авторам и местам"
+              className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="p-1 rounded-full text-muted-foreground hover:text-foreground"
+                aria-label="Очистить поиск"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleSearchClose}
+              className="text-xs font-medium text-muted-foreground hover:text-foreground"
+            >
+              Закрыть
+            </button>
+          </div>
+          <div className="mt-2 text-xs text-muted-foreground px-1">
+            {searchTerm
+              ? `Найдено ${visiblePosts.length} из ${posts.length}`
+              : `Введите запрос для поиска по ${posts.length} постам`}
+          </div>
+        </div>
+      )}
       
-      <div className="flex-1 overflow-y-auto pb-bottom-nav m-glass-page">
+      <div className="flex-1 min-h-0 overflow-y-auto pb-[calc(var(--bottom-nav-height,56px)+1rem)] m-glass-page">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-muted-foreground">Загрузка...</div>
           </div>
-        ) : sortedPosts.length === 0 ? (
+        ) : visiblePosts.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full p-4">
             <div className="text-muted-foreground text-center">
-              Пока нет постов
+              {sortFilter === 'favorites' && favoritePostIds.size === 0
+                ? 'В избранном пока нет постов'
+                : searchTerm
+                  ? 'Ничего не найдено'
+                  : 'Пока нет постов'}
             </div>
           </div>
         ) : (
-          <div className="p-4 space-y-4">
-            {sortedPosts.map((post) => {
+          <div className="p-3 space-y-3">
+            {visiblePosts.map((post) => {
               const imageUrl = getPostImage(post);
               const location = getPostLocation(post);
               

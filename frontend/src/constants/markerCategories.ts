@@ -111,6 +111,34 @@ export const MARKER_CATEGORIES: MarkerCategory[] = [
     description: 'Точки маршрутов'
   },
   {
+    key: 'favorite',
+    label: 'Избранное',
+    color: '#F59E0B', // Оранжевый
+    iconName: 'favorite',
+    description: 'Точки из избранного'
+  },
+  {
+    key: 'map-click',
+    label: 'Клик по карте',
+    color: '#3B82F6', // Синий
+    iconName: 'map-click',
+    description: 'Точки, добавленные кликом по карте'
+  },
+  {
+    key: 'coordinates',
+    label: 'Ввод координат',
+    color: '#10B981', // Зелёный
+    iconName: 'coordinates',
+    description: 'Точки, добавленные по координатам'
+  },
+  {
+    key: 'address',
+    label: 'Адрес',
+    color: '#EF4444', // Красный
+    iconName: 'address',
+    description: 'Точки, добавленные по адресу'
+  },
+  {
     key: 'other',
     label: 'Другое',
     color: '#7f8c8d', // Серый

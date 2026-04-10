@@ -1,0 +1,721 @@
+Я предлагаю концептуальный и визуальный апгрейд, который сохраняет почти всю твою логику (postType, guideSections, хуки, офлайн, предварительный просмотр), но радикально меняет ощущения от процесса создания. Основные принципы, которые будут актуальны в сфере тревел-контента в 2025–2026 годах:подход к созданию контента с ориентацией на мобильные устройства → быстрый снимок момента (фото + 1–3 предложения + гео)
+постепенное раскрытие → начинаем с самого простого и эмоционального, сложные элементы (секции, крючки) появляются по желанию
+визуальное повествование с первого экрана — пользователь сразу видит, как будет выглядеть пост
+эмоциональные микротриггеры — эмодзи, градиенты, анимация «вау», подсказки в стиле «Расскажи, что тебя здесь зацепило»
+единый поток для мобильных устройств и компьютеров, но с разными акцентами (быстрота vs глубина)
+
+Предлагаемая структура потока (один компонент, адаптивный)Экран 0 — момент выбора «режима создания» (очень быстро, 3–4 карточки)
+Показывается всегда при открытии модального окна / встроенной формы.Режим
+Заголовок карточки
+Подзаголовок / эмоция
+Когда показывать первым
+Основной сценарий
+Мгновенная заметка
+ Здесь и сейчас
+Сфотографируй момент и напиши 1–2 предложения
+Мобильный всегда первым
+GPS + камера + короткий текст
+Короткий пост / стори
+ Впечатление дня
+Фото + эмоции + 1 метка / маршрут
+Десктоп вторым
+3–7 фото + текст до 300 символов
+Полноценный путеводитель
+ Мой гид по этому месту
+Несколько точек, секций, маршрутов
+Десктоп первым
+guide с секциями
+Продолжить черновик
+ Продолжить начатое…
+Последний черновик от …
+Если есть черновик
+Авто-подгрузка
+
+На мобильном устройстве — крупная карточка «Здесь и сейчас» + пульсирующая иконка GPS + кнопка камеры прямо на карточке.После выбора режима → плавный переход (Framer Motion) к основному редактору.
+Основной редактор — прогрессивный и ориентированный на визуальное восприятиеВместо двух кардинально разных веток (простой / обучающий) делаем один редактор с прогрессивным усложнением.Базовый слой (всегда виден):Большое поле для первого эмоционального предложения (заполнитель типа «Что тебя здесь выбило из колеи?» или «Если бы это место могло говорить…»)
+Кнопка камеры / галереи очень крупная (на мобильных устройствах — во всю ширину вверху)
+Автогеометка (показываем маленькую карту или просто «Вы здесь: …»)
+Кнопка «Добавить фото / видео / голосовую заметку»
+
+Далее появляются аккордеон / чипы / карточки для усложнения:Добавить заголовок
+Добавить ещё текст / секции
+Привязать маршрут / метку / событие (ваш хук)
+Выберите стиль оформления (ваш GuideFormatSelector, но теперь в виде «Как это будет выглядеть» с предварительным просмотром)
+
+Каждый добавленный блок — это отдельная карточка с мини-превью (как в Notion или CapCut), которую можно перетаскивать.
+Живое превью — всегда под рукой (или вместо редактора на мобильном)На рабочем столе — постоянная правая колонка (ваша текущая правая панель), обновляется в режиме реального времени
+На мобильном устройстве — переключатель «Редактировать / Как увидят другие» (нижняя вкладка или кнопка FAB)
+При переключении на превью — анимация «публикации» (как будто пост уже в ленте)
+
+Эмоциональные и геймификационные микроулучшенияПосле первой фотографии появляется тост / конфетти: «+25 очков опыта за живой момент!»
+Под полем для текста — 4–5 готовых эмоциональных стартеров (кнопок-чипов):Это место выбило меня из колеи, потому что…
+Если у тебя есть всего один день — сделай вот так
+Никому не рассказывайте, но здесь...
+Самое вкусное / красивое / странное, что я нашёл
+
+При добавлении второй секции + появляется подсказка: «Класс, уже путеводитель! Хотите автоматически пронумеровать точки на карте?»
+При сохранении в автономном режиме — не просто оповещение, а красивое уведомление в виде стекла: «Заметка спрятана в кармане. Будет опубликована, как только появится сеть» »
+
+Конкретные изменения в коде (минимальный путь к «душе»)Добавить экран выбора режима перед текущей логикойtsx
+
+// Новый компонент ModeSelector.tsx
+const modes = [
+  { id: 'instant', icon: <Camera />, title: 'Здесь и сейчас', desc: 'Фото + пара слов о моменте', primary: isMobile },
+  { id: 'short',   icon: <Sparkles />, title: 'Впечатление дня', desc: 'Несколько фото + эмоции', primary: !isMobile },
+  { id: 'guide',   icon: <Map />, title: 'Мой путеводитель', desc: 'Точки, маршрут, советы', primary: !isMobile },
+];
+
+// В начале модалки показываем, если !selectedMode
+
+Переименовать состояния и сделать их более гибкимиpostType → contentMode ('момент' | 'история' | 'путеводитель')
+guideSections → блоки (массив { type: 'text'|'photo'|'map'|'voice', content })
+
+Значительно повысить визуальную роль фотографииПервое фото становится фоном для заголовка (размытие + наложение)
+Добавляем возможность перетаскивать и менять местами фото и блоки (react-beautiful-dnd или фреймворк для изменения порядка элементов)
+
+Упростить хуки (hooks)Вместо отдельного блока — чипы под текстовым полем: «+ Привязать маршрут» → открывается нижний лист с избранными
+Предварительный просмотр сделать более эмоциональнымДобавьте фейковые аватарки, лайки и комментарии в стиле «уже в ленте»
+Показывать XP, который получит автор после публикации
+
+Самый быстрый «вау»-патч (1–2 дня)Замените placeholder'ы на эмоциональные
+Сделать первую фотографию фоном для всей формы (с градиентом)
+Добавьте 4 стартовых чипа под основным текстовым полем
+На мобильном — после первой фотографии сразу предлагать «Опубликовать момент?» (кнопка большая, акцентная)
+В превью добавить фейковый «+15 » анимированный
+
+Если хочешь, я могу набросать более подробный код для ModeSelector + обновленной структуры редактора (с примерами стилей стекла, анимаций и адаптивности).Скажи, в каком направлении двигаться в первую очередь: быстрый эмоциональный апгрейд текущей формы 
+или полный рефакторинг в сторону «одного прогрессивного редактора»
+
+19 веб - страниц
+
+Прогрессивные схемы раскрытия информации
+
+Анимация движения фреймера
+
+Более краткие примеры кода
+
+А теперь набросай технический код, я адаптирую его для проекта
+
+Вот пример технической реализации первого экрана выбора режима создания + базовая структура прогрессивного редактора. Я постарался сделать код максимально приближенным к твоему текущему стилю (стеклянные эффекты, Framer Motion, состояние в стиле Zustand, адаптивность через useIsMobile).Это не полноценный компонент на 1000 строк, а скелет + ключевые части, которые можно вставить/адаптировать в твой CreatePostModal.1. Новый компонент — ModeSelector (экран выбора режима)tsx
+
+// src/components/Posts/ModeSelector.tsx
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { 
+  Camera, Sparkles, MapPin, Map, FileText, 
+  ChevronRight, RotateCcw, Cloud 
+} from 'lucide-react';
+import { useIsMobile } from '../../hooks/use-mobile';
+import { useOfflineStatus } from '../../hooks/use-offline-status'; // предположим, что есть такой хук
+
+interface CreationMode {
+  id: 'instant' | 'story' | 'guide' | 'continue';
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  primary?: boolean;
+  color: string;
+}
+
+interface ModeSelectorProps {
+  onSelect: (mode: CreationMode['id']) => void;
+  hasDraft?: boolean; // есть ли незавершённый черновик
+}
+
+export const ModeSelector: React.FC<ModeSelectorProps> = ({ onSelect, hasDraft = false }) => {
+  const isMobile = useIsMobile();
+  const { isOnline } = useOfflineStatus();
+
+  const modes: CreationMode[] = [
+    {
+      id: 'instant',
+      title: 'Здесь и сейчас',
+      description: 'Сфотографируй момент и напиши пару слов',
+      icon: <Camera className="w-7 h-7" />,
+      primary: isMobile,
+      color: 'from-blue-500 to-cyan-500'
+    },
+    {
+      id: 'story',
+      title: 'Впечатление дня',
+      description: 'Несколько фото + эмоции + геометка',
+      icon: <Sparkles className="w-7 h-7" />,
+      primary: !isMobile,
+      color: 'from-purple-500 to-pink-500'
+    },
+    {
+      id: 'guide',
+      title: 'Мой путеводитель',
+      description: 'Маршрут, точки, советы, структура',
+      icon: <Map className="w-7 h-7" />,
+      primary: !isMobile,
+      color: 'from-emerald-500 to-teal-500'
+    },
+    ...(hasDraft ? [{
+      id: 'continue' as const,
+      title: 'Продолжить черновик',
+      description: 'Последняя заметка от сегодня',
+      icon: <RotateCcw className="w-7 h-7" />,
+      primary: false,
+      color: 'from-amber-500 to-orange-500'
+    }] : [])
+  ];
+
+  // Сортируем так, чтобы primary был первым
+  const sortedModes = [...modes].sort((a, b) => 
+    b.primary ? 1 : a.primary ? -1 : 0
+  );
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="p-5 sm:p-6 space-y-6"
+    >
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-gray-100">
+          Что создаём сегодня?
+        </h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          {isMobile ? 'Быстрый момент или полноценный гид?' : 'Выбери подходящий формат'}
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <AnimatePresence>
+          {sortedModes.map((mode) => (
+            <motion.button
+              key={mode.id}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              whileHover={{ scale: 1.03, y: -4 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => onSelect(mode.id)}
+              className={`
+                relative overflow-hidden rounded-2xl text-left p-5
+                border border-gray-200/60 dark:border-gray-700/50
+                bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl
+                shadow-sm hover:shadow-md transition-all duration-300
+                ${mode.primary ? 'ring-2 ring-offset-2 ring-blue-500/50' : ''}
+              `}
+            >
+              {/* Градиентный акцент */}
+              <div 
+                className={`absolute inset-0 bg-gradient-to-br ${mode.color} opacity-[0.07] dark:opacity-[0.12]`}
+              />
+
+              <div className="relative flex items-start gap-4">
+                <div className={`
+                  w-14 h-14 rounded-xl flex items-center justify-center shrink-0
+                  bg-gradient-to-br ${mode.color} text-white shadow-md
+                `}>
+                  {mode.icon}
+                </div>
+
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg mb-1 text-gray-900 dark:text-gray-100">
+                    {mode.title}
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-snug">
+                    {mode.description}
+                  </p>
+                </div>
+
+                <ChevronRight className="w-5 h-5 text-gray-400 mt-1" />
+              </div>
+            </motion.button>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {!isOnline && (
+        <div className="text-center text-sm text-amber-600 dark:text-amber-400 mt-4 flex items-center justify-center gap-2">
+          <Cloud className="w-4 h-4" />
+          <span>Работаем оффлайн — всё сохранится автоматически</span>
+        </div>
+      )}
+    </motion.div>
+  );
+};
+
+2. Обновленная структура CreatePostModal (фрагмент)tsx
+
+// Внутри CreatePostModal.tsx
+
+const [mode, setMode] = useState<'select' | 'instant' | 'story' | 'guide' | 'continue'>('select');
+const [hasDraft, setHasDraft] = useState(false);
+
+// Проверяем наличие черновика при открытии
+useEffect(() => {
+  if (isOpen) {
+    // Здесь можно запросить последний черновик из offlinePostsStorage
+    // для примера просто имитируем
+    setHasDraft(Math.random() > 0.6);
+  }
+}, [isOpen]);
+
+// ...
+
+if (mode === 'select') {
+  return (
+    <div className="flex flex-col h-full">
+      <div className="p-4 border-b flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Создать запись</h2>
+        <button onClick={onClose}>
+          <FaTimes />
+        </button>
+      </div>
+      
+      <ModeSelector 
+        onSelect={(selectedMode) => setMode(selectedMode)}
+        hasDraft={hasDraft}
+      />
+    </div>
+  );
+}
+
+// Дальше — разные редакторы в зависимости от mode
+
+return (
+  <div className="flex flex-col h-full">
+    {/* Шапка с кнопкой "Назад к выбору режима" */}
+    <div className="p-4 border-b flex items-center gap-3">
+      <button 
+        onClick={() => setMode('select')}
+        className="p-2 rounded-full hover:bg-gray-100"
+      >
+        <RotateCcw size={20} />
+      </button>
+      <h2 className="text-xl font-semibold">
+        {mode === 'instant' && 'Момент здесь и сейчас'}
+        {mode === 'story' && 'Впечатление дня'}
+        {mode === 'guide' && 'Путеводитель по месту'}
+        {mode === 'continue' && 'Продолжение черновика'}
+      </h2>
+    </div>
+
+    {/* Основной редактор — здесь уже разный контент в зависимости от mode */}
+    <div className="flex-1 overflow-y-auto p-5 space-y-6">
+      {/* Базовые элементы для всех режимов */}
+      <div className="space-y-4">
+        {/* Эмоциональный стартер */}
+        <div className="flex flex-wrap gap-2">
+          {[
+            "Это место выбило меня из колеи потому что…",
+            "Если у тебя есть всего один день — делай так",
+            "Никому не рассказывайте, но здесь…"
+          ].map((starter) => (
+            <button
+              key={starter}
+              onClick={() => setBody(starter)}
+              className="text-sm px-3 py-1.5 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-700"
+            >
+              {starter}
+            </button>
+          ))}
+        </div>
+
+        {/* Поле для текста */}
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Что ты чувствуешь прямо сейчас?"
+          className="w-full min-h-[120px] p-4 rounded-xl bg-white/40 backdrop-blur-xl border border-white/30 focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+        />
+      </div>
+
+      {/* Кнопка фото — очень заметная */}
+      <div className="relative">
+        <label 
+          htmlFor="photo-main"
+          className="block aspect-video rounded-2xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 cursor-pointer hover:opacity-90 transition-opacity flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600"
+        >
+          {photoPreviewUrls.length > 0 ? (
+            <img 
+              src={photoPreviewUrls[0]} 
+              alt="Первое фото" 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="text-center">
+              <Camera className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+              <p className="text-lg font-medium">Добавить главное фото</p>
+              <p className="text-sm text-gray-500">или несколько сразу</p>
+            </div>
+          )}
+        </label>
+        <input
+          id="photo-main"
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handlePhotoSelect}
+          className="hidden"
+        />
+      </div>
+
+      {/* Дополнительные действия */}
+      <div className="flex flex-wrap gap-3">
+        <button className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium flex items-center justify-center gap-2">
+          <MapPin size={18} />
+          Привязать место
+        </button>
+        
+        <button className="flex-1 py-3 px-4 rounded-xl bg-white/80 backdrop-blur-md border border-gray-200 dark:border-gray-700 font-medium flex items-center justify-center gap-2">
+          <Map size={18} />
+          Добавить маршрут
+        </button>
+      </div>
+
+      {/* Кнопки действий внизу */}
+      <div className="sticky bottom-0 left-0 right-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-t border-gray-200/50 dark:border-gray-800/50 p-4 -mx-5 -mb-5">
+        <div className="flex gap-3 max-w-3xl mx-auto">
+          <button 
+            onClick={handleSaveOffline}
+            className="flex-1 py-3 px-5 rounded-xl bg-gray-100 dark:bg-gray-800 font-medium"
+          >
+            Сохранить черновик
+          </button>
+          <button 
+            onClick={handleCreatePost}
+            disabled={loading || !body.trim()}
+            className="flex-1 py-3 px-5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {loading ? 'Создаётся...' : 'Опубликовать'}
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+Ключевые моменты для адаптацииСостояние — добавьте режим в Zustand или локально, чтобы сохранять выбор
+Прогрессивность — для режима руководства показывайте аккордеон/список секций только после нажатия кнопки «Добавить секцию»
+Первое фото в качестве фона — можно сделать через background-image + наложение
+Анимации — используйте layoutId для перехода между режимами
+Офлайн — ваша текущая логика offlinePostsStorage отлично впишется
+
+Вот дополнение к коду — я добавил реализацию остальных режимов (story, guide, continue), чтобы у тебя был полный набор. Все построено на той же основе: стиль glass, адаптивность, Framer Motion, минимальное дублирование кода.Я сделал так, чтобы:базовые элементы (текст, фото, геопривязка) были общими для всех режимов
+в каждом режиме добавлялись свои специфические блоки/интерфейсы
+переключение между режимами сохраняло введенные данные (через общее состояние)
+
+Обновленный фрагмент CreatePostModal (с полным набором режимов)tsx
+
+// Внутри CreatePostModal.tsx
+
+// Расширяем состояние (добавляем поля, которые нужны разным режимам)
+const [mode, setMode] = useState<'select' | 'instant' | 'story' | 'guide' | 'continue'>('select');
+const [hasDraft, setHasDraft] = useState(false);
+
+// Дополнительные поля для разных режимов
+const [blocks, setBlocks] = useState<any[]>([]);           // для guide — массив блоков/секций
+const [selectedHook, setSelectedHook] = useState<any>(null); // маршрут/метка/событие
+
+// ... (твои существующие состояния: title, body, uploadedFiles, photoPreviewUrls и т.д.)
+
+// Проверка черновика при открытии
+useEffect(() => {
+  if (isOpen) {
+    // Здесь можно реально проверить offlinePostsStorage.getLastDraft()
+    // для примера — рандом
+    setHasDraft(Math.random() > 0.7);
+    // Если есть черновик и пользователь выбрал continue → можно автозагрузить
+  }
+}, [isOpen]);
+
+// Общий обработчик добавления фото (уже есть у тебя)
+const handlePhotoSelect = /* твой код */;
+
+// Основной рендер
+if (mode === 'select') {
+  return (
+    <div className="flex flex-col h-full">
+      <div className="p-4 border-b flex items-center justify-between glass-l1">
+        <h2 className="text-xl font-bold">Создать запись</h2>
+        <button onClick={onClose} className="p-2 rounded-full hover:bg-white/20">
+          <FaTimes size={20} />
+        </button>
+      </div>
+      
+      <ModeSelector 
+        onSelect={setMode}
+        hasDraft={hasDraft}
+      />
+    </div>
+  );
+}
+
+// Общая шапка для всех режимов редактирования
+const renderHeader = () => (
+  <div className="p-4 border-b flex items-center gap-3 glass-l1">
+    <button 
+      onClick={() => setMode('select')}
+      className="p-2 rounded-full hover:bg-white/20 transition-colors"
+    >
+      <RotateCcw size={20} />
+    </button>
+    <h2 className="text-xl font-semibold">
+      {mode === 'instant' && 'Момент здесь и сейчас'}
+      {mode === 'story' && 'Впечатление дня'}
+      {mode === 'guide' && 'Мой путеводитель'}
+      {mode === 'continue' && 'Продолжение черновика'}
+    </h2>
+  </div>
+);
+
+// Общий блок эмоционального стартера + основной текст + фото
+const renderCommonEditorPart = () => (
+  <div className="space-y-6">
+    {/* Эмоциональные стартеры */}
+    <div className="flex flex-wrap gap-2">
+      {[
+        "Это место выбило меня из колеи потому что…",
+        "Если у тебя всего один день — делай так",
+        "Никому не рассказывайте, но здесь…",
+        "Самое вкусное/красивое/странное, что я нашёл"
+      ].map((starter) => (
+        <button
+          key={starter}
+          onClick={() => setBody(prev => prev ? `${prev}\n\n${starter}` : starter)}
+          className="text-sm px-4 py-2 rounded-full bg-blue-50/80 dark:bg-blue-900/30 
+                     hover:bg-blue-100 dark:hover:bg-blue-800/40 text-blue-700 dark:text-blue-300
+                     border border-blue-200/50 dark:border-blue-700/50 transition-all"
+        >
+          {starter}
+        </button>
+      ))}
+    </div>
+
+    {/* Основное поле текста */}
+    <textarea
+      value={body}
+      onChange={(e) => setBody(e.target.value)}
+      placeholder={
+        mode === 'instant' ? "Что происходит прямо сейчас? (2–3 предложения хватит)" :
+        mode === 'story' ? "Расскажи свои эмоции, впечатления, что запомнилось..." :
+        "Вступление к путеводителю или главная мысль..."
+      }
+      className="w-full min-h-[140px] p-4 rounded-2xl bg-white/30 dark:bg-gray-800/40 
+                 backdrop-blur-xl border border-white/20 dark:border-gray-700/50 
+                 focus:border-blue-400 focus:ring-2 focus:ring-blue-200/50 resize-none"
+    />
+
+    {/* Фото-блок — акцентный */}
+    <div className="space-y-3">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        {mode === 'instant' ? 'Главный кадр момента' : 'Фотографии (перетаскивай для порядка)'}
+      </label>
+      
+      <div className={`
+        aspect-video rounded-2xl overflow-hidden relative cursor-pointer
+        border-2 border-dashed ${photoPreviewUrls.length ? 'border-blue-400/50' : 'border-gray-400/50'}
+        hover:border-blue-500/70 transition-colors
+      `}>
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handlePhotoSelect}
+          className="absolute inset-0 opacity-0 cursor-pointer z-10"
+        />
+        
+        {photoPreviewUrls.length > 0 ? (
+          <img 
+            src={photoPreviewUrls[0]} 
+            alt="Главное фото" 
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-50/80 to-gray-100/80 dark:from-gray-900/60 dark:to-gray-800/60">
+            <Camera className="w-12 h-12 text-gray-400 mb-3" />
+            <p className="text-lg font-medium text-gray-600 dark:text-gray-300">
+              {mode === 'instant' ? 'Сфотографировать сейчас' : 'Добавить фото / галерея'}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Мини-превью остальных фото (если больше одного) */}
+      {photoPreviewUrls.length > 1 && (
+        <div className="grid grid-cols-4 gap-2">
+          {photoPreviewUrls.slice(1).map((url, idx) => (
+            <div key={idx} className="aspect-square rounded-lg overflow-hidden relative group">
+              <img src={url} alt={`Доп. фото ${idx+1}`} className="w-full h-full object-cover" />
+              <button 
+                onClick={() => handleRemovePhoto(idx + 1)}
+                className="absolute top-1 right-1 bg-red-500/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <FaTimes size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+// Рендер в зависимости от режима
+return (
+  <div className="flex flex-col h-full">
+    {renderHeader()}
+
+    <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-8">
+      {renderCommonEditorPart()}
+
+      {/* Специфические блоки для каждого режима */}
+      {mode === 'instant' && (
+        <div className="pt-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+            Момент готов? Можно публиковать сразу!
+          </p>
+          {/* Здесь можно добавить быстрые теги: "закат", "вкусняшка", "вау-вид" */}
+        </div>
+      )}
+
+      {mode === 'story' && (
+        <div className="space-y-6 pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
+          <div className="flex items-center gap-3">
+            <MapPin className="w-5 h-5 text-blue-500" />
+            <span className="font-medium">Привязать место или маршрут</span>
+          </div>
+          
+          {/* Здесь твой выбор hook — метка/маршрут/событие */}
+          <button 
+            onClick={() => {/* открыть выбор из favorites */}}
+            className="w-full py-3 px-4 rounded-xl bg-white/50 dark:bg-gray-800/50 
+                       border border-gray-300/50 dark:border-gray-600/50 text-left"
+          >
+            + Выбрать точку / маршрут / событие
+          </button>
+
+          <div className="text-sm text-gray-500 italic">
+            Добавь 1–2 предложения про эмоции — это то, что люди запомнят больше всего
+          </div>
+        </div>
+      )}
+
+      {mode === 'guide' && (
+        <div className="space-y-6 pt-6 border-t border-gray-200/50 dark:border-gray-700/50">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-lg">Секции путеводителя</h3>
+            <button 
+              onClick={() => {
+                setBlocks([...blocks, { id: Date.now(), type: 'section', title: '', content: '' }]);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700"
+            >
+              <Plus size={16} />
+              Добавить секцию
+            </button>
+          </div>
+
+          {/* Список секций с drag-and-drop (можно подключить react-beautiful-dnd позже) */}
+          {blocks.map((block, index) => (
+            <motion.div 
+              key={block.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 rounded-2xl bg-white/40 dark:bg-gray-800/40 backdrop-blur-xl border border-white/20"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <input
+                  value={block.title}
+                  onChange={(e) => {
+                    const newBlocks = [...blocks];
+                    newBlocks[index].title = e.target.value;
+                    setBlocks(newBlocks);
+                  }}
+                  placeholder={`Секция ${index + 1}`}
+                  className="font-medium bg-transparent border-b border-gray-300 focus:border-blue-400 outline-none"
+                />
+                <button 
+                  onClick={() => setBlocks(blocks.filter((_, i) => i !== index))}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <FaTrash size={14} />
+                </button>
+              </div>
+              
+              <textarea
+                value={block.content}
+                onChange={(e) => {
+                  const newBlocks = [...blocks];
+                  newBlocks[index].content = e.target.value;
+                  setBlocks(newBlocks);
+                }}
+                placeholder="Что здесь важно знать / увидеть / попробовать..."
+                className="w-full min-h-[80px] bg-transparent resize-none focus:outline-none"
+              />
+            </motion.div>
+          ))}
+
+          {blocks.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              Добавь первую секцию — например, «Как добраться» или «Где лучше сфотографироваться»
+            </div>
+          )}
+        </div>
+      )}
+
+      {mode === 'continue' && (
+        <div className="bg-amber-50/50 dark:bg-amber-900/20 p-5 rounded-2xl border border-amber-200/50">
+          <h3 className="font-medium mb-3 flex items-center gap-2">
+            <RotateCcw size={18} className="text-amber-600" />
+            Продолжаем черновик от {new Date().toLocaleDateString('ru-RU')}
+          </h3>
+          <p className="text-sm text-amber-800/80 dark:text-amber-200/80">
+            Здесь можно подгрузить текст/фото из последнего черновика (реализуй через offlinePostsStorage)
+          </p>
+        </div>
+      )}
+    </div>
+
+    {/* Нижняя панель действий — общая для всех */}
+    <div className="sticky bottom-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-2xl border-t border-gray-200/50 p-4">
+      <div className="flex gap-3 max-w-3xl mx-auto">
+        <button 
+          onClick={handleSaveOffline}
+          className="flex-1 py-3 px-5 rounded-xl bg-gray-100 dark:bg-gray-800 font-medium flex items-center justify-center gap-2"
+        >
+          <Cloud size={18} />
+          Черновик
+        </button>
+        
+        <button 
+          onClick={handleCreatePost}
+          disabled={loading || !body.trim() || (mode === 'guide' && blocks.length === 0)}
+          className="flex-1 py-3 px-5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium 
+                     disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
+        >
+          {loading ? (
+            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <>
+              Опубликовать
+              <ChevronRight size={18} />
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+Что ещё можно добавить (быстрые улучшения)Перетаскивание блоков в режиме наведения
+Подключите react-beautiful-dnd или framer-motion Reorder.Group
+Живое превью в правой колонке (на компьютере)
+Используй текущую логику PostPreview, но передавай туда mode, blocks, photoPreviewUrls
+Автосохранение каждые 10 секунд  tsx
+
+useEffect(() => {
+  if (body || photoPreviewUrls.length || blocks.length) {
+    const timer = setTimeout(handleSaveOffline, 10000);
+    return () => clearTimeout(timer);
+  }
+}, [body, photoPreviewUrls, blocks]);
+
+Конфетти при первой публикации
+После успешной обработки публикации → конфетти() из canvas-confetti
+

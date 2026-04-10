@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { GuestProvider } from './contexts/GuestContext';
 import { LayoutProvider } from './contexts/LayoutContext';
@@ -10,7 +10,7 @@ import { AnalyticsProvider } from './components/AnalyticsProvider';
 import MainLayout from './layouts/MainLayout';
 import MobileLayout from './layouts/MobileLayout';
 import { LoadingProvider } from './contexts/LoadingContext';
-import GlobalLoadingOverlay from './components/GlobalLoadingOverlay';
+// GlobalLoadingOverlay formerly showed test indicators while pages loaded; removed
 import { useAuth } from './contexts/AuthContext';
 import { useIsMobile } from './hooks/use-mobile';
 const WelcomeModalWrapper = lazy(() => import('./components/Gamification/WelcomeModalWrapper'));
@@ -22,7 +22,7 @@ const HomePage = lazy(() => import('./pages/HomePage'));
 const Home = lazy(() => import('./pages/Home'));
 // Map и Planner загружаются через PersistentMaps для сохранения состояния
 const PersistentMaps = lazy(() => import('./pages/PersistentMaps'));
-const Calendar = lazy(() => import('./pages/Calendar'));
+// Calendar удалён — /calendar редиректит на /map (EventPanel)
 // Блоги объединены с постами в единую ленту
 // const Blog = lazy(() => import('./pages/Blog'));
 // Posts - загружаем сразу (не lazy) для главной страницы, чтобы он монтировался немедленно
@@ -31,15 +31,27 @@ import Posts from './pages/Posts';
 const Activity = lazy(() => import('./pages/Activity'));
 const Chat = lazy(() => import('./pages/Chat'));
 const Friends = lazy(() => import('./pages/Friends'));
-const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+// ProfilePage слишком критична, загружаем её статически, чтобы избежать ошибок
+import ProfilePage from './pages/ProfilePage';
 const CentrePage = lazy(() => import('./pages/CentrePage'));
+const FavoritesPage = lazy(() => import('./pages/Favorites'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const UserAgreement = lazy(() => import('./pages/UserAgreement'));
+const ProPage = lazy(() => import('./pages/ProPage'));
+const HubPage = lazy(() => import('./pages/HubPage'));
+const PartnerDashboard = lazy(() => import('./pages/PartnerDashboard'));
+const PartnerApply = lazy(() => import('./pages/PartnerApply'));
+const PartnerProgramInfo = lazy(() => import('./pages/PartnerProgramInfo'));
+const PartnersPage = lazy(() => import('./pages/PartnersPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const AuthPage = lazy(() => import('./pages/AuthPage'));
 
 // Мобильные версии страниц
 // IndexPage - lazy, загрузится мгновенно при необходимости (только на мобильных)
 const MobileIndexPage = lazy(() => import('./pages/Mobile/IndexPage'));
 const MobilePostsPage = lazy(() => import('./pages/Mobile/PostsPage'));
-const MobileMapPage = lazy(() => import('./pages/Mobile/MapPage'));
-const MobilePlannerPage = lazy(() => import('./pages/Mobile/PlannerPage'));
+// MobilePageLayer - контейнер для Map и Planner (обе страницы всегда смонтированы)
+const MobilePageLayer = lazy(() => import('./pages/MobilePageLayer'));
 const MobileActivityPage = lazy(() => import('./pages/Mobile/ActivityPage'));
 const MobileProfilePage = lazy(() => import('./pages/Mobile/ProfilePage'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
@@ -56,6 +68,22 @@ const LoadingSpinner = () => (
     </div>
   </div>
 );
+
+// Компонент для авторизации - БЕЗ MainLayout, полный экран
+function AuthLayout() {
+  return (
+    <div className="auth-layout" style={{
+      width: '100%',
+      height: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'transparent',
+      position: 'relative'
+    }}>
+      <Outlet />
+    </div>
+  );
+}
 
 // Компонент для гостевого режима с полным функционалом
 function GuestLayout() {
@@ -74,8 +102,19 @@ function GuestLayout() {
 
 // Компонент для защищённых маршрутов с Layout (только для авторизованных)
 function ProtectedLayout() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const isMobile = useIsMobile();
+
+  // Пока идёт восстановление сессии (token есть, user загружается) — показываем splash
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-page, #0f172a)' }}>
+        <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)', fontSize: '14px' }}>
+          Загрузка...
+        </div>
+      </div>
+    );
+  }
   
   if (!user) {
     return <HomePage />;
@@ -104,15 +143,8 @@ export default function App() {
             <LayoutProvider>
               <FavoritesProvider>
                 <LoadingProvider>
-                  <GlobalLoadingOverlay />
+                {/* overlay disabled */}
                 <Routes>
-              {/* Страница авторизации */}
-              <Route path="/login" element={
-                <Suspense fallback={<LoadingSpinner />}>
-                  <HomePage />
-                </Suspense>
-              } />
-
               {/* Тестовая страница офлайн-карт — отдельно, без GuestLayout */}
               <Route path="/offline-map-test" element={
                 <Suspense fallback={<LoadingSpinner />}>
@@ -127,9 +159,30 @@ export default function App() {
                 </Suspense>
               } />
               
-              {/* Основное приложение - доступно всем (гостевой режим + авторизованные) */}
+              {/* === АВТОРИЗАЦИЯ: БЕЗ MainLayout === */}
+              {/* Auth страницы должны быть ОТДЕЛЬНО, чтобы не было Topbar/Sidebar */}
+              <Route path="/" element={<AuthLayout />}>
+                <Route path="login" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <LoginPage />
+                  </Suspense>
+                } />
+                {/* /register рендерит LoginPage — она сама переключается в режим register по URL */}
+                <Route path="register" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <LoginPage />
+                  </Suspense>
+                } />
+                <Route path="auth" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <AuthPage />
+                  </Suspense>
+                } />
+              </Route>
+              
+              {/* === ОСНОВНОЕ ПРИЛОЖЕНИЕ: С MainLayout === */}
+              {/* Все остальные страницы используют GuestLayout (которая оборачивает в MainLayout) */}
               <Route path="/" element={<GuestLayout />}>
-                {/* Главная страница - мобильная версия с лентой активности */}
                 {/* Posts загружается сразу для главной страницы, чтобы данные начали загружаться немедленно */}
                 <Route index element={
                   <ConditionalPage 
@@ -143,24 +196,21 @@ export default function App() {
                     <Home />
                   </Suspense>
                 } />
-                {/* Map и Planner используют PersistentMaps для сохранения состояния карты */}
+                {/* Map и Planner используют MobilePageLayer для сохранения состояния карты на мобильных */}
+                {/* Desktop версия использует PersistentMaps */}
                 <Route path="map" element={
                   <ConditionalPage 
-                    mobile={MobileMapPage} 
+                    mobile={MobilePageLayer} 
                     desktop={PersistentMaps} 
                   />
                 } />
                 <Route path="planner" element={
                   <ConditionalPage 
-                    mobile={MobilePlannerPage} 
+                    mobile={MobilePageLayer} 
                     desktop={PersistentMaps} 
                   />
                 } />
-                <Route path="calendar" element={
-                  <Suspense fallback={<LoadingSpinner />}>
-                    <Calendar />
-                  </Suspense>
-                } />
+                <Route path="calendar" element={<Navigate to="/map" replace />} />
                 {/* Посты доступны также по /posts для обратной совместимости */}
                 <Route path="posts" element={
                   <ConditionalPage 
@@ -187,16 +237,59 @@ export default function App() {
                   </Suspense>
                 } />
                 <Route path="profile" element={
-                  <Suspense fallback={<LoadingSpinner />}>
                     <ConditionalPage 
                       mobile={MobileProfilePage} 
                       desktop={ProfilePage} 
                     />
-                  </Suspense>
                 } />
                 <Route path="centre" element={
                   <Suspense fallback={<LoadingSpinner />}>
                     <CentrePage />
+                  </Suspense>
+                } />
+                <Route path="favorites" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <FavoritesPage />
+                  </Suspense>
+                } />
+                <Route path="legal/privacy-policy" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <PrivacyPolicy />
+                  </Suspense>
+                } />
+                <Route path="legal/user-agreement" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <UserAgreement />
+                  </Suspense>
+                } />
+                <Route path="pro" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <ProPage />
+                  </Suspense>
+                } />
+                <Route path="hub" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <HubPage />
+                  </Suspense>
+                } />
+                <Route path="partners" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <PartnersPage />
+                  </Suspense>
+                } />
+                <Route path="partner" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <PartnerDashboard />
+                  </Suspense>
+                } />
+                <Route path="partner/apply" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <PartnerApply />
+                  </Suspense>
+                } />
+                <Route path="partner/program-info" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <PartnerProgramInfo />
                   </Suspense>
                 } />
                 <Route path="admin" element={

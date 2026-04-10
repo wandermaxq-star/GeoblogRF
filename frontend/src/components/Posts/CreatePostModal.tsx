@@ -1,15 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { FaTimes, FaPlus, FaMapMarkerAlt, FaRoute, FaCalendar, FaPaperPlane, FaEye, FaExpand, FaCompress, FaTrash, FaCloud } from 'react-icons/fa';
-import { FileText, Map as MapIcon, Smartphone, Monitor, BookOpen, Target, Check } from 'lucide-react';
-import { createPost, PostDTO, MapSnapshot } from '../../services/postsService';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useIsMobile } from '../../hooks/use-mobile';
+import {
+  FaTimes, FaMapMarkerAlt, FaRoute, FaCalendar,
+  FaPaperPlane, FaTrash, FaCloud,
+} from 'react-icons/fa';
+import {
+  Camera, ChevronLeft,
+  Sparkles, Plus,
+} from 'lucide-react';
+import { createPost, PostDTO } from '../../services/postsService';
 import { useLayoutState } from '../../contexts/LayoutContext';
 import { useFavorites } from '../../contexts/FavoritesContext';
-import { MiniMapMarker, MiniMapRoute, MiniEventCard } from './LazyMiniComponents';
-import PostPreview from './PostPreview';
-import GuideFormatSelector, { GuideFormat } from './GuideFormatSelector';
 import { offlinePostsStorage } from '../../services/offlinePostsStorage';
+import ModeSelector, { CreationMode } from './ModeSelector';
 
-type PostType = 'simple' | 'guide';
+// ─── Типы ────────────────────────────────────────────────────────────
+
 type HookType = 'route' | 'marker' | 'event' | null;
 
 interface GuideSection {
@@ -30,1588 +37,944 @@ interface CreatePostModalProps {
   inline?: boolean;
 }
 
-const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClose, onPostCreated, initialRoute, inline = false }) => {
-  // Тип поста
-  const [postType, setPostType] = useState<PostType>('simple');
-  
-  // Общие поля
+// ─── Эмоциональные стартеры ──────────────────────────────────────────
+
+const STARTERS = [
+  'Это место выбило меня из колеи потому что…',
+  'Если у тебя всего один день — делай так',
+  'Никому не рассказывайте, но здесь…',
+  'Самое вкусное здесь — это…',
+];
+
+// ─── Стекло-стили ────────────────────────────────────────────────────
+
+const glass = {
+  bg: {
+    background: 'var(--glass-bg, rgba(255,255,255,0.65))',
+    backdropFilter: 'blur(14px) saturate(180%)',
+    WebkitBackdropFilter: 'blur(14px) saturate(180%)',
+  } as React.CSSProperties,
+  input: {
+    background: 'rgba(255,255,255,0.30)',
+    backdropFilter: 'blur(10px) saturate(180%)',
+    WebkitBackdropFilter: 'blur(10px) saturate(180%)',
+    border: '1px solid rgba(255,255,255,0.20)',
+    color: 'var(--glass-text, var(--text-primary, #1a1a1a))',
+    borderRadius: '12px',
+  } as React.CSSProperties,
+  card: {
+    background: 'rgba(255,255,255,0.18)',
+    border: '1px solid rgba(255,255,255,0.22)',
+    borderRadius: '16px',
+  } as React.CSSProperties,
+};
+
+// ─── Компонент ───────────────────────────────────────────────────────
+
+const CreatePostModal: React.FC<CreatePostModalProps> = ({
+  isOpen, onClose, onPostCreated, initialRoute, inline = false,
+}) => {
+  // ── Режим ──
+  const [mode, setMode] = useState<'select' | CreationMode>('select');
+
+  // ── Общие поля ──
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  
-  // Простой пост: крючок контента
-  const [hasHook, setHasHook] = useState(false);
+
+  // ── Хуки контента ──
   const [hookType, setHookType] = useState<HookType>(null);
   const [hookRouteId, setHookRouteId] = useState<string | null>(null);
   const [hookMarkerId, setHookMarkerId] = useState<string | null>(null);
   const [hookEventId, setHookEventId] = useState<string | null>(null);
-  
-  // Путеводитель: секции и формат
+  const [showHookPicker, setShowHookPicker] = useState(false);
+  const [hookPickerTab, setHookPickerTab] = useState<'routes' | 'markers' | 'events'>('routes');
+
+  // ── Путеводитель ──
   const [guideSections, setGuideSections] = useState<GuideSection[]>([]);
-  const [guideFormat, setGuideFormat] = useState<GuideFormat>('mobile');
-  const [guideFormatSelected, setGuideFormatSelected] = useState(false); // Выбран ли формат
-  
-  // Модальное окно для выбора крючков контента в секциях
-  const [showContentHookModal, setShowContentHookModal] = useState(false);
-  const [currentSectionId, setCurrentSectionId] = useState<string | null>(null);
-  const [contentHookType, setContentHookType] = useState<'markers' | 'routes' | 'events'>('markers');
-  
-  // Фото
+
+  // ── Фото ──
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
-  // Стиль карты
-  const [mapBase, setMapBase] = useState<'opentopo' | 'alidade'>('opentopo');
-  
-  // Предпросмотр
-  const [showPreview, setShowPreview] = useState(false);
-  const [previewExpanded, setPreviewExpanded] = useState(false);
-  
+
+  // ── Черновики (для режима continue) ──
+  const [draftsList, setDraftsList] = useState<import('../../services/offlinePostsStorage').OfflinePostDraft[]>([]);
+
+  // ── Другое ──
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasDraft, setHasDraft] = useState(false);
 
   const layout = useLayoutState();
   const favorites = useFavorites();
+  const isMobile = useIsMobile();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Очистка формы при закрытии
+  // ── Утилита: has-hook ──
+  const hasHook = !!(hookRouteId || hookMarkerId || hookEventId);
+
+  // ────────────────────── Эффекты ──────────────────────
+
+  // Очистка при закрытии
   useEffect(() => {
     if (!isOpen) {
+      setMode('select');
       setTitle('');
       setBody('');
-      setHasHook(false);
       setHookType(null);
       setHookRouteId(null);
       setHookMarkerId(null);
       setHookEventId(null);
+      setShowHookPicker(false);
       setGuideSections([]);
-      setGuideFormat('mobile');
-      setGuideFormatSelected(false);
       setUploadedFiles([]);
       setPhotoPreviewUrls([]);
-      setShowPreview(false);
-      setPreviewExpanded(false);
-      setShowContentHookModal(false);
-      setCurrentSectionId(null);
       setError(null);
+      setHasDraft(false);
+      setDraftsList([]);
     }
   }, [isOpen]);
 
-  // Если передан начальный маршрут (например, при навигации из профиля), применяем его как hook
+  // Проверка черновиков
+  useEffect(() => {
+    if (isOpen) {
+      offlinePostsStorage.getDraftsCount('draft').then((c) => setHasDraft(c > 0)).catch(() => {});
+    }
+  }, [isOpen]);
+
+  // Загрузка списка черновиков при continue
+  useEffect(() => {
+    if (mode === 'continue') {
+      offlinePostsStorage.getAllDrafts('draft').then(setDraftsList).catch(() => setDraftsList([]));
+    }
+  }, [mode]);
+
+  // Авто-применение начального маршрута
   useEffect(() => {
     if (isOpen && initialRoute) {
-      const r = initialRoute;
-      setHookRouteId(r.id || r.track?.id || null);
+      setHookRouteId(initialRoute.id || initialRoute.track?.id || null);
       setHookType('route');
-      setHasHook(true);
+      setMode('story');
     }
   }, [isOpen, initialRoute]);
-  
-  // Обработка выбора формата путеводителя
-  const handleFormatSelect = (format: GuideFormat) => {
-    setGuideFormat(format);
-    setGuideFormatSelected(true);
-  };
-  
-  // Открытие модального окна для выбора крючка контента
-  const openContentHookModal = (sectionId: string, type: 'markers' | 'routes' | 'events') => {
-    setCurrentSectionId(sectionId);
-    setContentHookType(type);
-    setShowContentHookModal(true);
-  };
-  
-  // Добавление крючка контента в секцию
-  const addContentHookToSection = (type: 'markers' | 'routes' | 'events', id: string) => {
-    if (!currentSectionId) return;
-    
-    const updates: Partial<GuideSection> = {
-      hasMap: true
-    };
-    
-    if (type === 'routes') {
-      updates.routeId = id;
-      updates.markerId = undefined;
-      updates.eventId = undefined;
-    } else if (type === 'markers') {
-      updates.markerId = id;
-      updates.routeId = undefined;
-      updates.eventId = undefined;
-    } else if (type === 'events') {
-      updates.eventId = id;
-      updates.routeId = undefined;
-      updates.markerId = undefined;
-    }
-    
-    updateGuideSection(currentSectionId, updates);
-    setShowContentHookModal(false);
-    setCurrentSectionId(null);
-  };
 
-  // Добавление секции в путеводитель
-  const addGuideSection = () => {
-    const newSection: GuideSection = {
-      id: `section-${Date.now()}`,
-      title: '',
-      content: '',
-      hasMap: false
-    };
-    setGuideSections([...guideSections, newSection]);
-  };
-    
-  // Обновление секции
-  const updateGuideSection = (id: string, updates: Partial<GuideSection>) => {
-    setGuideSections(guideSections.map(s => s.id === id ? { ...s, ...updates } : s));
-  };
-    
-  // Удаление секции
-  const removeGuideSection = (id: string) => {
-    setGuideSections(guideSections.filter(s => s.id !== id));
-  };
+  // ────────────────────── Хендлеры ──────────────────────
 
-  // Обработка крючка контента
-  const handleHookSelect = (type: HookType, id?: string) => {
+  const handleHookSelect = useCallback((type: HookType, id?: string) => {
     if (type === 'route' && id) {
-      setHookRouteId(id);
-      setHookMarkerId(null);
-      setHookEventId(null);
-      setHookType('route');
+      setHookRouteId(id); setHookMarkerId(null); setHookEventId(null); setHookType('route');
     } else if (type === 'marker' && id) {
-      setHookMarkerId(id);
-      setHookRouteId(null);
-      setHookEventId(null);
-      setHookType('marker');
+      setHookMarkerId(id); setHookRouteId(null); setHookEventId(null); setHookType('marker');
     } else if (type === 'event' && id) {
-      setHookEventId(id);
-      setHookRouteId(null);
-      setHookMarkerId(null);
-      setHookType('event');
+      setHookEventId(id); setHookRouteId(null); setHookMarkerId(null); setHookType('event');
     } else {
-      setHookType(null);
-      setHookRouteId(null);
-      setHookMarkerId(null);
-      setHookEventId(null);
+      setHookType(null); setHookRouteId(null); setHookMarkerId(null); setHookEventId(null);
     }
-  };
+    setShowHookPicker(false);
+  }, []);
 
-  // Обработка загрузки фото
-  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ── Загрузка черновика ──
+
+  const loadDraft = useCallback(async (draftId: string) => {
+    const d = await offlinePostsStorage.getDraft(draftId);
+    if (!d) return;
+    setBody(d.text || '');
+    setTitle(d.title || '');
+    if (d.images?.length) {
+      setUploadedFiles(d.images);
+      setPhotoPreviewUrls(d.images.map((f) => URL.createObjectURL(f)));
+    }
+    setMode('story');
+  }, []);
+
+  const handlePhotoSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-    
-    const newFiles = [...uploadedFiles, ...files].slice(0, 10); // Максимум 10 фото
-    setUploadedFiles(newFiles);
-    
-    // Создаем превью
-    const newPreviews = newFiles.map(file => URL.createObjectURL(file));
-    setPhotoPreviewUrls(newPreviews);
-    
-    // Очищаем input
+    if (!files.length) return;
+    const next = [...uploadedFiles, ...files].slice(0, 10);
+    setUploadedFiles(next);
+    setPhotoPreviewUrls(next.map((f) => URL.createObjectURL(f)));
     e.target.value = '';
-  };
-  
-  // Удаление фото
-  const handleRemovePhoto = (index: number) => {
-    const newFiles = uploadedFiles.filter((_, i) => i !== index);
-    const newPreviews = photoPreviewUrls.filter((_, i) => i !== index);
-    setUploadedFiles(newFiles);
-    setPhotoPreviewUrls(newPreviews);
-  };
+  }, [uploadedFiles]);
 
-  // Извлечение трека из маршрута
+  const handleRemovePhoto = useCallback((idx: number) => {
+    setUploadedFiles((p) => p.filter((_, i) => i !== idx));
+    setPhotoPreviewUrls((p) => p.filter((_, i) => i !== idx));
+  }, []);
+
+  // ── Секции путеводителя ──
+
+  const addGuideSection = useCallback(() => {
+    setGuideSections((s) => [...s, { id: `sec-${Date.now()}`, title: '', content: '', hasMap: false }]);
+  }, []);
+
+  const updateGuideSection = useCallback((id: string, upd: Partial<GuideSection>) => {
+    setGuideSections((s) => s.map((x) => (x.id === id ? { ...x, ...upd } : x)));
+  }, []);
+
+  const removeGuideSection = useCallback((id: string) => {
+    setGuideSections((s) => s.filter((x) => x.id !== id));
+  }, []);
+
+  // ── Извлечение трека ──
+
   const extractTrackFromRoute = (routeId: string | null): GeoJSON.Feature<GeoJSON.LineString> | null => {
-    if (!routeId || !favorites?.favoriteRoutes) {
-      return null;
-    }
-
-    const route = favorites.favoriteRoutes.find(r => r.id === routeId);
-    if (!route || !route.points || route.points.length < 2) {
-      return null;
-    }
-
-    // Преобразуем точки маршрута в координаты [longitude, latitude] для GeoJSON
-    const coordinates = route.points.map(point => {
-      // Проверяем формат координат (может быть [lat, lon] или {latitude, longitude})
-      if (Array.isArray(point.coordinates)) {
-        const [lat, lon] = point.coordinates;
-        return [lon, lat]; // GeoJSON использует [lon, lat]
-      } else if (point.latitude !== undefined && point.longitude !== undefined) {
-        return [point.longitude, point.latitude];
-      } else if (point.coordinates && Array.isArray(point.coordinates)) {
-        return point.coordinates.length === 2 ? [point.coordinates[1], point.coordinates[0]] : null;
-      }
-      return null;
-    }).filter((coord): coord is [number, number] => coord !== null);
-
-    if (coordinates.length < 2) {
-      return null;
-    }
-
+    if (!routeId || !favorites?.favoriteRoutes) return null;
+    const route = favorites.favoriteRoutes.find((r) => r.id === routeId);
+    if (!route || !route.points || route.points.length < 2) return null;
+    const coords = route.points
+      .map((p: any) => {
+        if (Array.isArray(p.coordinates)) return [p.coordinates[1], p.coordinates[0]];
+        if (p.latitude !== undefined && p.longitude !== undefined) return [p.longitude, p.latitude];
+        return null;
+      })
+      .filter((c: any): c is [number, number] => c !== null);
+    if (coords.length < 2) return null;
     return {
       type: 'Feature',
-      geometry: {
-        type: 'LineString',
-        coordinates: coordinates
-      },
-      properties: {
-        routeId: route.id,
-        routeTitle: route.title,
-        distance: (route as any).totalDistance || 0,
-        duration: (route as any).estimatedDuration || 0
-      }
+      geometry: { type: 'LineString', coordinates: coords },
+      properties: { routeId: route.id, routeTitle: route.title },
     };
   };
 
-  // Получение regionId из геолокации
-  const getRegionIdFromGeolocation = (): Promise<string> => {
-    return new Promise((resolve) => {
-      if (!navigator.geolocation) {
-        resolve('default');
-        return;
-      }
+  // ── Геолокация → region ──
 
+  const getRegionId = (): Promise<string> =>
+    new Promise((resolve) => {
+      if (!navigator.geolocation) { resolve('default'); return; }
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          // Упрощённая логика: определяем регион по координатам
-          // Можно улучшить, используя API геокодирования
-          if (latitude >= 55 && latitude <= 56 && longitude >= 37 && longitude <= 38) {
-            resolve('moscow');
-          } else if (latitude >= 59 && latitude <= 60 && longitude >= 30 && longitude <= 31) {
-            resolve('spb');
-          } else if (latitude >= 43 && latitude <= 45 && longitude >= 39 && longitude <= 41) {
-            resolve('krasnodar');
-          } else {
-            resolve('default');
-          }
+        ({ coords: { latitude: la, longitude: lo } }) => {
+          if (la >= 55 && la <= 56 && lo >= 37 && lo <= 38) resolve('moscow');
+          else if (la >= 59 && la <= 60 && lo >= 30 && lo <= 31) resolve('spb');
+          else if (la >= 43 && la <= 45 && lo >= 39 && lo <= 41) resolve('krasnodar');
+          else resolve('default');
         },
-        () => {
-          resolve('default');
-        },
-        { timeout: 3000 }
+        () => resolve('default'),
+        { timeout: 3000 },
       );
     });
-  };
 
-  // Сохранение поста офлайн
+  // ── Сохранение офлайн ──
+
   const handleSaveOffline = async () => {
-    if (postType === 'simple' && !body.trim()) {
-      setError('Текст поста обязателен');
+    if (!body.trim()) { setError('Напиши хотя бы пару слов'); return; }
+    if (mode === 'guide' && (!title.trim() || guideSections.length === 0)) {
+      setError('Заполни заголовок и добавь хотя бы одну секцию');
       return;
     }
-    
-    if (postType === 'guide') {
-      if (!title.trim()) {
-        setError('Заголовок путеводителя обязателен');
-        return;
-      }
-      if (!body.trim()) {
-        setError('Вступление путеводителя обязательно');
-        return;
-      }
-      if (guideSections.length === 0) {
-        setError('Добавьте хотя бы одну секцию');
-        return;
-      }
-    }
-
     setLoading(true);
     setError(null);
-
     try {
       let postBody = body;
       let track: GeoJSON.Feature<GeoJSON.LineString> | null = null;
-      let hasTrack = false;
-      
-      // Для путеводителя формируем структурированный контент
-      if (postType === 'guide') {
-        const sectionsData = guideSections.map(s => ({
-          title: s.title,
-          content: s.content,
-          hasMap: s.hasMap,
-          routeId: s.routeId,
-          markerId: s.markerId,
-          eventId: s.eventId
-        }));
+      if (mode === 'guide') {
         postBody = JSON.stringify({
           type: 'guide',
           introduction: body,
-          sections: sectionsData
+          sections: guideSections.map((s) => ({
+            title: s.title, content: s.content, hasMap: s.hasMap,
+            routeId: s.routeId, markerId: s.markerId, eventId: s.eventId,
+          })),
         });
-
-        // Извлекаем трек из первой секции с маршрутом
-        const firstRouteSection = guideSections.find(s => s.hasMap && s.routeId);
-        if (firstRouteSection?.routeId) {
-          track = extractTrackFromRoute(firstRouteSection.routeId);
-          hasTrack = track !== null;
-        }
-      } else {
-        // Для простого поста извлекаем трек из крючка маршрута
-        if (hasHook && hookType === 'route' && hookRouteId) {
-          track = extractTrackFromRoute(hookRouteId);
-          hasTrack = track !== null;
-        }
+        const rs = guideSections.find((s) => s.hasMap && s.routeId);
+        if (rs?.routeId) track = extractTrackFromRoute(rs.routeId);
+      } else if (hookRouteId) {
+        track = extractTrackFromRoute(hookRouteId);
       }
-
-      // Получаем regionId из геолокации
-      const regionId = await getRegionIdFromGeolocation();
-
-      // Сохраняем в IndexedDB
+      const regionId = await getRegionId();
       await offlinePostsStorage.addDraft({
         text: postBody,
-        title: title.trim() || undefined, // Добавляем title, если он есть
-        images: uploadedFiles, // Сохраняем File объекты напрямую
-        track: track,
+        title: title.trim() || undefined,
+        images: uploadedFiles,
+        track,
         status: 'draft',
-        regionId: regionId,
+        regionId,
         hasImages: uploadedFiles.length > 0,
-        hasTrack: hasTrack
+        hasTrack: track !== null,
       });
-
-      alert('Черновик сохранён офлайн! Он будет отправлен автоматически при появлении интернета.');
-      
-      // Запускаем автоматическую отправку, если интернет есть
-      if (navigator.onLine) {
-        const { offlineContentQueue } = await import('../../services/offlineContentQueue');
-        offlineContentQueue.start();
-      }
-      
       onClose();
     } catch (e: any) {
-      setError('Не удалось сохранить черновик: ' + (e.message || 'Неизвестная ошибка'));
+      setError('Не удалось сохранить: ' + (e.message || 'Неизвестная ошибка'));
     } finally {
       setLoading(false);
     }
   };
 
-  // Создание поста
+  // ── Публикация ──
+
   const handleCreatePost = async () => {
-    if (postType === 'simple' && !body.trim()) {
-      setError('Текст поста обязателен');
-      return;
+    if (!body.trim()) { 
+      setError('Напиши хотя бы пару слов'); 
+      return; 
     }
     
-    if (postType === 'guide') {
-      if (!title.trim()) {
-        setError('Заголовок путеводителя обязателен');
-        return;
-      }
-      if (!body.trim()) {
-        setError('Вступление путеводителя обязательно');
-        return;
-      }
-      if (guideSections.length === 0) {
-        setError('Добавьте хотя бы одну секцию');
-        return;
-      }
+    // КРИТИЧЕСКАЯ ПРОВЕРКА БЕЗОПАСНОСТИ: фото обязательны
+    if (mode === 'instant' && uploadedFiles.length === 0) { 
+      setError('⚠️ Фотография ОБЯЗАТЕЛЬНА для публикации момента (требование безопасности)'); 
+      return; 
+    }
+    if (mode === 'story' && uploadedFiles.length === 0) { 
+      setError('⚠️ Хотя бы одно фото ТРЕБУЕТСЯ для проверки модератором (требование безопасности)'); 
+      return; 
+    }
+    
+    if (mode === 'guide') {
+      if (!title.trim()) { setError('Заголовок обязателен для путеводителя'); return; }
+      if (guideSections.length === 0) { setError('Добавь хотя бы одну секцию'); return; }
     }
     
     setLoading(true);
     setError(null);
-    
     try {
-      // Загружаем фото на сервер
       let photoUrls: string[] = [];
       if (uploadedFiles.length > 0) {
-        try {
-          const uploadPromises = uploadedFiles.map(async (file) => {
-            const formData = new FormData();
-            formData.append('image', file);
-            const response = await fetch('/api/upload/image', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-              },
-              body: formData
-            });
-            if (response.ok) {
-              const data = await response.json();
-              return data.photoUrl;
-            }
-            return null;
+        const uploads = uploadedFiles.map(async (file) => {
+          const fd = new FormData();
+          fd.append('image', file);
+          const res = await fetch('/api/upload/image', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+            body: fd,
           });
-          
-          const uploadedUrls = await Promise.all(uploadPromises);
-          photoUrls = uploadedUrls.filter(url => url !== null) as string[];
-        } catch (error) {
-          setError('Не удалось загрузить некоторые фото');
-        }
+          if (res.ok) { const d = await res.json(); return d.photoUrl; }
+          return null;
+        });
+        photoUrls = (await Promise.all(uploads)).filter(Boolean) as string[];
       }
-      
+
       let postBody = body;
-      
-      // Для путеводителя формируем структурированный контент
-      if (postType === 'guide') {
-        const sectionsData = guideSections.map(s => ({
-          title: s.title,
-          content: s.content,
-          hasMap: s.hasMap,
-          routeId: s.routeId,
-          markerId: s.markerId,
-          eventId: s.eventId
-        }));
+      if (mode === 'guide') {
         postBody = JSON.stringify({
           type: 'guide',
           introduction: body,
-          sections: sectionsData
+          sections: guideSections.map((s) => ({
+            title: s.title, content: s.content, hasMap: s.hasMap,
+            routeId: s.routeId, markerId: s.markerId, eventId: s.eventId,
+          })),
         });
       }
-      
+
+      const isGuide = mode === 'guide';
       const created = await createPost({
         title: title.trim() || undefined,
         body: postBody,
-        route_id: (postType === 'simple' && hasHook && hookType === 'route') ? hookRouteId || undefined : undefined,
-        marker_id: (postType === 'simple' && hasHook && hookType === 'marker') ? hookMarkerId || undefined : undefined,
-        event_id: (postType === 'simple' && hasHook && hookType === 'event') ? hookEventId || undefined : undefined,
+        route_id: !isGuide && hookRouteId ? hookRouteId : undefined,
+        marker_id: !isGuide && hookMarkerId ? hookMarkerId : undefined,
+        event_id: !isGuide && hookEventId ? hookEventId : undefined,
         photo_urls: photoUrls.length > 0 ? photoUrls.join(',') : undefined,
-        payload: undefined, // Для путеводителя данные хранятся в body как JSON
-        template: postType === 'guide' ? 'article' : 'mobile'
+        template: isGuide ? 'guide' : 'mobile',
       });
-      
+
       onPostCreated(created);
       onClose();
-    } catch (e: any) {
-      setError('Не удалось создать пост');
+    } catch {
+      setError('Не удалось опубликовать пост');
     } finally {
       setLoading(false);
     }
   };
 
+  // ────────────────────────────────────────────────────
+  //  Ранний возврат
+  // ────────────────────────────────────────────────────
+
   if (!isOpen) return null;
 
-  // === INLINE-форма внутри контейнера постов ===
-  if (inline) {
-    return (
-      <div className="create-post-inline" style={{ padding: '0 4px' }}>
-        {/* Заголовок */}
-        <div className="flex items-center justify-between mb-4 px-2">
-          <h3 className="text-base font-semibold" style={{ color: 'var(--glass-text)' }}>Новый пост</h3>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full transition-all"
-            style={{
-              background: 'rgba(255,255,255,0.3)',
-              backdropFilter: 'blur(10px) saturate(180%)',
-              WebkitBackdropFilter: 'blur(10px) saturate(180%)',
-              border: '1px solid rgba(255,255,255,0.2)',
-              color: 'var(--glass-text)'
-            }}
-          >
-            <FaTimes size={14} />
-          </button>
-        </div>
+  // ────────────────────── Общие элементы ──────────────
 
-        {/* Переключатель типа */}
-        <div className="flex gap-2 mb-4 px-2">
-          <button
-            type="button"
-            onClick={() => setPostType('simple')}
-            className="flex-1 px-3 py-2 text-sm font-medium rounded-xl transition-all"
-            style={{
-              background: postType === 'simple' ? 'rgba(255,255,255,0.65)' : 'rgba(255,255,255,0.2)',
-              backdropFilter: 'blur(10px) saturate(180%)',
-              WebkitBackdropFilter: 'blur(10px) saturate(180%)',
-              border: postType === 'simple' ? '1px solid rgba(255,255,255,0.5)' : '1px solid rgba(255,255,255,0.15)',
-              color: 'var(--glass-text)',
-              boxShadow: postType === 'simple' ? '0 4px 12px rgba(0,0,0,0.1)' : 'none'
-            }}
-          >
-            <FileText size={14} className="inline mr-1.5" />
-            Пост
-          </button>
-          <button
-            type="button"
-            onClick={() => setPostType('guide')}
-            className="flex-1 px-3 py-2 text-sm font-medium rounded-xl transition-all"
-            style={{
-              background: postType === 'guide' ? 'rgba(255,255,255,0.65)' : 'rgba(255,255,255,0.2)',
-              backdropFilter: 'blur(10px) saturate(180%)',
-              WebkitBackdropFilter: 'blur(10px) saturate(180%)',
-              border: postType === 'guide' ? '1px solid rgba(255,255,255,0.5)' : '1px solid rgba(255,255,255,0.15)',
-              color: 'var(--glass-text)',
-              boxShadow: postType === 'guide' ? '0 4px 12px rgba(0,0,0,0.1)' : 'none'
-            }}
-          >
-            <MapIcon size={14} className="inline mr-1.5" />
-            Путеводитель
-          </button>
-        </div>
+  const BackButton = () => (
+    <button
+      onClick={() => setMode('select')}
+      className="p-2 rounded-full transition-colors"
+      style={{ ...glass.card, background: 'rgba(255,255,255,0.25)' }}
+    >
+      <ChevronLeft className="w-5 h-5" style={{ color: 'var(--glass-text, #333)' }} />
+    </button>
+  );
 
-        {/* Форма */}
-        <div className="space-y-3 px-2">
-          {/* Заголовок */}
-          {(postType === 'simple' || (postType === 'guide' && guideFormatSelected)) && (
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-xl focus:outline-none"
-              style={{
-                background: 'rgba(255,255,255,0.3)',
-                backdropFilter: 'blur(10px) saturate(180%)',
-                WebkitBackdropFilter: 'blur(10px) saturate(180%)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                color: 'var(--glass-text)',
-                borderRadius: '12px'
-              }}
-              placeholder={postType === 'guide' ? 'Заголовок путеводителя *' : 'Заголовок (необязательно)'}
-            />
-          )}
+  const canPublish =
+    body.trim().length > 0 && 
+    (mode === 'instant' ? photoPreviewUrls.length > 0 : true) && // instant ТРЕБУЕТ фото
+    (mode === 'story' ? photoPreviewUrls.length > 0 : true) && // story ТРЕБУЕТ фото для безопасности
+    (mode !== 'guide' || (title.trim().length > 0 && guideSections.length > 0));
 
-          {/* Текст */}
-          {(postType === 'simple' || (postType === 'guide' && guideFormatSelected)) && (
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              className="w-full px-3 py-2 text-sm min-h-[100px] focus:outline-none resize-none"
-              style={{
-                background: 'rgba(255,255,255,0.3)',
-                backdropFilter: 'blur(10px) saturate(180%)',
-                WebkitBackdropFilter: 'blur(10px) saturate(180%)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                color: 'var(--glass-text)',
-                borderRadius: '12px'
-              }}
-              placeholder={postType === 'guide' ? 'Вступление *' : 'Напишите ваш пост... *'}
-            />
-          )}
+  const renderError = () =>
+    error ? (
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-sm px-4 py-2.5 rounded-xl"
+        style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)', color: '#dc2626' }}
+      >
+        {error}
+      </motion.div>
+    ) : null;
 
-          {/* Фото */}
-          {(postType === 'simple' || (postType === 'guide' && guideFormatSelected)) && (
-            <div
-              className="rounded-xl p-3"
-              style={{
-                background: 'rgba(255,255,255,0.15)',
-                border: '2px dashed rgba(255,255,255,0.25)',
-                borderRadius: '12px'
-              }}
-            >
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handlePhotoSelect}
-                className="hidden"
-                id="photo-upload-inline"
-                disabled={uploadedFiles.length >= 10}
-              />
-              <label
-                htmlFor="photo-upload-inline"
-                className="cursor-pointer flex items-center justify-center gap-2 py-2 text-sm"
-                style={{
-                  color: 'var(--glass-text-secondary)',
-                  opacity: uploadedFiles.length >= 10 ? 0.5 : 1,
-                  cursor: uploadedFiles.length >= 10 ? 'not-allowed' : 'pointer'
-                }}
-              >
-                <FaPlus size={14} />
-                {uploadedFiles.length >= 10 ? 'Лимит фото' : 'Добавить фото'}
-              </label>
+  // ── Фото-область (базовая, переиспользуемая) ──
 
-              {photoPreviewUrls.length > 0 && (
-                <div className="grid grid-cols-4 gap-2 mt-2">
-                  {photoPreviewUrls.map((url, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={url}
-                        alt={`Превью ${index + 1}`}
-                        className="w-full h-16 object-cover rounded-lg"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemovePhoto(index)}
-                        className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-                      >
-                        <FaTimes size={10} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Крючок контента (только для простого поста) */}
-          {postType === 'simple' && (
-            <div
-              className="rounded-xl p-3"
-              style={{
-                background: 'rgba(255,255,255,0.15)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                borderRadius: '12px'
-              }}
-            >
-              <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--glass-text)' }}>
-                <input
-                  type="checkbox"
-                  checked={hasHook}
-                  onChange={(e) => {
-                    setHasHook(e.target.checked);
-                    if (!e.target.checked) handleHookSelect(null);
-                  }}
-                  className="w-4 h-4"
-                />
-                Крючок контента
-              </label>
-
-              {hasHook && (
-                <div className="space-y-2 mt-2 max-h-[200px] overflow-y-auto">
-                  <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--glass-text-secondary)' }}>Маршруты</div>
-                  {(favorites?.favoriteRoutes || []).slice(0, 5).map(route => (
-                    <button
-                      key={route.id}
-                      onClick={() => handleHookSelect('route', route.id)}
-                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors"
-                      style={{
-                        background: hookType === 'route' && hookRouteId === route.id ? 'rgba(76, 201, 240, 0.3)' : 'rgba(255,255,255,0.15)',
-                        color: 'var(--glass-text)',
-                        border: hookType === 'route' && hookRouteId === route.id ? '1px solid rgba(76,201,240,0.5)' : '1px solid rgba(255,255,255,0.15)'
-                      }}
-                    >
-                      <FaRoute size={12} />
-                      <span className="flex-1 text-left truncate">{route.title}</span>
-                    </button>
-                  ))}
-
-                  <div className="text-xs font-semibold uppercase tracking-wide mt-2" style={{ color: 'var(--glass-text-secondary)' }}>Метки</div>
-                  {(favorites?.favoritePlaces || []).slice(0, 5).map(place => (
-                    <button
-                      key={place.id}
-                      onClick={() => handleHookSelect('marker', place.id)}
-                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors"
-                      style={{
-                        background: hookType === 'marker' && hookMarkerId === place.id ? 'rgba(76, 201, 240, 0.3)' : 'rgba(255,255,255,0.15)',
-                        color: 'var(--glass-text)',
-                        border: hookType === 'marker' && hookMarkerId === place.id ? '1px solid rgba(76,201,240,0.5)' : '1px solid rgba(255,255,255,0.15)'
-                      }}
-                    >
-                      <FaMapMarkerAlt size={12} />
-                      <span className="flex-1 text-left truncate">{place.name}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Путеводитель — выбор формата */}
-          {postType === 'guide' && !guideFormatSelected && (
-            <div>
-              <p className="text-sm mb-2" style={{ color: 'var(--glass-text-secondary)' }}>Выберите формат:</p>
-              <GuideFormatSelector selectedFormat={guideFormat} onFormatChange={handleFormatSelect} />
-            </div>
-          )}
-
-          {/* Путеводитель — секции */}
-          {postType === 'guide' && guideFormatSelected && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium" style={{ color: 'var(--glass-text)' }}>Секции</span>
-                <button
-                  type="button"
-                  onClick={addGuideSection}
-                  className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg transition-all"
-                  style={{
-                    background: 'rgba(255,255,255,0.4)',
-                    backdropFilter: 'blur(10px) saturate(180%)',
-                    border: '1px solid rgba(255,255,255,0.3)',
-                    color: 'var(--glass-text)'
-                  }}
-                >
-                  <FaPlus size={10} /> Секция
-                </button>
-              </div>
-
-              {guideSections.map((section, idx) => (
-                <div
-                  key={section.id}
-                  className="rounded-xl p-3 space-y-2"
-                  style={{
-                    background: 'rgba(255,255,255,0.15)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: '12px'
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium" style={{ color: 'var(--glass-text-secondary)' }}>Секция {idx + 1}</span>
-                    <button type="button" onClick={() => removeGuideSection(section.id)} className="text-red-400 hover:text-red-600">
-                      <FaTrash size={12} />
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    value={section.title}
-                    onChange={(e) => updateGuideSection(section.id, { title: e.target.value })}
-                    className="w-full px-2 py-1.5 text-sm rounded-lg focus:outline-none"
-                    style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--glass-text)' }}
-                    placeholder="Заголовок секции..."
-                  />
-                  <textarea
-                    value={section.content}
-                    onChange={(e) => updateGuideSection(section.id, { content: e.target.value })}
-                    className="w-full px-2 py-1.5 text-sm min-h-[60px] rounded-lg focus:outline-none resize-none"
-                    style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--glass-text)' }}
-                    placeholder="Текст секции..."
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Ошибка */}
-          {error && (
-            <div className="text-red-500 text-sm px-3 py-2 rounded-xl" style={{ background: 'rgba(255,100,100,0.15)', border: '1px solid rgba(255,100,100,0.2)' }}>
-              {error}
-            </div>
-          )}
-
-          {/* Кнопки */}
-          <div className="flex items-center justify-between gap-2 pt-2 pb-1">
-            <button
-              onClick={handleSaveOffline}
-              disabled={loading || (postType === 'simple' && !body.trim()) || (postType === 'guide' && (!title.trim() || !body.trim() || guideSections.length === 0))}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-xl disabled:opacity-40 transition-all"
-              style={{
-                background: 'rgba(255,255,255,0.3)',
-                backdropFilter: 'blur(10px) saturate(180%)',
-                WebkitBackdropFilter: 'blur(10px) saturate(180%)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                color: 'var(--glass-text)'
-              }}
-              title="Сохранить черновик офлайн"
-            >
-              <FaCloud size={12} />
-              Черновик
-            </button>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onClose}
-                className="px-3 py-2 text-sm rounded-xl transition-all"
-                style={{
-                  background: 'rgba(255,255,255,0.2)',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  color: 'var(--glass-text-secondary)'
-                }}
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handleCreatePost}
-                disabled={loading || (postType === 'simple' && !body.trim()) || (postType === 'guide' && (!title.trim() || !body.trim() || guideSections.length === 0))}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl disabled:opacity-40 transition-all"
-                style={{
-                  background: 'rgba(255,255,255,0.55)',
-                  backdropFilter: 'blur(12px) saturate(170%)',
-                  WebkitBackdropFilter: 'blur(12px) saturate(170%)',
-                  border: '1px solid rgba(255,255,255,0.35)',
-                  color: 'rgba(0,0,0,0.8)',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                }}
-              >
-                {loading ? (
-                  <>
-                    <div className="w-3 h-3 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
-                    Создание...
-                  </>
-                ) : (
-                  <>
-                    <FaPaperPlane size={12} />
-                    Опубликовать
-                  </>
-                )}
-              </button>
-            </div>
+  const renderPhotoZone = (aspect: string, label: string, sublabel: string) => (
+    <div className="space-y-3">
+      <div
+        className="relative rounded-2xl overflow-hidden cursor-pointer transition-all border-2 border-dashed"
+        style={{
+          borderColor: photoPreviewUrls.length ? 'rgba(59,130,246,0.35)' : 'rgba(150,150,150,0.30)',
+          aspectRatio: aspect,
+        }}
+        onClick={() => fileInputRef.current?.click()}
+      >
+        <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handlePhotoSelect} className="hidden" disabled={uploadedFiles.length >= 10} />
+        {photoPreviewUrls.length > 0 ? (
+          <img src={photoPreviewUrls[0]} alt="Главное фото" className="w-full h-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: 'rgba(0,0,0,0.03)' }}>
+            <Camera className="w-12 h-12 mb-2" style={{ color: 'var(--glass-text-secondary, #aaa)' }} />
+            <p className="text-base font-semibold" style={{ color: 'var(--glass-text, #555)' }}>{label}</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--glass-text-secondary, #999)' }}>{sublabel}</p>
           </div>
+        )}
+      </div>
+      {photoPreviewUrls.length > 1 && (
+        <div className="grid grid-cols-5 gap-2">
+          {photoPreviewUrls.slice(1).map((url, idx) => (
+            <div key={idx} className="relative aspect-square rounded-xl overflow-hidden group">
+              <img src={url} alt="" className="w-full h-full object-cover" />
+              <button
+                onClick={(e) => { e.stopPropagation(); handleRemovePhoto(idx + 1); }}
+                className="absolute top-0.5 right-0.5 bg-red-500/80 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <FaTimes size={10} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  // ── Пикер хуков (bottom-sheet) ──
+
+  const renderHookPicker = () => {
+    if (!showHookPicker) return null;
+    const items =
+      hookPickerTab === 'routes'
+        ? (favorites?.favoriteRoutes || []).map((r) => ({ id: r.id, name: r.title, type: 'route' as const }))
+        : hookPickerTab === 'markers'
+          ? (favorites?.favoritePlaces || []).map((p) => ({ id: p.id, name: p.name, type: 'marker' as const }))
+          : (favorites?.favoriteEvents || []).map((e) => ({ id: e.id, name: e.title, type: 'event' as const }));
+    return (
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center"
+        style={{ background: 'rgba(0,0,0,0.4)' }}
+        onClick={() => setShowHookPicker(false)}
+      >
+        <motion.div
+          initial={{ y: 50 }} animate={{ y: 0 }}
+          onClick={(e) => e.stopPropagation()}
+          className="w-full max-w-md max-h-[70vh] rounded-t-2xl sm:rounded-2xl overflow-hidden"
+          style={{ ...glass.bg, border: '1px solid rgba(255,255,255,0.25)' }}
+        >
+          <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'rgba(255,255,255,0.15)' }}>
+            <h3 className="font-semibold" style={{ color: 'var(--glass-text)' }}>
+              {hookPickerTab === 'routes' ? 'Выбери маршрут' : hookPickerTab === 'markers' ? 'Выбери метку' : 'Выбери событие'}
+            </h3>
+            <button onClick={() => setShowHookPicker(false)}><FaTimes size={16} style={{ color: 'var(--glass-text-secondary)' }} /></button>
+          </div>
+          <div className="flex border-b" style={{ borderColor: 'rgba(255,255,255,0.12)' }}>
+            {(['routes', 'markers', 'events'] as const).map((tab) => (
+              <button
+                key={tab} onClick={() => setHookPickerTab(tab)}
+                className="flex-1 py-2 text-sm font-medium transition-colors"
+                style={{
+                  color: hookPickerTab === tab ? 'var(--text-accent, #2563eb)' : 'var(--glass-text-secondary)',
+                  borderBottom: hookPickerTab === tab ? '2px solid var(--text-accent, #2563eb)' : '2px solid transparent',
+                }}
+              >
+                {tab === 'routes' ? 'Маршруты' : tab === 'markers' ? 'Метки' : 'События'}
+              </button>
+            ))}
+          </div>
+          <div className="overflow-y-auto max-h-[50vh] p-3 space-y-2">
+            {items.length === 0 && (
+              <p className="text-center py-6 text-sm" style={{ color: 'var(--glass-text-secondary)' }}>Пока пусто — добавьте в избранное</p>
+            )}
+            {items.map((item) => (
+              <button
+                key={item.id} onClick={() => handleHookSelect(item.type, item.id)}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all"
+                style={{ ...glass.card, background: 'rgba(255,255,255,0.12)' }}
+              >
+                {item.type === 'route' && <FaRoute size={14} className="text-blue-500 shrink-0" />}
+                {item.type === 'marker' && <FaMapMarkerAlt size={14} className="text-green-500 shrink-0" />}
+                {item.type === 'event' && <FaCalendar size={14} className="text-purple-500 shrink-0" />}
+                <span className="truncate text-sm" style={{ color: 'var(--glass-text)' }}>{item.name}</span>
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      </motion.div>
+    );
+  };
+
+  // ═══════════════════════════════════════════════════
+  //  INSTANT — «Здесь и сейчас»
+  //  Фото на весь экран → пара слов → опубликовать
+  // ═══════════════════════════════════════════════════
+
+  const renderInstantEditor = () => (
+    <div className="space-y-5">
+      {/* 1. Фото — главный элемент, крупное */}
+      {renderPhotoZone('3/4', 'Сфотографируй момент', 'Один кадр — и готово')}
+
+      {/* 2. Короткий текст */}
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder="Что здесь происходит? (пара слов хватит)"
+        rows={3}
+        maxLength={280}
+        className="w-full px-4 py-3 text-sm rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-300/50"
+        style={glass.input}
+      />
+      <div className="text-right text-xs" style={{ color: 'var(--glass-text-secondary)' }}>
+        {body.length}/280
+      </div>
+
+      {/* 3. Ошибка */}
+      {renderError()}
+
+      {/* 4. Большая кнопка публикации */}
+      <button
+        onClick={handleCreatePost}
+        disabled={loading || !canPublish}
+        title={mode === 'instant' && photoPreviewUrls.length === 0 ? 'Добавьте фотографию' : ''}
+        className="w-full py-4 rounded-2xl text-base font-bold disabled:opacity-40 transition-all flex items-center justify-center gap-3"
+        style={{
+          background: 'linear-gradient(135deg, #3b82f6, #06b6d4)',
+          color: '#fff',
+          boxShadow: '0 6px 20px rgba(59,130,246,0.35)',
+        }}
+      >
+        {loading ? (
+          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <>
+            <FaPaperPlane size={14} /> {photoPreviewUrls.length === 0 ? '📸 Добавьте фото' : 'Опубликовать момент'}
+          </>
+        )}
+      </button>
+
+      {/* 5. Мелкая кнопка черновика */}
+      <button
+        onClick={handleSaveOffline}
+        disabled={loading || !body.trim()}
+        className="w-full py-2 text-sm rounded-xl disabled:opacity-30 transition-all"
+        style={{ color: 'var(--glass-text-secondary)' }}
+      >
+        <FaCloud size={12} className="inline mr-1.5" /> Сохранить как черновик
+      </button>
+
+      {body.trim() && photoPreviewUrls.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex items-center justify-center gap-2 py-2 text-xs font-medium"
+          style={{ color: '#059669' }}
+        >
+          <Sparkles size={14} />
+          +{20 + (photoPreviewUrls.length * 5)} XP за живой момент!
+        </motion.div>
+      )}
+    </div>
+  );
+
+  // ═══════════════════════════════════════════════════
+  //  STORY — «Впечатление дня»
+  //  Стартеры → текст → фото → привязка
+  // ═══════════════════════════════════════════════════
+
+  const renderStoryEditor = () => (
+    <div className="space-y-5">
+      {/* 1. Эмоциональные стартеры */}
+      <div>
+        <p className="text-xs font-medium mb-2" style={{ color: 'var(--glass-text-secondary)' }}>
+          Начни с эмоции:
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {STARTERS.map((s) => (
+            <button
+              key={s}
+              onClick={() => setBody((prev) => (prev ? `${prev}\n\n${s}` : s))}
+              className="text-sm px-3 py-1.5 rounded-full transition-all"
+              style={{
+                ...glass.card,
+                background: 'rgba(59,130,246,0.08)',
+                border: '1px solid rgba(59,130,246,0.18)',
+                color: 'var(--glass-text, #2563eb)',
+              }}
+            >
+              {s}
+            </button>
+          ))}
         </div>
       </div>
+
+      {/* 2. Заголовок (необязательный) */}
+      <input
+        type="text"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Заголовок (необязательно)"
+        className="w-full px-4 py-2.5 text-sm rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-300/50"
+        style={glass.input}
+      />
+
+      {/* 3. Текст */}
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder="Расскажи свои впечатления, эмоции, что запомнилось…"
+        className="w-full min-h-[140px] px-4 py-3 text-sm rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-300/50"
+        style={glass.input}
+      />
+
+      {/* 4. Фото */}
+      {renderPhotoZone('16/9', 'Добавить фото', 'до 10 фото')}
+
+      {/* 5. Привязка контента */}
+      <div className="space-y-2">
+        <p className="text-xs font-medium" style={{ color: 'var(--glass-text-secondary)' }}>Привязать к контенту:</p>
+
+        {hasHook ? (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 p-3 rounded-xl"
+            style={{ ...glass.card, background: 'rgba(59,130,246,0.08)' }}
+          >
+            {hookType === 'route' && <FaRoute size={14} className="text-blue-500" />}
+            {hookType === 'marker' && <FaMapMarkerAlt size={14} className="text-green-500" />}
+            {hookType === 'event' && <FaCalendar size={14} className="text-purple-500" />}
+            <span className="text-sm flex-1" style={{ color: 'var(--glass-text)' }}>
+              {hookType === 'route' && (favorites?.favoriteRoutes?.find((r) => r.id === hookRouteId)?.title || 'Маршрут')}
+              {hookType === 'marker' && (favorites?.favoritePlaces?.find((p) => p.id === hookMarkerId)?.name || 'Метка')}
+              {hookType === 'event' && (favorites?.favoriteEvents?.find((e) => e.id === hookEventId)?.title || 'Событие')}
+            </span>
+            <button onClick={() => handleHookSelect(null)} className="text-red-400 hover:text-red-600"><FaTimes size={12} /></button>
+          </motion.div>
+        ) : (
+          <div className="flex gap-2">
+            <button onClick={() => { setHookPickerTab('routes'); setShowHookPicker(true); }}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-medium transition-all" style={{ ...glass.card, color: 'var(--glass-text)' }}>
+              <FaRoute size={14} className="text-blue-500" /> Маршрут
+            </button>
+            <button onClick={() => { setHookPickerTab('markers'); setShowHookPicker(true); }}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-medium transition-all" style={{ ...glass.card, color: 'var(--glass-text)' }}>
+              <FaMapMarkerAlt size={14} className="text-green-500" /> Метка
+            </button>
+            <button onClick={() => { setHookPickerTab('events'); setShowHookPicker(true); }}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-medium transition-all" style={{ ...glass.card, color: 'var(--glass-text)' }}>
+              <FaCalendar size={14} className="text-purple-500" /> Событие
+            </button>
+          </div>
+        )}
+      </div>
+
+      {renderError()}
+
+      {/* 6. Кнопки */}
+      <div className="flex items-center gap-3 pt-2">
+        <button onClick={handleSaveOffline} disabled={loading || !body.trim()}
+          className="flex items-center gap-1.5 px-4 py-2.5 text-sm rounded-xl disabled:opacity-40 transition-all"
+          style={{ ...glass.card, color: 'var(--glass-text)' }}>
+          <FaCloud size={12} /> Черновик
+        </button>
+        <div className="flex-1" />
+        <button onClick={handleCreatePost} disabled={loading || !canPublish}
+          className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl disabled:opacity-40 transition-all"
+          title={mode === 'story' && photoPreviewUrls.length === 0 ? 'Добавьте фото для модерации' : ''}
+          style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1)', color: '#fff', boxShadow: '0 4px 14px rgba(59,130,246,0.3)' }}>
+          {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><FaPaperPlane size={12} /> {photoPreviewUrls.length === 0 && mode === 'story' ? '📸 Добавьте фото' : 'Опубликовать'}</>}
+        </button>
+      </div>
+    </div>
+  );
+
+  // ═══════════════════════════════════════════════════
+  //  GUIDE — «Мой путеводитель»
+  //  Заголовок → формат → вступление → секции
+  // ═══════════════════════════════════════════════════
+
+  const renderGuideEditor = () => (
+    <div className="space-y-5">
+      {/* 1. Обложка */}
+      {renderPhotoZone('16/9', 'Обложка путеводителя', 'Главное фото маршрута')}
+
+      {/* 2. Заголовок (обязательный) */}
+      <input
+        type="text"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Заголовок путеводителя *"
+        className="w-full px-4 py-3 text-base font-semibold rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-300/50"
+        style={glass.input}
+      />
+
+      {/* 3. Вступление */}
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder="Вступление — главная мысль, зачем ехать в это место…"
+        className="w-full min-h-[100px] px-4 py-3 text-sm rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-300/50"
+        style={glass.input}
+      />
+
+      {/* 4. Секции */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold" style={{ color: 'var(--glass-text)' }}>Секции путеводителя</span>
+          <button onClick={addGuideSection}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-xl transition-all"
+            style={{ ...glass.card, background: 'rgba(59,130,246,0.12)', color: 'var(--text-accent, #2563eb)' }}>
+            <Plus size={12} /> Добавить секцию
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {guideSections.map((sec, idx) => (
+            <motion.div key={sec.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}
+              className="p-4 rounded-2xl space-y-3" style={glass.card}>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium" style={{ color: 'var(--glass-text-secondary)' }}>Секция {idx + 1}</span>
+                <button onClick={() => removeGuideSection(sec.id)} className="text-red-400 hover:text-red-600"><FaTrash size={12} /></button>
+              </div>
+              <input type="text" value={sec.title} onChange={(e) => updateGuideSection(sec.id, { title: e.target.value })}
+                className="w-full px-3 py-2 text-sm rounded-xl focus:outline-none" style={glass.input} placeholder="Заголовок секции…" />
+              <textarea value={sec.content} onChange={(e) => updateGuideSection(sec.id, { content: e.target.value })}
+                className="w-full px-3 py-2 text-sm min-h-[60px] rounded-xl resize-none focus:outline-none" style={glass.input}
+                placeholder="Что здесь важно знать / увидеть…" />
+
+              <div className="flex gap-2 flex-wrap">
+                {sec.hasMap ? (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs" style={{ ...glass.card, background: 'rgba(59,130,246,0.08)' }}>
+                    {sec.routeId && <><FaRoute size={12} className="text-blue-500" /> Маршрут</>}
+                    {sec.markerId && <><FaMapMarkerAlt size={12} className="text-green-500" /> Метка</>}
+                    {sec.eventId && <><FaCalendar size={12} className="text-purple-500" /> Событие</>}
+                    <button onClick={() => updateGuideSection(sec.id, { hasMap: false, routeId: undefined, markerId: undefined, eventId: undefined })} className="text-red-400 ml-1"><FaTimes size={10} /></button>
+                  </div>
+                ) : (
+                  <>
+                    <button onClick={() => { setHookPickerTab('routes'); setShowHookPicker(true); }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-colors" style={{ ...glass.card, color: 'var(--glass-text)' }}>
+                      <FaRoute size={10} className="text-blue-500" /> Маршрут
+                    </button>
+                    <button onClick={() => { setHookPickerTab('markers'); setShowHookPicker(true); }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-colors" style={{ ...glass.card, color: 'var(--glass-text)' }}>
+                      <FaMapMarkerAlt size={10} className="text-green-500" /> Метка
+                    </button>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
+        {guideSections.length === 0 && (
+          <p className="text-center py-6 text-sm italic" style={{ color: 'var(--glass-text-secondary)' }}>
+            Добавь первую секцию — «Как добраться» или «Где сфотографировать»
+          </p>
+        )}
+      </div>
+
+      {renderError()}
+
+      {/* 5. Кнопки */}
+      <div className="flex items-center gap-3 pt-2">
+        <button onClick={handleSaveOffline} disabled={loading || !body.trim()}
+          className="flex items-center gap-1.5 px-4 py-2.5 text-sm rounded-xl disabled:opacity-40 transition-all"
+          style={{ ...glass.card, color: 'var(--glass-text)' }}>
+          <FaCloud size={12} /> Черновик
+        </button>
+        <div className="flex-1" />
+        <button onClick={handleCreatePost} disabled={loading || !canPublish}
+          className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl disabled:opacity-40 transition-all"
+          style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', boxShadow: '0 4px 14px rgba(16,185,129,0.3)' }}>
+          {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><FaPaperPlane size={12} /> Опубликовать гид</>}
+        </button>
+      </div>
+    </div>
+  );
+
+  // ═══════════════════════════════════════════════════
+  //  CONTINUE — «Продолжить черновик»
+  //  Список черновиков → нажатие → загрузка в story-редактор
+  // ═══════════════════════════════════════════════════
+
+  const renderContinueEditor = () => (
+    <div className="space-y-4">
+      <p className="text-sm" style={{ color: 'var(--glass-text-secondary)' }}>
+        Выбери черновик, чтобы продолжить:
+      </p>
+
+      {draftsList.length === 0 ? (
+        <div className="text-center py-10 space-y-3">
+          <FaCloud size={32} style={{ color: 'var(--glass-text-secondary)', margin: '0 auto' }} />
+          <p className="text-sm" style={{ color: 'var(--glass-text-secondary)' }}>Черновиков пока нет</p>
+          <button
+            onClick={() => setMode('instant')}
+            className="px-4 py-2 text-sm rounded-xl transition-all"
+            style={{ ...glass.card, background: 'rgba(59,130,246,0.08)', color: 'var(--text-accent, #2563eb)' }}
+          >
+            Создать новый пост
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {draftsList.map((d) => (
+            <motion.button
+              key={d.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => loadDraft(d.id)}
+              className="w-full text-left p-4 rounded-2xl transition-all"
+              style={{ ...glass.card, background: 'rgba(255,255,255,0.12)' }}
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: 'rgba(245,158,11,0.12)' }}>
+                  <FaCloud className="text-amber-500" size={16} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  {d.title && <p className="text-sm font-semibold truncate" style={{ color: 'var(--glass-text)' }}>{d.title}</p>}
+                  <p className="text-sm truncate" style={{ color: 'var(--glass-text)' }}>
+                    {d.text?.slice(0, 80) || 'Без текста'}
+                    {(d.text?.length || 0) > 80 ? '…' : ''}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--glass-text-secondary)' }}>
+                    {new Date(d.createdAt).toLocaleDateString('ru-RU')}
+                    {d.hasImages && ' · с фото'}
+                    {d.hasTrack && ' · с маршрутом'}
+                  </p>
+                </div>
+                <ChevronLeft className="w-4 h-4 mt-1 rotate-180 shrink-0" style={{ color: 'var(--glass-text-secondary)' }} />
+              </div>
+            </motion.button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  // ═══════════════════════════════════════════════════
+  //  Маппинг режима → редактор
+  // ═══════════════════════════════════════════════════
+
+  const modeTitle: Record<CreationMode, string> = {
+    instant: 'Момент здесь и сейчас',
+    story: 'Впечатление дня',
+    guide: 'Мой путеводитель',
+    continue: 'Продолжить черновик',
+  };
+
+  const renderCurrentEditor = () => {
+    switch (mode) {
+      case 'instant': return renderInstantEditor();
+      case 'story': return renderStoryEditor();
+      case 'guide': return renderGuideEditor();
+      case 'continue': return renderContinueEditor();
+      default: return null;
+    }
+  };
+
+  // ═══════════════════════════════════════════════════
+  //  INLINE-форма (встроена в Posts.tsx)
+  // ═══════════════════════════════════════════════════
+
+  if (inline) {
+    return (
+      <>
+        <div className="create-post-inline" style={{ padding: '0 4px' }}>
+          <AnimatePresence mode="wait">
+            {mode === 'select' ? (
+              <motion.div key="sel" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <div className="flex items-center justify-between mb-2 px-2">
+                  <h3 className="text-base font-semibold" style={{ color: 'var(--glass-text)' }}>Новый пост</h3>
+                  <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full" style={{ ...glass.card, background: 'rgba(255,255,255,0.3)' }}>
+                    <FaTimes size={14} style={{ color: 'var(--glass-text)' }} />
+                  </button>
+                </div>
+                <ModeSelector onSelect={(m) => setMode(m)} hasDraft={hasDraft} isOnline={navigator.onLine} />
+              </motion.div>
+            ) : (
+              <motion.div key="editor" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
+                <div className="flex items-center gap-2 mb-4 px-2">
+                  <BackButton />
+                  <h3 className="text-base font-semibold flex-1" style={{ color: 'var(--glass-text)' }}>
+                    {modeTitle[mode as CreationMode]}
+                  </h3>
+                  <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full" style={{ ...glass.card, background: 'rgba(255,255,255,0.3)' }}>
+                    <FaTimes size={14} style={{ color: 'var(--glass-text)' }} />
+                  </button>
+                </div>
+                <div className="px-2">
+                  {renderCurrentEditor()}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+        {renderHookPicker()}
+      </>
     );
   }
 
-  // === MODAL mode (оригинальный полноэкранный модал) ===
+  // ═══════════════════════════════════════════════════
+  //  MODAL (полноэкранный)
+  // ═══════════════════════════════════════════════════
 
   return (
     <>
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div 
-          className="rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto" style={{ background: 'rgba(0,0,0,0.45)' }}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-4rem)] rounded-2xl overflow-hidden flex flex-col"
           style={{
-            background: 'var(--glass-bg-modal)',
-            backdropFilter: 'blur(14px)',
-            WebkitBackdropFilter: 'blur(14px)',
-            border: '1px solid var(--border-light)',
-            borderRadius: 'var(--radius-panel)',
-            boxShadow: 'var(--shadow-panel)'
+            ...glass.bg,
+            border: '1px solid var(--border-light, rgba(255,255,255,0.25))',
+            boxShadow: '0 25px 60px rgba(0,0,0,0.2)',
           }}
         >
-        {/* Заголовок */}
-        <div className="flex items-center justify-between p-6 border-b">
-            <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Создать пост</h2>
-          <button
-            onClick={onClose}
-            className="transition-colors"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            <FaTimes size={20} />
-          </button>
-        </div>
-
-          {/* Переключатель типа поста */}
-          <div className="p-4 border-b" style={{ background: 'var(--glass-bg)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderColor: 'var(--border-light)' }}>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setPostType('simple')}
-                className="flex-1 px-4 py-2 rounded-lg font-medium transition-all"
-                style={{
-                  background: postType === 'simple' ? 'var(--text-accent)' : 'var(--glass-bg)',
-                  color: postType === 'simple' ? '#ffffff' : 'var(--text-primary)',
-                  backdropFilter: postType !== 'simple' ? 'blur(14px)' : 'none',
-                  WebkitBackdropFilter: postType !== 'simple' ? 'blur(14px)' : 'none',
-                  border: postType !== 'simple' ? '1px solid var(--border-light)' : 'none',
-                  borderRadius: 'var(--radius-panel)'
-                }}
-              >
-                <FileText size={15} className="inline mr-1.5" />
-                Простой пост
-              </button>
-              <button
-                type="button"
-                onClick={() => setPostType('guide')}
-                className="flex-1 px-4 py-2 rounded-lg font-medium transition-all"
-                style={{
-                  background: postType === 'guide' ? 'var(--text-accent)' : 'var(--glass-bg)',
-                  color: postType === 'guide' ? '#ffffff' : 'var(--text-primary)',
-                  backdropFilter: postType !== 'guide' ? 'blur(14px)' : 'none',
-                  WebkitBackdropFilter: postType !== 'guide' ? 'blur(14px)' : 'none',
-                  border: postType !== 'guide' ? '1px solid var(--border-light)' : 'none',
-                  borderRadius: 'var(--radius-panel)'
-                }}
-              >
-                <MapIcon size={15} className="inline mr-1.5" />
-                Путеводитель
-              </button>
-            </div>
-          </div>
-          {/* Выбор стиля карты для предпросмотра/поста - показываем только если есть крючок контента */}
-          {((postType === 'simple' && hasHook) || (postType === 'guide' && guideSections.some(s => s.hasMap))) && (
-            <div className="p-4 border-b" style={{ background: 'var(--glass-bg)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderColor: 'var(--border-light)' }}>
-              <div className="flex items-center gap-3 text-sm" style={{ color: 'var(--text-primary)' }}>
-                <span className="font-medium">Стиль карты:</span>
-                <button
-                  type="button"
-                  onClick={() => setMapBase('opentopo')}
-                  className="px-3 py-1.5 rounded"
-                  style={{
-                    background: mapBase === 'opentopo' ? 'var(--text-accent)' : 'var(--glass-bg)',
-                    color: mapBase === 'opentopo' ? '#ffffff' : 'var(--text-primary)',
-                    border: mapBase !== 'opentopo' ? '1px solid var(--border-light)' : 'none',
-                    backdropFilter: mapBase !== 'opentopo' ? 'blur(14px)' : 'none',
-                    WebkitBackdropFilter: mapBase !== 'opentopo' ? 'blur(14px)' : 'none'
-                  }}
-                >OpenTopoMap</button>
-                <button
-                  type="button"
-                  onClick={() => setMapBase('alidade')}
-                  className="px-3 py-1.5 rounded"
-                  style={{
-                    background: mapBase === 'alidade' ? 'var(--text-accent)' : 'var(--glass-bg)',
-                    color: mapBase === 'alidade' ? '#ffffff' : 'var(--text-primary)',
-                    border: mapBase !== 'alidade' ? '1px solid var(--border-light)' : 'none',
-                    backdropFilter: mapBase !== 'alidade' ? 'blur(14px)' : 'none',
-                    WebkitBackdropFilter: mapBase !== 'alidade' ? 'blur(14px)' : 'none'
-                  }}
-                >Alidade Smooth</button>
-              </div>
-            </div>
-          )}
-
-          {/* Содержимое */}
-          <div className="flex-1 overflow-hidden flex">
-            {/* Левая панель: редактор */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {/* Заголовок */}
-              {(postType === 'simple' || (postType === 'guide' && guideFormatSelected)) && (
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                    {postType === 'guide' ? 'Заголовок путеводителя *' : 'Заголовок (необязательно)'}
-                  </label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="w-full border rounded-lg px-3 py-2 focus:outline-none"
-                    style={{
-                      background: 'var(--glass-bg)',
-                      border: '1px solid var(--border-light)',
-                      color: 'var(--text-primary)',
-                      borderRadius: 'var(--radius-panel)'
-                    }}
-                    placeholder={postType === 'guide' ? 'Путешествие по Алтаю...' : 'Введите заголовок...'}
-                  />
+          <AnimatePresence mode="wait">
+            {mode === 'select' ? (
+              <motion.div key="sel" className="flex flex-col h-full" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: 'rgba(255,255,255,0.12)' }}>
+                  <h2 className="text-xl font-bold" style={{ color: 'var(--glass-text, var(--text-primary))' }}>Создать запись</h2>
+                  <button onClick={onClose} className="p-2 rounded-full transition-colors" style={{ color: 'var(--glass-text-secondary)' }}>
+                    <FaTimes size={18} />
+                  </button>
                 </div>
-              )}
-
-              {/* Основной текст */}
-              {(postType === 'simple' || (postType === 'guide' && guideFormatSelected)) && (
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                    {postType === 'guide' ? 'Вступление *' : 'Текст поста *'}
-                  </label>
-                  <textarea
-                    value={body}
-                    onChange={(e) => setBody(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 min-h-[120px] focus:border-blue-500 focus:outline-none"
-                    placeholder={postType === 'guide' ? 'Краткое описание путешествия...' : 'Напишите ваш пост...'}
-                  />
+                <div className="flex-1 overflow-y-auto">
+                  <ModeSelector onSelect={(m) => setMode(m)} hasDraft={hasDraft} isOnline={navigator.onLine} />
                 </div>
-              )}
-              
-              {/* Загрузка фото */}
-              {(postType === 'simple' || (postType === 'guide' && guideFormatSelected)) && (
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                    Фотографии (до 10 штук)
-                  </label>
-                <div className="border-2 border-dashed rounded-lg p-4" style={{ borderColor: 'var(--border-light)', borderRadius: 'var(--radius-panel)' }}>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handlePhotoSelect}
-                    className="hidden"
-                    id="photo-upload"
-                    disabled={uploadedFiles.length >= 10}
-                  />
-                  <label
-                    htmlFor="photo-upload"
-                    className="cursor-pointer flex flex-col items-center justify-center py-4"
-                    style={{
-                      opacity: uploadedFiles.length >= 10 ? 0.5 : 1,
-                      cursor: uploadedFiles.length >= 10 ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    <FaPlus size={24} className="mb-2" style={{ color: 'var(--text-secondary)' }} />
-                    <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {uploadedFiles.length >= 10 ? 'Достигнут лимит фото' : 'Нажмите для загрузки фото'}
-                    </span>
-                  </label>
-                  
-                  {/* Превью фото */}
-                  {photoPreviewUrls.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2 mt-4">
-                      {photoPreviewUrls.map((url, index) => (
-                        <div key={index} className="relative group">
-                          <img
-                            src={url}
-                            alt={`Превью ${index + 1}`}
-                            className="w-full h-24 object-cover rounded-lg"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleRemovePhoto(index)}
-                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <FaTimes size={12} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+              </motion.div>
+            ) : (
+              <motion.div key="editor" className="flex flex-col h-full" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
+                <div className="p-4 border-b flex items-center gap-3" style={{ borderColor: 'rgba(255,255,255,0.12)' }}>
+                  <BackButton />
+                  <h2 className="text-lg font-semibold flex-1" style={{ color: 'var(--glass-text, var(--text-primary))' }}>
+                    {modeTitle[mode as CreationMode]}
+                  </h2>
+                  <button onClick={onClose} className="p-2 rounded-full transition-colors" style={{ color: 'var(--glass-text-secondary)' }}>
+                    <FaTimes size={18} />
+                  </button>
                 </div>
-              </div>
-              )}
-              
-              {/* Простой пост: крючок контента */}
-              {postType === 'simple' && (
-                <div className="border rounded-lg p-4" style={{ borderColor: 'var(--border-light)', borderRadius: 'var(--radius-panel)' }}>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                      <input
-                        type="checkbox"
-                        checked={hasHook}
-                        onChange={(e) => {
-                          setHasHook(e.target.checked);
-                          if (!e.target.checked) {
-                            handleHookSelect(null);
-                          }
-                        }}
-                        className="w-4 h-4"
-                      />
-                      Добавить крючок контента
-                    </label>
-            </div>
-            
-                  {hasHook && (
-                    <div className="space-y-4">
-                      <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Маршруты</div>
-                      {(favorites?.favoriteRoutes && (favorites.favoriteRoutes.filter(r => r.purpose === 'post').length > 0
-                        ? favorites.favoriteRoutes.filter(r => r.purpose === 'post')
-                        : favorites.favoriteRoutes)).map(route => (
-                <button
-                  key={route.id}
-                          onClick={() => handleHookSelect('route', route.id)}
-                          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors"
-                          style={{
-                            background: hookType === 'route' && hookRouteId === route.id ? 'rgba(76, 201, 240, 0.3)' : 'var(--glass-bg)',
-                            color: hookType === 'route' && hookRouteId === route.id ? 'var(--text-accent)' : 'var(--text-primary)',
-                            border: hookType === 'route' && hookRouteId === route.id ? '2px solid var(--text-accent)' : '1px solid var(--border-light)',
-                            backdropFilter: hookType !== 'route' || hookRouteId !== route.id ? 'blur(14px)' : 'none',
-                            WebkitBackdropFilter: hookType !== 'route' || hookRouteId !== route.id ? 'blur(14px)' : 'none',
-                            borderRadius: 'var(--radius-panel)'
-                          }}
-                >
-                  <FaRoute size={14} />
-                          <span className="flex-1 text-left">{route.title}</span>
-                </button>
-              ))}
-                      <div className="text-xs font-semibold uppercase tracking-wide mt-4" style={{ color: 'var(--text-secondary)' }}>Метки</div>
-                      {(favorites?.favoritePlaces && (favorites.favoritePlaces.filter(p => (p as any).purpose === 'post').length > 0
-                        ? favorites.favoritePlaces.filter(p => (p as any).purpose === 'post')
-                        : favorites.favoritePlaces)).map(place => (
-                <button
-                  key={place.id}
-                          onClick={() => handleHookSelect('marker', place.id)}
-                          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors"
-                          style={{
-                            background: hookType === 'marker' && hookMarkerId === place.id ? 'rgba(76, 201, 240, 0.3)' : 'var(--glass-bg)',
-                            color: hookType === 'marker' && hookMarkerId === place.id ? 'var(--text-accent)' : 'var(--text-primary)',
-                            border: hookType === 'marker' && hookMarkerId === place.id ? '2px solid var(--text-accent)' : '1px solid var(--border-light)',
-                            backdropFilter: hookType !== 'marker' || hookMarkerId !== place.id ? 'blur(14px)' : 'none',
-                            WebkitBackdropFilter: hookType !== 'marker' || hookMarkerId !== place.id ? 'blur(14px)' : 'none',
-                            borderRadius: 'var(--radius-panel)'
-                          }}
-                >
-                  <FaMapMarkerAlt size={14} />
-                          <span className="flex-1 text-left">{place.name}</span>
-                </button>
-              ))}
-                      <div className="text-xs font-semibold uppercase tracking-wide mt-4" style={{ color: 'var(--text-secondary)' }}>События</div>
-                      {(favorites?.favoriteEvents && (favorites.favoriteEvents.filter(e => (e as any).purpose === 'post').length > 0
-                        ? favorites.favoriteEvents.filter(e => (e as any).purpose === 'post')
-                        : favorites.favoriteEvents)).map(event => (
-                <button
-                  key={event.id}
-                          onClick={() => handleHookSelect('event', event.id)}
-                          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors"
-                          style={{
-                            background: hookType === 'event' && hookEventId === event.id ? 'rgba(185, 103, 255, 0.3)' : 'var(--glass-bg)',
-                            color: hookType === 'event' && hookEventId === event.id ? '#b967ff' : 'var(--text-primary)',
-                            border: hookType === 'event' && hookEventId === event.id ? '2px solid #b967ff' : '1px solid var(--border-light)',
-                            backdropFilter: hookType !== 'event' || hookEventId !== event.id ? 'blur(14px)' : 'none',
-                            WebkitBackdropFilter: hookType !== 'event' || hookEventId !== event.id ? 'blur(14px)' : 'none',
-                            borderRadius: 'var(--radius-panel)'
-                          }}
-                >
-                  <FaCalendar size={14} />
-                          <span className="flex-1 text-left">{event.title}</span>
-                </button>
-              ))}
-            </div>
-                  )}
-              </div>
+                <div className="flex-1 overflow-y-auto p-5">
+                  {renderCurrentEditor()}
+                </div>
+              </motion.div>
             )}
-
-              {/* Путеводитель: выбор формата и секции */}
-              {postType === 'guide' && (
-                <div className="space-y-6">
-                  {/* Шаг 1: Выбор формата (если еще не выбран) */}
-                  {!guideFormatSelected ? (
-                    <div>
-                      <div className="mb-4">
-                        <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Выберите формат путеводителя</h3>
-                        <p className="text-sm text-gray-600">Выберите, как вы хотите оформить свой путеводитель</p>
-                      </div>
-                      <GuideFormatSelector
-                        selectedFormat={guideFormat}
-                        onFormatChange={handleFormatSelect}
-                      />
-                    </div>
-                  ) : (
-                    <>
-                      {/* Индикатор выбранного формата */}
-                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white">
-                              {guideFormat === 'mobile' && <Smartphone size={20} />}
-                              {guideFormat === 'desktop' && <Monitor size={20} />}
-                              {guideFormat === 'article' && <BookOpen size={20} />}
-                              {guideFormat === 'focus' && <Target size={20} />}
-                            </div>
-                            <div>
-                              <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-                                {guideFormat === 'mobile' && 'Мобильный гид'}
-                                {guideFormat === 'desktop' && 'Десктоп-обзор'}
-                                {guideFormat === 'article' && 'Статья-исследование'}
-                                {guideFormat === 'focus' && 'Фокус-гайд'}
-                              </div>
-                              <div className="text-xs text-gray-600">Формат выбран</div>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setGuideFormatSelected(false)}
-                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                          >
-                            Изменить
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Шаг 2: Создание контента */}
-                      <div className="border-t pt-4">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-sm font-medium text-gray-700">Секции путеводителя</h3>
-                          <button
-                            type="button"
-                            onClick={addGuideSection}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                          >
-                            <FaPlus size={12} />
-                            Добавить секцию
-                          </button>
-                        </div>
-
-                        {guideSections.map((section, idx) => (
-                          <div key={section.id} className="border border-gray-200 rounded-lg p-4 space-y-3 mb-4">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-gray-600">Секция {idx + 1}</span>
-                              <button
-                                type="button"
-                                onClick={() => removeGuideSection(section.id)}
-                                className="text-red-500 hover:text-red-700"
-                              >
-                                <FaTrash size={14} />
-                              </button>
-                            </div>
-
-                            <input
-                              type="text"
-                              value={section.title}
-                              onChange={(e) => updateGuideSection(section.id, { title: e.target.value })}
-                              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                              placeholder="Заголовок секции..."
-                            />
-                            
-                            <textarea
-                              value={section.content}
-                              onChange={(e) => updateGuideSection(section.id, { content: e.target.value })}
-                              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[80px] focus:border-blue-500 focus:outline-none"
-                              placeholder="Текст секции..."
-                            />
-                            
-                            {/* Кнопка добавления крючка контента */}
-                            <div className="flex items-center gap-2">
-                              {section.hasMap ? (
-                                <div className="flex items-center gap-2 flex-1">
-                                  {section.routeId && (
-                                    <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg border border-blue-200">
-                                      <FaRoute size={14} className="text-blue-600" />
-                                      <span className="text-sm text-blue-800">Маршрут добавлен</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => updateGuideSection(section.id, { hasMap: false, routeId: undefined })}
-                                        className="text-blue-600 hover:text-blue-800 ml-2"
-                                      >
-                                        <FaTimes size={12} />
-                                      </button>
-                                    </div>
-                                  )}
-                                  {section.markerId && (
-                                    <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg border border-green-200">
-                                      <FaMapMarkerAlt size={14} className="text-green-600" />
-                                      <span className="text-sm text-green-800">Метка добавлена</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => updateGuideSection(section.id, { hasMap: false, markerId: undefined })}
-                                        className="text-green-600 hover:text-green-800 ml-2"
-                                      >
-                                        <FaTimes size={12} />
-                                      </button>
-                                    </div>
-                                  )}
-                                  {section.eventId && (
-                                    <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 rounded-lg border border-purple-200">
-                                      <FaCalendar size={14} className="text-purple-600" />
-                                      <span className="text-sm text-purple-800">Событие добавлено</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => updateGuideSection(section.id, { hasMap: false, eventId: undefined })}
-                                        className="text-purple-600 hover:text-purple-800 ml-2"
-                                      >
-                                        <FaTimes size={12} />
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="flex gap-2 flex-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => openContentHookModal(section.id, 'routes')}
-                                    className="flex items-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 text-sm transition-colors"
-                                  >
-                                    <FaRoute size={14} />
-                                    Маршрут
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => openContentHookModal(section.id, 'markers')}
-                                    className="flex items-center gap-2 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg border border-green-200 text-sm transition-colors"
-                                  >
-                                    <FaMapMarkerAlt size={14} />
-                                    Метка
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => openContentHookModal(section.id, 'events')}
-                                    className="flex items-center gap-2 px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg border border-purple-200 text-sm transition-colors"
-                                  >
-                                    <FaCalendar size={14} />
-                                    Событие
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-          {/* Ошибка */}
-          {error && (
-            <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">
-              {error}
-            </div>
-          )}
-            </div>
-
-            {/* Правая панель: предпросмотр */}
-            <div className="w-80 border-l bg-gray-50 p-4 overflow-y-auto">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-700">Предпросмотр</h3>
-                <button
-                  type="button"
-                  onClick={() => setPreviewExpanded(!previewExpanded)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  {previewExpanded ? <FaCompress size={14} /> : <FaExpand size={14} />}
-                </button>
-              </div>
-              
-              <div className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 ${
-                previewExpanded ? 'min-h-[600px]' : ''
-              }`}>
-                {postType === 'simple' ? (
-                  <div className="space-y-3">
-                    {title && (
-                      <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</h3>
-                    )}
-                    <p className="text-sm text-gray-600 whitespace-pre-wrap">{body || 'Введите текст...'}</p>
-                    {photoPreviewUrls.length > 0 && (
-                      <div className="grid gap-2" style={{ gridTemplateColumns: photoPreviewUrls.length === 1 ? '1fr' : photoPreviewUrls.length === 2 ? '1fr 1fr' : 'repeat(3, 1fr)' }}>
-                        {photoPreviewUrls.map((url, index) => (
-                          <img key={index} src={url} alt={`Фото ${index + 1}`} className="w-full h-24 object-cover rounded" />
-                        ))}
-                      </div>
-                    )}
-                    {hasHook && hookType === 'route' && hookRouteId && (
-                      <div className="h-32 rounded-lg overflow-hidden">
-                        <MiniMapRoute routeId={hookRouteId} height="128px" glBase={mapBase} />
-                      </div>
-                    )}
-                    {hasHook && hookType === 'marker' && hookMarkerId && (
-                      <div className="h-32 rounded-lg overflow-hidden">
-                        <MiniMapMarker markerId={hookMarkerId} height="128px" glBase={mapBase} />
-                      </div>
-                    )}
-                    {hasHook && hookType === 'event' && hookEventId && (
-                      <div className="h-32 rounded-lg overflow-hidden">
-                        <MiniEventCard eventId={hookEventId} height="128px" />
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {title && (
-                      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-lg">
-                        <h2 className="text-xl font-bold">{title}</h2>
-                      </div>
-                    )}
-                    {body && (
-                      <p className="text-sm text-gray-600 whitespace-pre-wrap">{body}</p>
-                    )}
-                    {/* Фото галерея */}
-                    {photoPreviewUrls && photoPreviewUrls.length > 0 && (
-                      <div className="grid gap-2" style={{
-                        gridTemplateColumns: photoPreviewUrls.length === 1 ? '1fr' : 
-                                             photoPreviewUrls.length === 2 ? '1fr 1fr' : 
-                                             'repeat(3, 1fr)'
-                      }}>
-                        {photoPreviewUrls.map((url, idx) => (
-                          <img
-                            key={idx}
-                            src={url}
-                            alt={`Фото ${idx + 1}`}
-                            className="w-full h-20 object-cover rounded"
-                          />
-                        ))}
-                      </div>
-                    )}
-                    
-                    {/* Карта для мобильной версии - собираем все крючки */}
-                    {guideFormat === 'mobile' && (() => {
-                      const hasAnyHooks = guideSections.some(s => s.hasMap && (s.routeId || s.markerId || s.eventId));
-                      if (!hasAnyHooks) return null;
-                      
-                      const firstRoute = guideSections.find(s => s.hasMap && s.routeId);
-                      const firstMarker = guideSections.find(s => s.hasMap && s.markerId);
-                      const firstEvent = guideSections.find(s => s.hasMap && s.eventId);
-                      
-                      return (
-                        <div className="h-32 rounded-lg overflow-hidden bg-gray-800">
-                          {firstRoute && (
-                            <MiniMapRoute routeId={firstRoute.routeId!} height="128px" glBase={mapBase} />
-                          )}
-                          {!firstRoute && firstMarker && (
-                            <MiniMapMarker markerId={firstMarker.markerId!} height="128px" glBase={mapBase} />
-                          )}
-                          {!firstRoute && !firstMarker && firstEvent && (
-                            <MiniEventCard eventId={firstEvent.eventId!} height="128px" />
-                          )}
-                        </div>
-                      );
-                    })()}
-                    
-                    {/* Оглавление - только для desktop и article */}
-                    {(guideFormat === 'desktop' || guideFormat === 'article') && guideSections.length > 0 && (
-                      <div className="bg-gray-50 p-3 rounded-lg">
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">Оглавление</h4>
-                        <ul className="space-y-1">
-                          {guideSections.map((s, idx) => (
-                            <li key={s.id} className="text-xs text-gray-600">
-                              {idx + 1}. {s.title || `Секция ${idx + 1}`}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    
-                    {/* Секции */}
-                    {guideSections.map((section, idx) => (
-                      <div key={section.id} className={`border rounded-lg p-3 ${
-                        guideFormat === 'focus' ? 'border-orange-300 bg-orange-50' : 'border-gray-200'
-                      }`}>
-                        <h4 className="text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
-                          {guideFormat === 'focus' && <Check size={13} className="inline mr-1 text-orange-500" />}
-                          {section.title || `Секция ${idx + 1}`}
-                        </h4>
-                        <p className="text-xs text-gray-600 whitespace-pre-wrap mb-2">
-                          {section.content || 'Текст секции...'}
-                        </p>
-                        {section.hasMap && section.routeId && (
-                          <div className="h-24 rounded overflow-hidden">
-                            <MiniMapRoute routeId={section.routeId} height="96px" glBase={mapBase} />
-                          </div>
-                        )}
-                        {section.hasMap && section.markerId && (
-                          <div className="h-24 rounded overflow-hidden">
-                            <MiniMapMarker markerId={section.markerId} height="96px" glBase={mapBase} />
-                          </div>
-                        )}
-                        {section.hasMap && section.eventId && (
-                          <div className="h-24 rounded overflow-hidden">
-                            <MiniEventCard eventId={section.eventId} height="96px" />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-        </div>
-
-        {/* Кнопки */}
-        <div className="flex items-center justify-between gap-3 p-6 border-t bg-gray-50">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setShowPreview(!showPreview)}
-              className="flex items-center gap-2 px-4 py-2 transition-colors"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              <FaEye size={14} />
-              {showPreview ? 'Скрыть' : 'Показать'} предпросмотр
-            </button>
-            <button
-              onClick={handleSaveOffline}
-              disabled={loading || (postType === 'simple' && !body.trim()) || (postType === 'guide' && (!title.trim() || !body.trim() || guideSections.length === 0))}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              title="Сохранить черновик офлайн для отправки позже"
-            >
-              <FaCloud size={14} />
-              Сохранить офлайн
-            </button>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-            >
-              Отмена
-            </button>
-            <button
-              onClick={handleCreatePost}
-              disabled={loading || (postType === 'simple' && !body.trim()) || (postType === 'guide' && (!title.trim() || !body.trim() || guideSections.length === 0))}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Создание...
-                </>
-              ) : (
-                <>
-                  <FaPaperPlane size={14} />
-                  Опубликовать
-                </>
-              )}
-            </button>
-          </div>
-        </div>
+          </AnimatePresence>
+        </motion.div>
       </div>
-    </div>
-
-      {/* Полноэкранный предпросмотр */}
-      {showPreview && (
-        <PostPreview
-          title={title}
-          body={body}
-          postType={postType}
-          hasHook={hasHook}
-          hookType={hookType}
-          hookRouteId={hookRouteId}
-          hookMarkerId={hookMarkerId}
-          hookEventId={hookEventId}
-          guideSections={guideSections}
-          guideFormat={guideFormat}
-          photoPreviewUrls={photoPreviewUrls}
-          mapBase={mapBase}
-          onClose={() => setShowPreview(false)}
-        />
-      )}
-
-      {/* Модальное окно для выбора крючка контента в секции */}
-      {showContentHookModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">
-                Выберите {contentHookType === 'routes' ? 'маршрут' : contentHookType === 'markers' ? 'метку' : 'событие'}
-              </h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowContentHookModal(false);
-                  setCurrentSectionId(null);
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <FaTimes size={20} />
-              </button>
-            </div>
-
-            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-              {contentHookType === 'routes' && (
-                <>
-                  {(favorites?.favoriteRoutes && (() => {
-                    const postRoutes = favorites.favoriteRoutes.filter((r: any) => 
-                      r.categories?.post || r.purpose === 'post' || 
-                      (Array.isArray(r.tags) && r.tags.includes('post'))
-                    );
-                    const routesToShow = postRoutes.length > 0 ? postRoutes : favorites.favoriteRoutes;
-                    return routesToShow.map((route: any) => (
-                      <button
-                        key={route.id}
-                        onClick={() => addContentHookToSection('routes', route.id)}
-                        className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-blue-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors text-left"
-                      >
-                        <FaRoute size={16} className="text-blue-600" />
-                        <div className="flex-1">
-                          <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{route.title}</div>
-                          {route.description && (
-                            <div className="text-sm text-gray-600 mt-1">{route.description.substring(0, 100)}...</div>
-                          )}
-                        </div>
-                      </button>
-                    ));
-                  })())}
-                </>
-              )}
-
-              {contentHookType === 'markers' && (
-                <>
-                  {(favorites?.favoritePlaces && (() => {
-                    const postPlaces = favorites.favoritePlaces.filter((p: any) => 
-                      (p as any).categories?.post || (p as any).purpose === 'post' ||
-                      (Array.isArray((p as any).tags) && (p as any).tags.includes('post'))
-                    );
-                    const placesToShow = postPlaces.length > 0 ? postPlaces : favorites.favoritePlaces;
-                    return placesToShow.map((place: any) => (
-                      <button
-                        key={place.id}
-                        onClick={() => addContentHookToSection('markers', place.id)}
-                        className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-green-50 rounded-lg border border-gray-200 hover:border-green-300 transition-colors text-left"
-                      >
-                        <FaMapMarkerAlt size={16} className="text-green-600" />
-                        <div className="flex-1">
-                          <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{place.name}</div>
-                          {place.description && (
-                            <div className="text-sm text-gray-600 mt-1">{place.description.substring(0, 100)}...</div>
-                          )}
-                        </div>
-                      </button>
-                    ));
-                  })())}
-                </>
-              )}
-
-              {contentHookType === 'events' && (
-                <>
-                  {(favorites?.favoriteEvents && (() => {
-                    const postEvents = favorites.favoriteEvents.filter((e: any) => 
-                      e.categories?.post || e.purpose === 'post' ||
-                      (Array.isArray(e.tags) && e.tags.includes('post'))
-                    );
-                    const eventsToShow = postEvents.length > 0 ? postEvents : favorites.favoriteEvents;
-                    return eventsToShow.map((event: any) => (
-                      <button
-                        key={event.id}
-                        onClick={() => addContentHookToSection('events', event.id)}
-                        className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-purple-50 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors text-left"
-                      >
-                        <FaCalendar size={16} className="text-purple-600" />
-                        <div className="flex-1">
-                          <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{event.title}</div>
-                          {event.description && (
-                            <div className="text-sm text-gray-600 mt-1">{event.description.substring(0, 100)}...</div>
-                          )}
-                          {event.date && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              {typeof event.date === 'string' ? event.date : event.date instanceof Date ? event.date.toLocaleDateString('ru-RU') : 'Не указано'}
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    ));
-                  })())}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {renderHookPicker()}
     </>
   );
 };

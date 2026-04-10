@@ -1,0 +1,269 @@
+Windows PowerShell
+(C) Корпорация Майкрософт (Microsoft Corporation). Все права защищены.
+
+Попробуйте новую кроссплатформенную оболочку PowerShell (https://aka.ms/pscore6)
+
+PS C:\Windows\system32> cd d:/newgeoblogrf/backend
+PS D:\newgeoblogrf\backend> node backend/scripts/fetch_zones_rf.cjs
+node:internal/modules/cjs/loader:1215
+  throw err;
+  ^
+
+Error: Cannot find module 'D:\newgeoblogrf\backend\backend\scripts\fetch_zones_rf.cjs'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+    at Module._load (node:internal/modules/cjs/loader:1043:27)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v20.19.0
+PS D:\newgeoblogrf\backend> cd d:/newgeoblogrf
+PS D:\newgeoblogrf> node backend/scripts/fetch_zones_rf.cjs
+╔══════════════════════════════════════════════════╗
+║      Импорт зон РФ из OpenStreetMap (Overpass)  ║
+╚══════════════════════════════════════════════════╝
+
+Очистка предыдущих зон перед импортом...
+⚠ Не удалось очистить старые зоны. Импорт продолжится с дедупликацией.
+
+План: CFO → SZFO → YFO → SKFO → PFO → URFO → SFO → DFO
+Задержка между запросами: 2000мс | Макс. дробление: 4 уровней | Backoff: 5000мс
+
+══════════════════════════════════════════════════
+  Округ: CFO
+══════════════════════════════════════════════════
+  [1/4] Загрузка тайла...
+  ✓ Тайл [30,52,36,55.25] — 115553 элементов
+  [2/4] Загрузка тайла...
+  ✓ Тайл [36,52,42,55.25] — 49681 элементов
+  [3/4] Загрузка тайла...
+  ⚠ https://overpass-api.de/api/interpreter attempt 1/3 failed (HTTP 429). Waiting 15s...
+  ⚠ https://overpass-api.de/api/interpreter attempt 2/3 failed (HTTP 429). Waiting 45s...
+  ✓ Тайл [30,55.25,36,58.5] — 66069 элементов
+  [4/4] Загрузка тайла...
+  ✓ Тайл [36,55.25,42,58.5] — 77777 элементов
+  Всего элементов: 309080 → после дедупликации: 295556
+  Полигонов: 10331
+  Групп: 11. Импорт...
+  ✗ Ошибка импорта: Request failed with status code 413
+
+✗ Округ CFO не удался: <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>PayloadTooLargeError: request entity too large<br> &nbsp; &nbsp;at readStream (D:\newgeoblogrf\backend\node_modules\raw-body\index.js:163:17)<br> &nbsp; &nbsp;at getRawBody (D:\newgeoblogrf\backend\node_modules\raw-body\index.js:116:12)<br> &nbsp; &nbsp;at read (D:\newgeoblogrf\backend\node_modules\body-parser\lib\read.js:79:3)<br> &nbsp; &nbsp;at jsonParser (D:\newgeoblogrf\backend\node_modules\body-parser\lib\types\json.js:138:5)<br> &nbsp; &nbsp;at Layer.handle [as handle_request] (D:\newgeoblogrf\backend\node_modules\express\lib\router\layer.js:95:5)<br> &nbsp; &nbsp;at trim_prefix (D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:328:13)<br> &nbsp; &nbsp;at D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:286:9<br> &nbsp; &nbsp;at Function.process_params (D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:346:12)<br> &nbsp; &nbsp;at next (D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:280:10)<br> &nbsp; &nbsp;at cors (D:\newgeoblogrf\backend\node_modules\cors\lib\index.js:188:7)</pre>
+</body>
+</html>
+
+  Прогресс сохранён. Перезапустите с --resume чтобы продолжить.
+
+══════════════════════════════════════════════════
+  Округ: SZFO
+══════════════════════════════════════════════════
+  [1/4] Загрузка тайла...
+  ⚠ https://overpass-api.de/api/interpreter attempt 1/3 failed (HTTP 429). Waiting 15s...
+  ✓ Тайл [26,58,43,63.5] — 353745 элементов
+  [2/4] Загрузка тайла...
+  ✓ Тайл [43,58,60,63.5] — 37146 элементов
+  [3/4] Загрузка тайла...
+  ⚠ https://overpass-api.de/api/interpreter attempt 1/3 failed (HTTP 429). Waiting 15s...
+  ⚠ https://overpass-api.de/api/interpreter attempt 2/3 failed (HTTP 429). Waiting 45s...
+  ✓ Тайл [26,63.5,43,69] — 161254 элементов
+  [4/4] Загрузка тайла...
+  ✓ Тайл [43,63.5,60,69] — 17395 элементов
+  Всего элементов: 569540 → после дедупликации: 541467
+  Полигонов: 15308
+  Групп: 11. Импорт...
+  ✗ Ошибка импорта: Request failed with status code 413
+
+✗ Округ SZFO не удался: <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>PayloadTooLargeError: request entity too large<br> &nbsp; &nbsp;at readStream (D:\newgeoblogrf\backend\node_modules\raw-body\index.js:163:17)<br> &nbsp; &nbsp;at getRawBody (D:\newgeoblogrf\backend\node_modules\raw-body\index.js:116:12)<br> &nbsp; &nbsp;at read (D:\newgeoblogrf\backend\node_modules\body-parser\lib\read.js:79:3)<br> &nbsp; &nbsp;at jsonParser (D:\newgeoblogrf\backend\node_modules\body-parser\lib\types\json.js:138:5)<br> &nbsp; &nbsp;at Layer.handle [as handle_request] (D:\newgeoblogrf\backend\node_modules\express\lib\router\layer.js:95:5)<br> &nbsp; &nbsp;at trim_prefix (D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:328:13)<br> &nbsp; &nbsp;at D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:286:9<br> &nbsp; &nbsp;at Function.process_params (D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:346:12)<br> &nbsp; &nbsp;at next (D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:280:10)<br> &nbsp; &nbsp;at cors (D:\newgeoblogrf\backend\node_modules\cors\lib\index.js:188:7)</pre>
+</body>
+</html>
+
+  Прогресс сохранён. Перезапустите с --resume чтобы продолжить.
+
+══════════════════════════════════════════════════
+  Округ: YFO
+══════════════════════════════════════════════════
+  [1/4] Загрузка тайла...
+  ⚠ https://overpass-api.de/api/interpreter attempt 1/3 failed (HTTP 429). Waiting 15s...
+  ⚠ https://overpass-api.de/api/interpreter attempt 2/3 failed (HTTP 429). Waiting 45s...
+  ✓ Тайл [36,44,43,51.25] — 195031 элементов
+  [2/4] Загрузка тайла...
+  ✓ Тайл [43,44,50,51.25] — 15474 элементов
+  [3/4] Загрузка тайла...
+  ⚠ https://overpass-api.de/api/interpreter attempt 1/3 failed (HTTP 429). Waiting 15s...
+  ⚠ https://overpass-api.de/api/interpreter attempt 2/3 failed (HTTP 429). Waiting 45s...
+  ✓ Тайл [36,51.25,43,58.5] — 174429 элементов
+  [4/4] Загрузка тайла...
+  ✓ Тайл [43,51.25,50,58.5] — 85530 элементов
+  Всего элементов: 470464 → после дедупликации: 466564
+  Полигонов: 21256
+  Групп: 11. Импорт...
+  ✗ Ошибка импорта: Request failed with status code 413
+
+✗ Округ YFO не удался: <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>PayloadTooLargeError: request entity too large<br> &nbsp; &nbsp;at readStream (D:\newgeoblogrf\backend\node_modules\raw-body\index.js:163:17)<br> &nbsp; &nbsp;at getRawBody (D:\newgeoblogrf\backend\node_modules\raw-body\index.js:116:12)<br> &nbsp; &nbsp;at read (D:\newgeoblogrf\backend\node_modules\body-parser\lib\read.js:79:3)<br> &nbsp; &nbsp;at jsonParser (D:\newgeoblogrf\backend\node_modules\body-parser\lib\types\json.js:138:5)<br> &nbsp; &nbsp;at Layer.handle [as handle_request] (D:\newgeoblogrf\backend\node_modules\express\lib\router\layer.js:95:5)<br> &nbsp; &nbsp;at trim_prefix (D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:328:13)<br> &nbsp; &nbsp;at D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:286:9<br> &nbsp; &nbsp;at Function.process_params (D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:346:12)<br> &nbsp; &nbsp;at next (D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:280:10)<br> &nbsp; &nbsp;at cors (D:\newgeoblogrf\backend\node_modules\cors\lib\index.js:188:7)</pre>
+</body>
+</html>
+
+  Прогресс сохранён. Перезапустите с --resume чтобы продолжить.
+
+══════════════════════════════════════════════════
+  Округ: SKFO
+══════════════════════════════════════════════════
+  [1/4] Загрузка тайла...
+  ⚠ https://overpass-api.de/api/interpreter attempt 1/3 failed (HTTP 429). Waiting 15s...
+  ✓ Тайл [40,41,44.25,44.25] — 147495 элементов
+  [2/4] Загрузка тайла...
+  ✓ Тайл [44.25,41,48.5,44.25] — 98643 элементов
+  [3/4] Загрузка тайла...
+  ✓ Тайл [40,44.25,44.25,47.5] — 14381 элементов
+  [4/4] Загрузка тайла...
+  ⚠ https://overpass-api.de/api/interpreter attempt 1/3 failed (HTTP 429). Waiting 15s...
+  ⚠ https://overpass-api.de/api/interpreter attempt 2/3 failed (HTTP 429). Waiting 45s...
+  ✓ Тайл [44.25,44.25,48.5,47.5] — 2709 элементов
+  Всего элементов: 263228 → после дедупликации: 253365
+  Полигонов: 5052
+  Групп: 11. Импорт...
+  ✗ Ошибка импорта: Request failed with status code 413
+
+✗ Округ SKFO не удался: <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>PayloadTooLargeError: request entity too large<br> &nbsp; &nbsp;at readStream (D:\newgeoblogrf\backend\node_modules\raw-body\index.js:163:17)<br> &nbsp; &nbsp;at getRawBody (D:\newgeoblogrf\backend\node_modules\raw-body\index.js:116:12)<br> &nbsp; &nbsp;at read (D:\newgeoblogrf\backend\node_modules\body-parser\lib\read.js:79:3)<br> &nbsp; &nbsp;at jsonParser (D:\newgeoblogrf\backend\node_modules\body-parser\lib\types\json.js:138:5)<br> &nbsp; &nbsp;at Layer.handle [as handle_request] (D:\newgeoblogrf\backend\node_modules\express\lib\router\layer.js:95:5)<br> &nbsp; &nbsp;at trim_prefix (D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:328:13)<br> &nbsp; &nbsp;at D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:286:9<br> &nbsp; &nbsp;at Function.process_params (D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:346:12)<br> &nbsp; &nbsp;at next (D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:280:10)<br> &nbsp; &nbsp;at cors (D:\newgeoblogrf\backend\node_modules\cors\lib\index.js:188:7)</pre>
+</body>
+</html>
+
+  Прогресс сохранён. Перезапустите с --resume чтобы продолжить.
+
+══════════════════════════════════════════════════
+  Округ: PFO
+══════════════════════════════════════════════════
+  [1/4] Загрузка тайла...
+  ✓ Тайл [45,52,50.75,55.25] — 39227 элементов
+  [2/4] Загрузка тайла...
+  ⚠ https://overpass-api.de/api/interpreter attempt 1/3 failed (HTTP 429). Waiting 15s...
+  ✓ Тайл [50.75,52,56.5,55.25] — 21155 элементов
+  [3/4] Загрузка тайла...
+  ✓ Тайл [45,55.25,50.75,58.5] — 34379 элементов
+  [4/4] Загрузка тайла...
+  ⚠ https://overpass-api.de/api/interpreter attempt 1/3 failed (HTTP 429). Waiting 15s...
+  ✓ Тайл [50.75,55.25,56.5,58.5] — 44034 элементов
+  Всего элементов: 138795 → после дедупликации: 138131
+  Полигонов: 4667
+  Групп: 11. Импорт...
+  ✗ Ошибка импорта: Request failed with status code 401
+
+✗ Округ PFO не удался: [object Object]
+  Прогресс сохранён. Перезапустите с --resume чтобы продолжить.
+
+══════════════════════════════════════════════════
+  Округ: URFO
+══════════════════════════════════════════════════
+  [1/4] Загрузка тайла...
+  ⚠ https://overpass-api.de/api/interpreter attempt 1/3 failed (HTTP 429). Waiting 15s...
+  ✓ Тайл [56,53,65.5,60] — 65625 элементов
+  [2/4] Загрузка тайла...
+  ✓ Тайл [65.5,53,75,60] — 17305 элементов
+  [3/4] Загрузка тайла...
+  ⚠ https://overpass-api.de/api/interpreter attempt 1/3 failed (HTTP 429). Waiting 15s...
+  ⚠ https://overpass-api.de/api/interpreter attempt 2/3 failed (HTTP 429). Waiting 45s...
+  ✓ Тайл [56,60,65.5,67] — 21951 элементов
+  [4/4] Загрузка тайла...
+  ✓ Тайл [65.5,60,75,67] — 26333 элементов
+  Всего элементов: 131214 → после дедупликации: 121104
+  Полигонов: 3870
+  Групп: 11. Импорт...
+  ✗ Ошибка импорта: Request failed with status code 401
+
+✗ Округ URFO не удался: [object Object]
+  Прогресс сохранён. Перезапустите с --resume чтобы продолжить.
+
+══════════════════════════════════════════════════
+  Округ: SFO
+══════════════════════════════════════════════════
+  [1/4] Загрузка тайла...
+  ✓ Тайл [60,49,75,62] — 81657 элементов
+  [2/4] Загрузка тайла...
+  ✓ Тайл [75,49,90,62] — 236629 элементов
+  [3/4] Загрузка тайла...
+  ✓ Тайл [60,62,75,75] — 23588 элементов
+  [4/4] Загрузка тайла...
+  ✓ Тайл [75,62,90,75] — 20387 элементов
+  Всего элементов: 362261 → после дедупликации: 351602
+  Полигонов: 7221
+  Групп: 11. Импорт...
+  ✗ Ошибка импорта: Request failed with status code 413
+
+✗ Округ SFO не удался: <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>PayloadTooLargeError: request entity too large<br> &nbsp; &nbsp;at readStream (D:\newgeoblogrf\backend\node_modules\raw-body\index.js:163:17)<br> &nbsp; &nbsp;at getRawBody (D:\newgeoblogrf\backend\node_modules\raw-body\index.js:116:12)<br> &nbsp; &nbsp;at read (D:\newgeoblogrf\backend\node_modules\body-parser\lib\read.js:79:3)<br> &nbsp; &nbsp;at jsonParser (D:\newgeoblogrf\backend\node_modules\body-parser\lib\types\json.js:138:5)<br> &nbsp; &nbsp;at Layer.handle [as handle_request] (D:\newgeoblogrf\backend\node_modules\express\lib\router\layer.js:95:5)<br> &nbsp; &nbsp;at trim_prefix (D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:328:13)<br> &nbsp; &nbsp;at D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:286:9<br> &nbsp; &nbsp;at Function.process_params (D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:346:12)<br> &nbsp; &nbsp;at next (D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:280:10)<br> &nbsp; &nbsp;at cors (D:\newgeoblogrf\backend\node_modules\cors\lib\index.js:188:7)</pre>
+</body>
+</html>
+
+  Прогресс сохранён. Перезапустите с --resume чтобы продолжить.
+
+══════════════════════════════════════════════════
+  Округ: DFO
+══════════════════════════════════════════════════
+  [1/4] Загрузка тайла...
+  ⚠ https://overpass-api.de/api/interpreter attempt 1/3 failed (HTTP 429). Waiting 15s...
+  ⚠ https://overpass-api.de/api/interpreter attempt 2/3 failed (HTTP 429). Waiting 45s...
+  ✓ Тайл [120,42,142.5,58.5] — 148996 элементов
+  [2/4] Загрузка тайла...
+  ✓ Тайл [142.5,42,165,58.5] — 72171 элементов
+  [3/4] Загрузка тайла...
+  ⚠ https://overpass-api.de/api/interpreter attempt 1/3 failed (HTTP 429). Waiting 15s...
+  ⚠ https://overpass-api.de/api/interpreter attempt 2/3 failed (HTTP 429). Waiting 45s...
+  ✓ Тайл [120,58.5,142.5,75] — 5304 элементов
+  [4/4] Загрузка тайла...
+  ✓ Тайл [142.5,58.5,165,75] — 38586 элементов
+  Всего элементов: 265057 → после дедупликации: 258940
+  Полигонов: 6639
+  Групп: 11. Импорт...
+  ✗ Ошибка импорта: Request failed with status code 413
+
+✗ Округ DFO не удался: <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>PayloadTooLargeError: request entity too large<br> &nbsp; &nbsp;at readStream (D:\newgeoblogrf\backend\node_modules\raw-body\index.js:163:17)<br> &nbsp; &nbsp;at getRawBody (D:\newgeoblogrf\backend\node_modules\raw-body\index.js:116:12)<br> &nbsp; &nbsp;at read (D:\newgeoblogrf\backend\node_modules\body-parser\lib\read.js:79:3)<br> &nbsp; &nbsp;at jsonParser (D:\newgeoblogrf\backend\node_modules\body-parser\lib\types\json.js:138:5)<br> &nbsp; &nbsp;at Layer.handle [as handle_request] (D:\newgeoblogrf\backend\node_modules\express\lib\router\layer.js:95:5)<br> &nbsp; &nbsp;at trim_prefix (D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:328:13)<br> &nbsp; &nbsp;at D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:286:9<br> &nbsp; &nbsp;at Function.process_params (D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:346:12)<br> &nbsp; &nbsp;at next (D:\newgeoblogrf\backend\node_modules\express\lib\router\index.js:280:10)<br> &nbsp; &nbsp;at cors (D:\newgeoblogrf\backend\node_modules\cors\lib\index.js:188:7)</pre>
+</body>
+</html>
+
+  Прогресс сохранён. Перезапустите с --resume чтобы продолжить.
+
+8 из 8 округов не удались.
+Перезапустите с --resume чтобы продолжить с места остановки.
+PS D:\newgeoblogrf>

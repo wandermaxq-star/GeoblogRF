@@ -2,11 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   FaStar, FaUtensils, FaHotel, FaLeaf, FaLandmark, FaGem,
   FaBus, FaWallet, FaHeart, FaUsers, FaBuilding, FaQuestion,
-  FaChevronUp, FaChevronDown, FaFilter
+  FaChevronUp, FaChevronDown, FaFilter, FaCalendarAlt
 } from 'react-icons/fa';
 
 /** Основные категории для быстрого выбора */
 const QUICK_CATEGORIES = [
+  { key: 'event', label: 'События', icon: FaCalendarAlt, color: '#7c3aed' },
   { key: 'attraction', label: 'Достопримечательности', icon: FaStar, color: '#3498db' },
   { key: 'restaurant', label: 'Рестораны', icon: FaUtensils, color: '#e74c3c' },
   { key: 'hotel', label: 'Отели', icon: FaHotel, color: '#8e44ad' },
@@ -82,11 +83,11 @@ const CategoryQuickFilter: React.FC<CategoryQuickFilterProps> = ({
       ref={panelRef}
       style={{
         position: 'absolute',
-        left: '70px',
-        bottom: '24px',
+        left: isTwoPanelMode ? '25%' : '50%',
+        transform: 'translateX(-50%)',
+        bottom: 'calc(24px + 64px)', // поднимаем выше нижней плавающей панели навигации
         zIndex: 1100,
         pointerEvents: 'auto',
-        maxWidth: isTwoPanelMode ? 'calc(50% - 24px)' : 'calc(100% - 24px)',
       }}
     >
       {/* Предупреждение о лимите */}
@@ -94,7 +95,8 @@ const CategoryQuickFilter: React.FC<CategoryQuickFilterProps> = ({
         <div style={{
           position: 'absolute',
           bottom: '100%',
-          left: 0,
+          left: '50%',
+          transform: 'translateX(-50%)',
           marginBottom: '8px',
           background: 'rgba(220, 53, 69, 0.95)',
           backdropFilter: 'blur(8px)',
@@ -116,7 +118,8 @@ const CategoryQuickFilter: React.FC<CategoryQuickFilterProps> = ({
         <div className="category-quick-filter-panel glass-l1" style={{
           position: 'absolute',
           bottom: '100%',
-          left: 0,
+          left: '50%',
+          transform: 'translateX(-50%)',
           marginBottom: '8px',
           borderRadius: '14px',
           padding: '10px',
@@ -198,8 +201,9 @@ const CategoryQuickFilter: React.FC<CategoryQuickFilterProps> = ({
         className="category-quick-filter-trigger glass-l1"
         style={{
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          gap: '8px',
+          gap: '4px',
           padding: activeCategories.length > 0 ? '8px 14px' : '8px 12px',
           borderRadius: '12px',
           ...(activeCategories.length > 0 ? {
@@ -208,16 +212,19 @@ const CategoryQuickFilter: React.FC<CategoryQuickFilterProps> = ({
           color: 'var(--glass-text)',
           cursor: 'pointer',
           transition: 'all 0.2s ease',
-          fontSize: '13px',
-          fontWeight: 500,
+          maxWidth: 'min(320px, calc(100vw - 120px))',
         }}
       >
-        <FaFilter size={12} style={{ opacity: 0.7 }} />
-
-        {activeCategories.length === 0 ? (
-          <span style={{ opacity: 0.7, fontSize: '12px' }}>Все категории</span>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        {/* Пиллы категорий: снизу вверх, каждая строка центрируется */}
+        {activeCategories.length > 0 && (
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap-reverse',   // overflow-строки уходят ВЫШЕ
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '6px',
+            width: '100%',
+          }}>
             {activeCategories.map(cat => {
               const Icon = cat.icon;
               return (
@@ -233,6 +240,7 @@ const CategoryQuickFilter: React.FC<CategoryQuickFilterProps> = ({
                     color: cat.color,
                     fontSize: '11px',
                     fontWeight: 600,
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   <Icon size={11} />
@@ -243,7 +251,14 @@ const CategoryQuickFilter: React.FC<CategoryQuickFilterProps> = ({
           </div>
         )}
 
-        {isExpanded ? <FaChevronDown size={10} /> : <FaChevronUp size={10} />}
+        {/* Нижняя строка: иконка фильтра + лейбл (если нет выбора) + стрелка */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 500 }}>
+          <FaFilter size={12} style={{ opacity: 0.7 }} />
+          {activeCategories.length === 0 && (
+            <span style={{ opacity: 0.7, fontSize: '12px' }}>Все категории</span>
+          )}
+          {isExpanded ? <FaChevronDown size={10} /> : <FaChevronUp size={10} />}
+        </div>
       </button>
 
       {/* Анимация */}

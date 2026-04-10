@@ -66,7 +66,18 @@ export const useRouteBuilder = () => {
       coordinates,
       title,
       source: 'favorites',
+      sourceId: favoriteId,
       description: 'Из избранного'
+    });
+  }, [addPoint]);
+
+  const addEventPoint = useCallback((eventId: string, title: string, coordinates: [number, number]) => {
+    addPoint({
+      coordinates,
+      title,
+      source: 'event',
+      sourceId: eventId,
+      description: 'Событие из избранного'
     });
   }, [addPoint]);
 
@@ -196,7 +207,10 @@ export const useRouteBuilder = () => {
   }, []);
 
   // Построение маршрута
-  const buildRoute = useCallback(async () => {
+  const buildRoute = useCallback(async (options?: { profile?: string; preference?: 'fastest' | 'shortest' | 'recommended' }) => {
+    const profileToUse = options?.profile || 'driving-car';
+    const preferenceToUse = options?.preference || 'fastest';
+
     setRouteState(prev => {
       const activePoints = prev.activePoints.filter(point => point.isActive);
       
@@ -219,7 +233,7 @@ export const useRouteBuilder = () => {
       const routeKey = sortedPoints.map(p => p.id).sort().join('|');
 
       // Асинхронно получаем полилинию
-      getRoutePolyline(orsPoints)
+      getRoutePolyline(orsPoints, profileToUse, preferenceToUse)
         .then(polyline => {
           setRouteState(currentState => ({
             ...currentState,
@@ -240,9 +254,9 @@ export const useRouteBuilder = () => {
   }, []);
 
   // Перестроение маршрута
-  const rebuildRoute = useCallback(async () => {
+  const rebuildRoute = useCallback(async (options?: { profile?: string; preference?: 'fastest' | 'shortest' | 'recommended' }) => {
     setRouteState(prev => ({ ...prev, lastBuiltKey: '' }));
-    await buildRoute();
+    await buildRoute(options);
   }, [buildRoute]);
 
   // Очистка маршрута
@@ -283,6 +297,7 @@ export const useRouteBuilder = () => {
     addPoint,
     addSearchPoint,
     addFavoritePoint,
+    addEventPoint,
     addClickPoint,
     addCoordinatePoint,
     removePoint,
@@ -300,9 +315,11 @@ export const useRouteBuilder = () => {
     addPoint,
     addSearchPoint,
     addFavoritePoint,
+    addEventPoint,
     addClickPoint,
     addCoordinatePoint,
     removePoint,
+    removePointBySource,
     updatePoint,
     reorderPoints,
     togglePoint,

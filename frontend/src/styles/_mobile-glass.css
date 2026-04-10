@@ -15,7 +15,10 @@
   #global-map-root {
     position: fixed !important;
     inset: 0 !important;
-    z-index: 1 !important;
+    /* карта должна быть под TopBar/BottomNavigation (z-index 40/50)
+       и под контейнером layout (z-index 2). ставим 0, чтобы никогда не
+       перекрывать UI */
+    z-index: 0 !important;
     pointer-events: auto;
   }
 }
@@ -26,6 +29,112 @@
     position: fixed !important;
     z-index: 1100 !important;
     pointer-events: auto;
+    top: calc(var(--topbar-height, 64px) - 4mm);
+    left: 12px;
+    right: 12px;
+    width: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .planner-top-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .planner-action-group {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+  }
+  .planner-search-row {
+    position: relative;
+    width: 100%;
+  }
+  .planner-settings-button {
+    min-width: 62px;
+    max-width: 62px;
+    height: 62px;
+  }
+  .planner-top-controls .m-glass-map-btn {
+    min-width: 62px;
+    max-width: 62px;
+    height: 62px;
+    padding: 0.75rem;
+  }
+  .planner-top-controls .m-glass-map-btn span {
+    font-size: 9px;
+  }
+  .planner-search-row .m-glass-input {
+    min-height: 44px;
+  }
+}
+
+/* Контейнер карты планировщика (Yandex Maps) — на полный экран, как #global-map-root (Leaflet).
+   TopBar (z-index:2000) лежит поверх карты, glassmorphism создаёт эффект прозрачности. */
+@media (max-width: 767px) {
+  #planner-map-container {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 0 !important;
+    pointer-events: auto;
+  }
+
+  /* Портал карты (если используется) — тоже полный экран */
+  .planner-mode .facade-map-root {
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+  }
+
+  /* CSS-фоллбэк: Yandex-контролы на мобильной странице Planner */
+  #planner-map-container [class*="ymaps-"][class*="__pane_name_top"] {
+    padding-top: 0 !important;
+  }
+  #planner-map-container [class*="ymaps-"][class*="controls__top"],
+  #planner-map-container [class*="ymaps-"][class*="control__top"],
+  #planner-map-container [class*="ymaps-"][class*="__control"],
+  #planner-map-container [class*="ymaps-"][class*="__controls"],
+  #planner-map-container [class*="ymaps-"] [class*="controls__top"],
+  #planner-map-container [class*="ymaps-"] [class*="control__top"],
+  #planner-map-container [class*="ymaps-"] [class*="__control"],
+  #planner-map-container [class*="ymaps-"] [class*="__controls"] {
+    top: calc(var(--topbar-height, 64px) + 110px) !important;
+    bottom: auto !important;
+    left: 10px !important;
+    right: auto !important;
+    position: absolute !important;
+    z-index: 1001 !important;
+  }
+  #planner-map-container [class*="ymaps-"][class*="controls__top"] > *,
+  #planner-map-container [class*="ymaps-"][class*="control__top"] > *,
+  #planner-map-container [class*="ymaps-"] [class*="controls__top"] > *,
+  #planner-map-container [class*="ymaps-"] [class*="control__top"] > *,
+  #planner-map-container [class*="ymaps-"][class*="__control"] > *,
+  #planner-map-container [class*="ymaps-"] [class*="__control"] > *,
+  /* Дополнительные селекторы для контролов слоев */
+  #planner-map-container [class*="ymaps-"][class*="type-selector"] > *,
+  #planner-map-container [class*="ymaps-"][class*="traffic-control"] > *,
+  #planner-map-container [class*="ymaps-"][class*="layer-control"] > * {
+    transform: scale(0.92) !important;
+    transform-origin: bottom left !important;
+  }
+  #planner-map-container [class*="ymaps-"] [class*="zoom"] {
+    min-width: 38px !important;
+    min-height: 38px !important;
+  }
+  #planner-map-container [class*="ymaps-"] [class*="zoom"] a,
+  #planner-map-container [class*="ymaps-"] button {
+    min-width: 32px !important;
+    min-height: 32px !important;
+  }
+  #planner-map-container [class*="ymaps-"] [class*="zoom"] span {
+    font-size: 12px !important;
   }
 }
 
@@ -47,58 +156,226 @@
      .m-glass-page      — фон страницы
    ============================================ */
 
-/* === Фон страницы === */
+/* === Фон страницы (мобильный контейнер) === */
 .m-glass-page {
-  background: linear-gradient(135deg,
-    rgba(240, 245, 255, 0.95) 0%,
-    rgba(230, 240, 250, 0.9) 50%,
-    rgba(245, 248, 255, 0.95) 100%);
-  min-height: 100vh;
+  /* Сохраняем фон карты (Leaflet) — контейнер поверх неё только добавляет glassmorphism */
+  background: var(--glass-l1-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-l1-border);
+  box-shadow: var(--glass-l1-shadow);
+  border-radius: var(--glass-radius);
+  /* Цвет текста/иконок должен следовать теме (light/dark) как в десктопе */
+  color: var(--glass-text);
+
+  /* Отступы: 10 мм сверху, 8 мм по бокам, 5 мм до кнопок */
+  margin: 1mm 8mm 5mm;
+  padding: 5mm 8mm 5mm;
+  box-sizing: border-box;
+
+  /* Прокрутка внутри, чтобы контент не уходил за экран */
+  max-height: calc(90vh - 3mm - 5mm - 40px); /* 56px = кнопка + gap */
+  overflow-y: auto;
+
+  position: relative;
+  z-index: 10;
 }
 
-[data-theme="dark"] .m-glass-page {
-  background: linear-gradient(135deg,
-    rgba(15, 20, 30, 0.98) 0%,
-    rgba(20, 25, 40, 0.95) 50%,
-    rgba(10, 15, 25, 0.98) 100%);
+
+/* === Нижняя навигация (плавающие кнопки) === */
+.mobile-floating-nav {
+  position: fixed;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 2000;
+  overflow: visible;
 }
 
-/* === Нижняя навигация === */
-.m-glass-nav {
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.72) 0%,
-    rgba(255, 255, 255, 0.55) 100%);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-top: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.08);
+.mobile-floating-nav-inner {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-evenly;
+  width: 100%;
+  padding: 0 4px;
+  pointer-events: auto;
+  overflow: visible;
 }
 
-[data-theme="dark"] .m-glass-nav {
-  background: linear-gradient(135deg,
-    rgba(20, 25, 40, 0.82) 0%,
-    rgba(15, 20, 35, 0.75) 100%);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.25);
+.mobile-floating-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--glass-l2-bg);
+  border: 1px solid var(--glass-l2-border);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  color: var(--glass-text);
+  flex-shrink: 0;
+  overflow: visible;
+  /* Убираем подсветку/обводку при нажатии (синее/чёрное кольцо) */
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-floating-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22);
+}
+
+.mobile-floating-btn:active {
+  transform: translateY(0px) scale(0.97);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+}
+
+.mobile-floating-btn--active {
+  /* Активная кнопка не должна давать яркую синюю обводку, чтобы не выбиваться
+     из общего стекляного стиля. Делает фон чуть темнее и слегка поднимается. */
+  background: var(--glass-l2-bg-active);
+  border-color: var(--glass-l2-border-active);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+  transform: translateY(-2px);
+}
+
+/* === Кнопка «+» (FAB) — по центру, крупная, цветная === */
+.mobile-fab-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  z-index: 3;
+  overflow: visible;
+}
+
+.mobile-fab-btn {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border: none;
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+  margin-bottom: 10px; /* Выступает над остальными кнопками */
+  position: relative;
+  z-index: 4;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-fab-btn:active {
+  transform: scale(0.92);
+}
+
+.mobile-fab-btn .mobile-fab-icon {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #fff !important;
+}
+
+.mobile-fab-btn--open {
+  transform: rotate(45deg);
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  box-shadow: 0 6px 24px rgba(220, 38, 38, 0.5);
+}
+
+.mobile-fab-btn--open:active {
+  transform: rotate(45deg) scale(0.92);
+}
+
+/* Если одна из extra-страниц активна, кнопка + подсвечивается кольцом */
+.mobile-fab-btn--extra-active {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3), 0 6px 20px rgba(239, 68, 68, 0.45);
+}
+
+/* === Лейбл под навигационной кнопкой === */
+.mobile-nav-label {
+  font-size: 9px;
+  font-weight: 500;
+  margin-top: 2px;
+  line-height: 1;
+  opacity: 0.8;
+  white-space: nowrap;
+  color: var(--glass-text);
+}
+
+/* === Speed-dial items — полукруг над FAB === */
+.speed-dial-item {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  margin-left: -22px; /* половина speed-dial-btn (44/2) */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(0, 0) scale(0.3);
+  transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 3;
+}
+
+.speed-dial-item--open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(var(--sd-x), var(--sd-y)) scale(1);
+}
+
+.speed-dial-btn {
+  width: 44px !important;
+  height: 44px !important;
+}
+
+.speed-dial-label {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+  background: var(--glass-l2-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-l2-border);
+  color: var(--glass-text);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+}
+
+/* Overlay затемнение при открытом speed-dial */
+.speed-dial-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.2);
+  z-index: 1999;
+  animation: sd-fade-in 0.2s ease;
+}
+
+@keyframes sd-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* === Верхняя панель (TopBar) === */
 .m-glass-topbar {
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.72) 0%,
-    rgba(255, 255, 255, 0.55) 100%);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.06);
-}
-
-[data-theme="dark"] .m-glass-topbar {
-  background: linear-gradient(135deg,
-    rgba(20, 25, 40, 0.82) 0%,
-    rgba(15, 20, 35, 0.75) 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+  background: var(--glass-card-bg);
+  backdrop-filter: var(--glass-blur-strong);
+  -webkit-backdrop-filter: var(--glass-blur-strong);
+  border-bottom: none;
+  box-shadow: var(--glass-shadow);
+  /* Цвет текста/иконок наследует тему автоматически через переменные */
+  color: var(--glass-text);
 }
 
 /* === Контейнер кнопок действий === */
@@ -108,73 +385,187 @@
 
 /* === Кнопка (action, nav item) === */
 .m-glass-btn {
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.65) 0%,
-    rgba(255, 255, 255, 0.45) 100%);
-  backdrop-filter: blur(12px) saturate(160%);
-  -webkit-backdrop-filter: blur(12px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08),
-              inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
   color: var(--glass-text);
   transition: all 0.25s ease;
 }
 
-.m-glass-btn:hover {
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.78) 0%,
-    rgba(255, 255, 255, 0.6) 100%);
-  border-color: rgba(255, 255, 255, 0.5);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12),
-              inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  transform: translateY(-1px);
+.m-glass-btn:hover,
+.m-glass-btn:active,
+.m-glass-btn:focus,
+.m-glass-btn:focus-visible {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  transform: none !important;
 }
 
-.m-glass-btn:active {
-  transform: scale(0.96) translateY(0);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+/* === TopBar icon-only control ===
+   В верхней панели используем только чистые иконки на стекле, без рамок и без квадратного обрамления. */
+.m-topbar-icon-btn {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0 !important;
+  border-radius: 9999px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--glass-text) !important;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, background-color 0.2s ease, opacity 0.2s ease;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.m-topbar-icon-btn:hover {
+  background: transparent !important;
+  transform: none !important;
+}
+
+.m-topbar-icon-btn:active,
+.m-theme-toggle:active,
+.m-topbar-action-group > *:active {
+  background: transparent !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.m-topbar-icon-btn:focus-visible,
+.m-theme-toggle:focus-visible,
+.m-glass-btn:focus-visible,
+.m-topbar-icon-btn:focus,
+.m-theme-toggle:focus,
+.m-glass-btn:focus,
+.m-topbar-action-group > *:focus,
+.m-topbar-action-group > *:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.m-theme-toggle {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  padding: 0;
+}
+
+.m-theme-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.m-theme-toggle:hover,
+.m-theme-toggle:active,
+.m-theme-toggle:focus,
+.m-theme-toggle:focus-visible,
+.m-theme-toggle:focus-visible *,
+.m-theme-toggle:focus * {
+  transform: none !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.m-theme-toggle::-moz-focus-inner {
+  border: 0 !important;
+}
+
+/* Жесткий отступ между иконками в мобильной топбаре */
+.m-topbar-action-group {
+  gap: 1cm;
+}
+
+.m-topbar-action-group > * {
+  margin: 0;
+}
+
+.m-topbar-icon-btn:active {
+  background: var(--glass-l2-bg-active) !important;
+  transform: scale(0.96);
+}
+
+.m-topbar-icon-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.m-topbar-icon-btn--add-marker {
+  width: 35px;
+  height: 35px;
+  min-width: 35px;
+  min-height: 35px;
+}
+
+.m-topbar-icon-btn--add-marker svg {
+  width: 17px;
+  height: 17px;
 }
 
 .m-glass-btn.active {
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.8) 0%,
-    rgba(255, 255, 255, 0.65) 100%);
-  border-color: rgba(255, 255, 255, 0.5);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1),
-              inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  background: var(--glass-l2-bg-active);
+  border-color: var(--glass-l2-border-active);
+  box-shadow: var(--glass-l2-shadow);
   transform: translateY(-2px);
 }
 
-[data-theme="dark"] .m-glass-btn {
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.08) 0%,
-    rgba(255, 255, 255, 0.04) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2),
-              inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.9);
+/* === Карточные кнопки на картографических страницах (map / planner) ===
+   Используют РОВНО ту же систему переменных, что TopBar (.m-glass-topbar)
+   и плавающие кнопки навигации (.mobile-floating-btn).
+   Тема (светлая/тёмная) переключается через CSS-переменные глобально — 
+   никаких хардкоженых rgba здесь нет. */
+.m-glass-map-btn {
+  background: var(--glass-l2-bg);
+  border: 1px solid var(--glass-l2-border);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  color: var(--glass-text);
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.15s ease, border-color 0.18s ease;
 }
 
-[data-theme="dark"] .m-glass-btn:hover {
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.14) 0%,
-    rgba(255, 255, 255, 0.08) 100%);
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3),
-              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+.m-glass-map-btn:hover {
+  background: var(--glass-l2-bg-hover);
+  border-color: var(--glass-l2-border-hover);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22);
+  transform: translateY(-1px);
 }
 
-[data-theme="dark"] .m-glass-btn:active {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+.m-glass-map-btn:active {
+  background: var(--glass-l2-bg-active);
+  transform: scale(0.97) translateY(0);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
 }
 
-[data-theme="dark"] .m-glass-btn.active {
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.16) 0%,
-    rgba(255, 255, 255, 0.1) 100%);
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25),
-              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+/* Красная вариация (кнопка "Очистить") — только лёгкий оттенок рамки */
+.m-glass-map-btn--danger {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.m-glass-map-btn--danger:hover {
+  background: var(--glass-l2-bg-hover);
+  border-color: rgba(239, 68, 68, 0.6);
 }
 
 /* === Модальные панели / bottom sheets === */
@@ -330,44 +721,31 @@
 
 /* === Card (карточки контента) === */
 .m-glass-card {
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.68) 0%,
-    rgba(255, 255, 255, 0.5) 100%);
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  background: var(--glass-l2-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-l2-border);
+  box-shadow: var(--glass-l2-shadow);
   color: var(--glass-text);
   transition: all 0.25s ease;
 }
 
 .m-glass-card:hover {
-  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--glass-l2-shadow);
   transform: translateY(-1px);
-}
-
-[data-theme="dark"] .m-glass-card {
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.07) 0%,
-    rgba(255, 255, 255, 0.03) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  color: rgba(255, 255, 255, 0.9);
-}
-
-[data-theme="dark"] .m-glass-card:hover {
-  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.3);
 }
 
 /* === Overlay === */
 .m-glass-overlay {
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.2);
+  /* убрали размытие, чтобы карта оставалась четкой, и не мешаем кликам */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  pointer-events: none;
 }
 
 [data-theme="dark"] .m-glass-overlay {
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.4);
 }
 
 /* === Badge / Counter === */
@@ -380,29 +758,60 @@
   box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
 }
 
-/* === Текстовые утилиты для стекла === */
-.m-glass-text {
-  color: var(--glass-text);
+/* === Текстовые утилиты для стекла ===
+   Цвет определяется переменной темы (как на десктопе). */
+.m-glass-text,
+.m-glass-text-secondary,
+.m-glass-text-muted,
+.m-glass-icon,
+.m-theme-toggle {
+  color: var(--glass-text) !important;
 }
 
-.m-glass-text-secondary {
-  color: var(--glass-text-secondary);
-}
-
+.m-glass-text-secondary,
 .m-glass-text-muted {
-  color: var(--glass-text-muted);
+  opacity: 0.8;
 }
 
-[data-theme="dark"] .m-glass-text {
-  color: rgba(255, 255, 255, 0.92);
-}
+/* Мобильные solo-страницы: цвет текста по теме (светлая → чёрный, тёмная → белый) */
+@media (max-width: 767px) {
+  /* Светлая тема — чёрный текст */
+  body.solo-page-active {
+    --glass-text: #000 !important;
+    --glass-text-secondary: rgba(0, 0, 0, 0.85) !important;
+    --glass-text-muted: rgba(0, 0, 0, 0.7) !important;
+  }
 
-[data-theme="dark"] .m-glass-text-secondary {
-  color: rgba(255, 255, 255, 0.65);
-}
+  /* Тёмная тема — белый текст */
+  [data-theme="dark"] body.solo-page-active {
+    --glass-text: #ffffff !important;
+    --glass-text-secondary: rgba(255, 255, 255, 0.85) !important;
+    --glass-text-muted: rgba(255, 255, 255, 0.6) !important;
+  }
 
-[data-theme="dark"] .m-glass-text-muted {
-  color: rgba(255, 255, 255, 0.4);
+  /* Светлая тема: кнопки TopBar → белый фон, чёрный текст */
+  body.solo-page-active .mobile-floating-btn,
+  body.solo-page-active .m-glass-btn {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(0, 0, 0, 0.15);
+    color: rgba(0, 0, 0, 0.9) !important;
+  }
+
+  body.solo-page-active .mobile-floating-btn svg {
+    color: rgba(0, 0, 0, 0.9) !important;
+  }
+
+  /* Тёмная тема: кнопки TopBar → тёмный фон, белые иконки */
+  [data-theme="dark"] body.solo-page-active .mobile-floating-btn,
+  [data-theme="dark"] body.solo-page-active .m-glass-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.9) !important;
+  }
+
+  [data-theme="dark"] body.solo-page-active .mobile-floating-btn svg {
+    color: rgba(255, 255, 255, 0.9) !important;
+  }
 }
 
 /* === Секция аккордеона === */
@@ -414,51 +823,89 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+/* === Мобильные переопределения для страниц, которые рендерятся внутри page-layout (calendar, posts, activity) === */
+@media (max-width: 767px) {
+  /* Обеспечиваем видимость карты на фоне */
+  .page-layout-container,
+  .page-container,
+  .mirror-bg,
+  .mirror-bg-vertical,
+  .mirror-bg-radial,
+  .mirror-bg-2panels,
+  .mirror-bg-3panels,
+  .mirror-bg-4panels {
+    background: transparent !important;
+  }
+
+  /* Контентная область должна быть выше карты (z-index) */
+  .page-layout-container,
+  .page-container,
+  .page-main-area,
+  .page-content-wrapper,
+  .page-main-panel,
+  .travel-calendar-root,
+  .travel-calendar-container,
+  .m-glass-page {
+    position: relative !important;
+    z-index: 20 !important;
+  }
+
+  /* Собираем «матовое стекло» вокруг основного контента */
+  .page-container.calendar-mode .page-main-panel,
+  .page-main-panel {
+    background: var(--glass-l1-bg) !important;
+    border: 1px solid var(--glass-l1-border) !important;
+    box-shadow: var(--glass-l1-shadow) !important;
+    border-radius: var(--glass-radius) !important;
+    margin: 1cm 8mm 5mm !important;
+    padding: 1cm 8mm 5mm !important;
+    position: relative !important;
+    z-index: 20 !important;
+  }
+}
+
 /* === Кнопка переключения темы (мобильная) === */
 .m-theme-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.55) 0%,
-    rgba(255, 255, 255, 0.35) 100%);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
   cursor: pointer;
-  transition: all 0.3s ease;
-  color: var(--glass-text);
-  font-size: 16px;
-  padding: 0;
-  outline: none;
+  transition: none !important;
+  color: var(--glass-text) !important;
+  font-size: 14px !important;
+  padding: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  appearance: none !important;
 }
 
-.m-theme-toggle:hover {
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.7) 0%,
-    rgba(255, 255, 255, 0.5) 100%);
-  transform: scale(1.08);
+.m-theme-toggle:hover,
+.m-theme-toggle:active,
+.m-theme-toggle:focus,
+.m-theme-toggle:focus-visible {
+  background: transparent !important;
+  transform: none !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
 }
 
-.m-theme-toggle:active {
-  transform: scale(0.95);
+.m-theme-toggle svg {
+  width: 18px !important;
+  height: 18px !important;
 }
 
-[data-theme="dark"] .m-theme-toggle {
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    rgba(255, 255, 255, 0.05) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.9);
-}
-
-[data-theme="dark"] .m-theme-toggle:hover {
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0.16) 0%,
-    rgba(255, 255, 255, 0.1) 100%);
+.m-theme-toggle::-moz-focus-inner {
+  border: 0 !important;
 }
 
 /* === Divider === */

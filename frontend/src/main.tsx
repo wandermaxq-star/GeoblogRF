@@ -30,7 +30,7 @@ import './index.css'
 import './styles/popup.css'
 
 // Стили Leaflet загружаем динамически только когда нужны
-// import 'leaflet/dist/leaflet.css'
+import 'leaflet/dist/leaflet.css'
 // import 'leaflet.markercluster/dist/MarkerCluster.css'
 // import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 
@@ -46,7 +46,7 @@ import ErrorBoundary from './components/ErrorBoundary';
     if (!existingScript) {
       const script = document.createElement('script');
       const yandexKey = import.meta.env.VITE_YANDEX_MAPS_API_KEY || '';
-      script.src = `https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(yandexKey)}&lang=ru_RU`;
+    script.src = `https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(yandexKey)}&lang=ru_RU&load=package.full&mode=release`;
       script.async = true;
       script.defer = true;
       // Начинаем загрузку скрипта в фоне

@@ -25,6 +25,7 @@ const CONTENT_TABLE_MAP = {
   routes:   { table: 'travel_routes', idCol: 'id', authorCol: 'creator_id' },
   markers:  { table: 'map_markers',   idCol: 'id', authorCol: 'creator_id' },
   comments: { table: 'comments',      idCol: 'id', authorCol: 'author_id'  },
+  marker_comments: { table: 'marker_comments', idCol: 'id', authorCol: 'author_id' },
 };
 
 /** XP-источник для каждого типа контента */
@@ -34,6 +35,7 @@ const CONTENT_XP_SOURCES = {
   routes:   'route_created',
   markers:  'marker_created',
   comments: 'comment_created',
+  marker_comments: 'marker_comment_created',
 };
 
 /** Базовый XP за создание контента */
@@ -43,6 +45,7 @@ const BASE_XP_VALUES = {
   routes:   100,
   markers:  30,
   comments: 10,
+  marker_comments: 10,
 };
 
 /** Бонусы за качество контента */
@@ -83,7 +86,8 @@ async function syncAIVerdict(contentType, contentId, verdict, adminId, client) {
  * Бросает ошибку если тип неизвестен.
  */
 export function getTableMapping(contentType) {
-  const mapping = CONTENT_TABLE_MAP[contentType];
+  const normalizedType = contentType === 'marker-comments' ? 'marker_comments' : contentType;
+  const mapping = CONTENT_TABLE_MAP[normalizedType];
   if (!mapping) throw new Error(`Неизвестный тип контента: ${contentType}`);
   return mapping;
 }
@@ -136,30 +140,10 @@ export async function updateContentStatus(contentType, contentId, status, adminI
       );
       return result.rows[0] || null;
     }
-    // Если CHECK constraint не пускает 'revision' — ставим 'pending' + reason
-    if (fullErr.code === '23514' && status === 'revision') { // check_violation
-      logger.warn(`updateContentStatus: status='revision' не допускается constraint в ${table}, используем pending`);
-      try {
-        const result = await db.query(
-          `UPDATE ${table}
-           SET status = 'pending',
-               moderation_reason = $1,
-               updated_at = NOW()
-           WHERE ${idCol}::text = $2
-           RETURNING *`,
-          [reason || 'Отправлено на доработку', String(contentId)],
-        );
-        return result.rows[0] || null;
-      } catch {
-        const result = await db.query(
-          `UPDATE ${table}
-           SET status = 'pending', updated_at = NOW()
-           WHERE ${idCol}::text = $1
-           RETURNING *`,
-          [String(contentId)],
-        );
-        return result.rows[0] || null;
-      }
+    // CHECK constraint ошибки — пробрасываем наружу
+    if (fullErr.code === '23514') {
+      logger.error(`updateContentStatus: CHECK constraint нарушение для ${table}: status='${status}'`);
+      throw new Error(`Статус '${status}' не допускается в таблице ${table}`);
     }
     throw fullErr;
   }
@@ -272,6 +256,43 @@ export async function approveContent(contentType, contentId, adminId) {
 
     const updated = await updateContentStatus(contentType, contentId, 'active', adminId, null, client);
 
+    // ===== Для комментариев: устанавливаем видимость и обновляем счётчик =====
+    if (contentType === 'comments' || contentType === 'marker_comments') {
+      // Получаем запись для обновления счётчика
+      let query;
+      if (contentType === 'comments') {
+        query = await client.query(`SELECT post_id FROM comments WHERE id = $1`, [String(contentId)]);
+      } else {
+        query = await client.query(`SELECT marker_id FROM marker_comments WHERE id = $1`, [String(contentId)]);
+      }
+
+      if (query.rows.length > 0) {
+        // Обновляем видимость
+        if (contentType === 'comments') {
+          const postId = query.rows[0].post_id;
+          await client.query(`UPDATE comments SET is_public = true WHERE id = $1`, [String(contentId)]);
+          await client.query(
+            `UPDATE posts SET comments_count = 
+               (SELECT COUNT(*) FROM comments WHERE post_id = $1 AND status = 'active' AND is_public = true)
+             WHERE id = $1`,
+            [postId]
+          );
+        } else {
+          const markerId = query.rows[0].marker_id;
+          await client.query(`UPDATE marker_comments SET is_public = true WHERE id = $1`, [String(contentId)]);
+          await client.query(
+            `UPDATE map_markers SET comments_count = 
+               (SELECT COUNT(*) FROM marker_comments WHERE marker_id = $1 AND status = 'active' AND is_public = true)
+             WHERE id = $1`,
+            [markerId]
+          );
+        }
+      }
+
+      // Обновляем updated для отправки корректного объекта
+      updated.is_public = true;
+    }
+
     // Синхронизируем admin_verdict в ai_moderation_decisions
     await syncAIVerdict(contentType, contentId, 'correct', adminId, client);
 
@@ -334,6 +355,23 @@ export async function rejectContent(contentType, contentId, adminId, reason) {
 
   const updated = await updateContentStatus(contentType, contentId, 'rejected', adminId, reason);
 
+  // ===== Для комментариев: скрываем и обновляем счётчик =====
+  if (contentType === 'comments' && content.is_public === true) {
+    const client = await pool.connect();
+    try {
+      await client.query(`UPDATE comments SET is_public = false WHERE id = $1`, [String(contentId)]);
+      // Пересчитываем счётчик для поста
+      await client.query(
+        `UPDATE posts SET comments_count = 
+           (SELECT COUNT(*) FROM comments WHERE post_id = $1 AND status = 'active' AND is_public = true)
+         WHERE id = $1`,
+        [content.post_id]
+      );
+    } finally {
+      client.release();
+    }
+  }
+
   // Синхронизируем admin_verdict в ai_moderation_decisions
   await syncAIVerdict(contentType, contentId, 'incorrect', adminId);
 
@@ -364,6 +402,23 @@ export async function revisionContent(contentType, contentId, adminId, reason) {
     contentType, contentId, 'revision', adminId,
     reason || 'Отправлено на доработку',
   );
+
+  // ===== Для комментариев: скрываем и обновляем счётчик =====
+  if (contentType === 'comments' && content.is_public === true) {
+    const client = await pool.connect();
+    try {
+      await client.query(`UPDATE comments SET is_public = false WHERE id = $1`, [String(contentId)]);
+      // Пересчитываем счётчик для поста
+      await client.query(
+        `UPDATE posts SET comments_count = 
+           (SELECT COUNT(*) FROM comments WHERE post_id = $1 AND status = 'active' AND is_public = true)
+         WHERE id = $1`,
+        [content.post_id]
+      );
+    } finally {
+      client.release();
+    }
+  }
 
   // Синхронизируем admin_verdict в ai_moderation_decisions
   await syncAIVerdict(contentType, contentId, 'incorrect', adminId);
@@ -520,12 +575,12 @@ export function triggerAIAnalysis(contentType, contentId, contentData) {
  */
 export async function getModerationStats() {
   const stats = {
-    events:   { pending: 0, active: 0, rejected: 0, hidden: 0 },
-    posts:    { pending: 0, active: 0, rejected: 0, hidden: 0 },
-    routes:   { pending: 0, active: 0, rejected: 0, hidden: 0 },
-    markers:  { pending: 0, active: 0, rejected: 0, hidden: 0 },
-    comments: { pending: 0, active: 0, rejected: 0, hidden: 0 },
-    total:    { pending: 0, active: 0, rejected: 0, hidden: 0 },
+    events:   { pending: 0, active: 0, rejected: 0, revision: 0, hidden: 0 },
+    posts:    { pending: 0, active: 0, rejected: 0, revision: 0, hidden: 0 },
+    routes:   { pending: 0, active: 0, rejected: 0, revision: 0, hidden: 0 },
+    markers:  { pending: 0, active: 0, rejected: 0, revision: 0, hidden: 0 },
+    comments: { pending: 0, active: 0, rejected: 0, revision: 0, hidden: 0 },
+    total:    { pending: 0, active: 0, rejected: 0, revision: 0, hidden: 0 },
   };
 
   const tables = {

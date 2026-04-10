@@ -15,6 +15,7 @@ import CategoryButton from './CategoryButton';
 import { useAnalyticsConsent } from '../hooks/useAnalyticsConsent';
 import OfflineDraftsPanel from './Posts/OfflineDraftsPanel';
 import { offlineContentStorage } from '../services/offlineContentStorage';
+import MyPacksSection from './Profile/MyPacksSection';
 // import { getUserBlogs } from '../api/blogs';
 // import { Blog } from '../types/blog';
 
@@ -76,7 +77,7 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
 
   const { user, logout, updateUserAvatar } = auth;
   const favoritesStats = favorites.getFavoritesStats();
-  const [activeTab, setActiveTab] = useState<'profile' | 'friends' | 'achievements' | 'favorites' | 'posts' | 'settings'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'friends' | 'achievements' | 'favorites' | 'posts' | 'mypacks' | 'settings'>('profile');
   const [showDraftsPanel, setShowDraftsPanel] = useState(false);
   const [draftsCount, setDraftsCount] = useState(0);
   const [profileImage, setProfileImage] = useState<string | null>(user?.avatar_url || null);
@@ -189,8 +190,8 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
 
     loadDraftsCount();
     
-    // Обновляем счётчик каждые 5 секунд
-    const interval = setInterval(loadDraftsCount, 5000);
+    // Обновляем счётчик каждые 60 секунд (было 5 — слишком агрессивно)
+    const interval = setInterval(loadDraftsCount, 60000);
     
     return () => clearInterval(interval);
   }, []);
@@ -201,6 +202,7 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
     { id: 'achievements', label: 'Достижения', icon: <FaTrophy /> },
     { id: 'favorites', label: 'Избранное', icon: <FaStar /> },
     { id: 'posts', label: 'Мои посты', icon: <FaFileAlt /> },
+    { id: 'mypacks', label: 'Мои паки', icon: <FaMapMarkedAlt /> },
     { id: 'settings', label: 'Настройки', icon: <FaCog /> },
   ] as const;
 
@@ -269,19 +271,29 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
         <div className="fixed inset-0 bg-black/50 z-50" onClick={onClose} />
         {/* Модальное окно */}
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+          <div className="glass-l1-strong rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
             <div className="p-6">
                              <div className="flex justify-between items-center mb-6">
-                 <h2 className="text-xl font-semibold text-gray-800">Профиль</h2>
+                 <h2 className="text-xl font-semibold" style={{ color: 'var(--glass-text)' }}>Профиль</h2>
                  <button
                    onClick={onClose}
-                   className="text-gray-500 hover:text-gray-700 transition-colors p-2 rounded-full hover:bg-gray-100"
+                   className="p-2 rounded-full transition-colors"
+                   style={{
+                     color: 'var(--glass-text-secondary)',
+                     backgroundColor: 'transparent'
+                   }}
+                   onMouseEnter={(e) => {
+                     e.currentTarget.style.backgroundColor = 'var(--glass-l2-bg-hover)';
+                   }}
+                   onMouseLeave={(e) => {
+                     e.currentTarget.style.backgroundColor = 'transparent';
+                   }}
                  >
                    <FaTimes size={20} />
                  </button>
                </div>
               <div className="text-center py-8">
-                <p className="text-gray-500">Пожалуйста, войдите в систему</p>
+                <p style={{ color: 'var(--glass-text-secondary)' }}>Пожалуйста, войдите в систему</p>
               </div>
             </div>
           </div>
@@ -296,14 +308,30 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
       <div className="fixed inset-0 bg-black/50" style={{ zIndex: 9998 }} onClick={onClose} />
       {/* Модальное окно */}
       <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
-        <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[85vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="glass-l1-strong rounded-xl w-full max-w-4xl h-[85vh] overflow-hidden" onClick={e => e.stopPropagation()}>
       {/* Заголовок */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
+      <div className="profile-header-gradient p-6" style={{
+        background: 'var(--glass-l1-bg)',
+        backdropFilter: 'var(--glass-blur-strong)',
+        WebkitBackdropFilter: 'var(--glass-blur-strong)',
+        borderBottom: '1px solid var(--glass-l1-border)',
+        color: 'var(--glass-text)'
+      }}>
                  <div className="flex justify-between items-center mb-4">
-           <h2 className="text-xl font-semibold">Личный кабинет</h2>
+           <h2 className="text-xl font-semibold" style={{ color: 'var(--glass-text)' }}>Личный кабинет</h2>
            <button
              onClick={onClose}
-             className="text-white/80 hover:text-white transition-colors p-2 rounded-full hover:bg-white/10"
+             className="p-2 rounded-full transition-colors"
+             style={{
+               color: 'var(--glass-text-secondary)',
+               backgroundColor: 'transparent'
+             }}
+             onMouseEnter={(e) => {
+               e.currentTarget.style.backgroundColor = 'var(--glass-l2-bg-hover)';
+             }}
+             onMouseLeave={(e) => {
+               e.currentTarget.style.backgroundColor = 'transparent';
+             }}
            >
              <FaTimes size={20} />
            </button>
@@ -312,7 +340,10 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                  {/* Информация о пользователе */}
          <div className="flex items-center space-x-4">
                        <div className="relative group">
-              <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden" style={{
+                backgroundColor: 'var(--glass-l2-bg)',
+                border: '1px solid var(--glass-l2-border)'
+              }}>
                 {(tempProfileImage || profileImage) ? (
                   <img 
                     src={tempProfileImage || profileImage || ''} 
@@ -320,25 +351,29 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <FaUser className="text-2xl" />
+                  <FaUser className="text-2xl" style={{ color: 'var(--glass-text-secondary)' }} />
                 )}
               </div>
               <button
                 onClick={triggerImageUpload}
                 disabled={isUploading}
-                className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full flex items-center justify-center disabled:opacity-50"
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity rounded-full flex items-center justify-center disabled:opacity-50"
+                style={{
+                  backgroundColor: 'rgba(0,0,0,0.5)',
+                  color: 'white'
+                }}
               >
                 {isUploading ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                 ) : (
-                  <FaCamera className="text-white text-sm" />
+                  <FaCamera className="text-sm" />
                 )}
               </button>
             </div>
            <div>
-             <h3 className="text-lg font-semibold">{user.username}</h3>
-             <p className="text-white/80 text-sm">{user.email}</p>
-             <p className="text-white/60 text-xs">Роль: {user.role}</p>
+             <h3 className="text-lg font-semibold" style={{ color: 'var(--glass-text)' }}>{user.username}</h3>
+             <p className="text-sm" style={{ color: 'var(--glass-text-secondary)' }}>{user.email}</p>
+             <p className="text-xs" style={{ color: 'var(--glass-text-muted)' }}>Роль: {user.role}</p>
            </div>
          </div>
          
@@ -348,7 +383,12 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
               <button
                 onClick={handleApplyChanges}
                 disabled={isUploading}
-                className="flex items-center space-x-1 bg-green-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-700 transition-colors disabled:opacity-50"
+                className="glass-l2 flex items-center space-x-1 px-3 py-1 rounded-lg text-sm disabled:opacity-50"
+                style={{
+                  backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                  borderColor: 'rgba(34, 197, 94, 0.4)',
+                  color: 'rgba(34, 197, 94, 1)'
+                }}
               >
                 {isUploading ? (
                   <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
@@ -359,7 +399,12 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
               <button
                 onClick={handleCancelChanges}
                 disabled={isUploading}
-                className="flex items-center space-x-1 bg-gray-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-gray-700 transition-colors disabled:opacity-50"
+                className="glass-l2 flex items-center space-x-1 px-3 py-1 rounded-lg text-sm disabled:opacity-50"
+                style={{
+                  backgroundColor: 'var(--glass-l2-bg)',
+                  borderColor: 'var(--glass-l2-border)',
+                  color: 'var(--glass-text)'
+                }}
               >
                 <span>✕ Отменить</span>
               </button>
@@ -377,18 +422,28 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
       </div>
 
       {/* Навигация по вкладкам */}
-      <div className="border-b border-gray-200">
-        <div className="flex overflow-x-auto">
+      <div className="border-b overflow-x-auto" style={{ borderColor: 'var(--glass-l1-border)' }}>
+        <div className="flex">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               data-tab={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
+              className="flex items-center space-x-2 px-4 py-3 text-sm font-medium transition-colors"
+              style={{
+                color: activeTab === tab.id ? 'var(--text-accent)' : 'var(--glass-text-secondary)',
+                borderBottom: activeTab === tab.id ? '2px solid var(--text-accent)' : '2px solid transparent'
+              }}
+              onMouseEnter={(e) => {
+                if (activeTab !== tab.id) {
+                  e.currentTarget.style.color = 'var(--glass-text)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeTab !== tab.id) {
+                  e.currentTarget.style.color = 'var(--glass-text-secondary)';
+                }
+              }}
             >
               {tab.icon}
               <span>{tab.label}</span>
@@ -416,14 +471,15 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
          {activeTab === 'friends' && (
            <div className="space-y-4 h-full flex flex-col justify-center">
              <div className="flex items-center justify-between mb-4">
-               <h4 className="font-semibold text-gray-800">Мои друзья</h4>
+               <h4 className="font-semibold" style={{ color: 'var(--glass-text)' }}>Мои друзья</h4>
                <button
                  onClick={() => {
                    onClose();
                    // Открываем полную страницу друзей
                    window.location.href = '/friends';
                  }}
-                 className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                 className="text-sm font-medium"
+                 style={{ color: 'var(--text-accent)' }}
                >
                  Открыть полный список →
                </button>
@@ -433,12 +489,12 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
              <div className="grid grid-cols-2 gap-3">
                {friends.slice(0, 6).map((friend, index) => {
                  const colors = [
-                   'from-blue-500 to-purple-600',
-                   'from-green-500 to-teal-600',
-                   'from-orange-500 to-red-600',
-                   'from-purple-500 to-pink-600',
-                   'from-cyan-500 to-blue-600',
-                   'from-yellow-500 to-orange-600'
+                   'linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(147, 51, 234, 0.8))',
+                   'linear-gradient(135deg, rgba(34, 197, 94, 0.8), rgba(20, 184, 166, 0.8))',
+                   'linear-gradient(135deg, rgba(249, 115, 22, 0.8), rgba(239, 68, 68, 0.8))',
+                   'linear-gradient(135deg, rgba(147, 51, 234, 0.8), rgba(236, 72, 153, 0.8))',
+                   'linear-gradient(135deg, rgba(6, 182, 212, 0.8), rgba(59, 130, 246, 0.8))',
+                   'linear-gradient(135deg, rgba(234, 179, 8, 0.8), rgba(249, 115, 22, 0.8))'
                  ];
                  
                  const statuses = ['Онлайн', 'Онлайн', '2 часа назад', 'Вчера', '3 дня назад', 'Неделю назад'];
@@ -446,31 +502,37 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                  return (
                    <div 
                      key={friend.id}
-                     className="bg-gray-50 rounded-lg p-3 text-center cursor-pointer hover:bg-gray-100 transition-colors"
+                     className="glass-l2 rounded-lg p-3 text-center cursor-pointer transition-colors"
                      onClick={() => setSelectedFriend(friend)}
                    >
-                     <div className={`w-12 h-12 bg-gradient-to-r ${colors[index % colors.length]} rounded-full flex items-center justify-center mx-auto mb-2`}>
-                       <span className="text-white font-semibold">
+                     <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2" style={{
+                       background: colors[index % colors.length],
+                       color: 'white'
+                     }}>
+                       <span className="font-semibold">
                          {friend.username.charAt(0).toUpperCase()}
                        </span>
                  </div>
-                     <div className="text-sm font-medium truncate">{friend.username}</div>
-                     <div className="text-xs text-gray-500">{statuses[index % statuses.length]}</div>
+                     <div className="text-sm font-medium truncate" style={{ color: 'var(--glass-text)' }}>{friend.username}</div>
+                     <div className="text-xs" style={{ color: 'var(--glass-text-muted)' }}>{statuses[index % statuses.length]}</div>
                </div>
                  );
                })}
              </div>
              
              {/* Статистика друзей */}
-             <div className="bg-blue-50 rounded-lg p-4">
+             <div className="glass-l2 rounded-lg p-4" style={{
+               backgroundColor: 'rgba(59, 130, 246, 0.1)',
+               borderColor: 'rgba(59, 130, 246, 0.3)'
+             }}>
                <div className="flex items-center justify-between">
                  <div>
-                   <div className="text-lg font-semibold text-blue-800">{friends.length} друзей</div>
-                   <div className="text-sm text-blue-600">2 онлайн</div>
+                   <div className="text-lg font-semibold" style={{ color: 'var(--text-accent)' }}>{friends.length} друзей</div>
+                   <div className="text-sm" style={{ color: 'var(--glass-text-secondary)' }}>2 онлайн</div>
                  </div>
                  <div className="text-right">
-                   <div className="text-lg font-semibold text-blue-800">3 заявки</div>
-                   <div className="text-sm text-blue-600">Новые</div>
+                   <div className="text-lg font-semibold" style={{ color: 'var(--text-accent)' }}>3 заявки</div>
+                   <div className="text-sm" style={{ color: 'var(--glass-text-secondary)' }}>Новые</div>
                  </div>
                </div>
              </div>
@@ -484,7 +546,7 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                  {activeTab === 'favorites' && (
            <div className="space-y-6 h-full">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="font-semibold text-gray-800 text-lg">Избранное</h4>
+              <h4 className="font-semibold text-lg" style={{ color: 'var(--glass-text)' }}>Избранное</h4>
               <div className="flex items-center space-x-3">
                 {/* Круговой индикатор полноты контента */}
                 <div className="relative">
@@ -493,7 +555,7 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                       cx="12"
                       cy="12"
                       r="10"
-                      stroke="#e5e7eb"
+                      stroke="var(--glass-l2-border)"
                       strokeWidth="2"
                       fill="none"
                     />
@@ -501,7 +563,7 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                       cx="12"
                       cy="12"
                       r="10"
-                      stroke="#10b981"
+                      stroke="var(--text-accent)"
                       strokeWidth="2"
                       fill="none"
                       strokeDasharray="62.83"
@@ -510,12 +572,15 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                     />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xs font-semibold text-gray-700">70%</span>
+                    <span className="text-xs font-semibold" style={{ color: 'var(--glass-text)' }}>70%</span>
                   </div>
                 </div>
               <div className="flex items-center space-x-2">
-                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium">{favoritesStats.totalItems}</span>
-                <span className="text-sm text-gray-600">элементов</span>
+                <span className="text-xs px-2 py-1 rounded-full font-medium" style={{
+                  backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                  color: 'var(--text-accent)'
+                }}>{favoritesStats.totalItems}</span>
+                <span className="text-sm" style={{ color: 'var(--glass-text-secondary)' }}>элементов</span>
                 </div>
               </div>
             </div>
@@ -562,16 +627,16 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
               {activeFavCategory === 'routes' && (
                 <>
                   {/* Хлебный след */}
-                  <div className="flex items-center space-x-2 text-xs text-gray-500 mb-3">
+                  <div className="flex items-center space-x-2 text-xs mb-3" style={{ color: 'var(--glass-text-muted)' }}>
                     <span>Избранное</span>
                     <FaChevronDown className="text-xs transform rotate-90" />
-                    <span className="text-blue-600 font-medium">Маршруты</span>
+                    <span className="font-medium" style={{ color: 'var(--text-accent)' }}>Маршруты</span>
                     <FaChevronDown className="text-xs transform rotate-90" />
-                    <span className={`font-medium ${
-                      activeRouteSubcategory === 'posts' ? 'text-orange-600' :
-                      activeRouteSubcategory === 'events' ? 'text-pink-600' :
-                      'text-indigo-600'
-                    }`}>
+                    <span className="font-medium" style={{
+                      color: activeRouteSubcategory === 'posts' ? 'rgba(249, 115, 22, 1)' :
+                             activeRouteSubcategory === 'events' ? 'rgba(236, 72, 153, 1)' :
+                             'rgba(99, 102, 241, 1)'
+                    }}>
                       {activeRouteSubcategory === 'posts' ? 'Посты' :
                        activeRouteSubcategory === 'events' ? 'События' :
                        'Личные'}
@@ -581,10 +646,10 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                   {/* Заголовок подкатегорий */}
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <h5 className="text-sm font-semibold text-gray-700">Категории маршрутов</h5>
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--text-accent)' }}></div>
+                      <h5 className="text-sm font-semibold" style={{ color: 'var(--glass-text)' }}>Категории маршрутов</h5>
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs" style={{ color: 'var(--glass-text-muted)' }}>
                       Выберите категорию для просмотра
                     </div>
                   </div>
@@ -633,24 +698,27 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                   </div>
 
                   {/* Список маршрутов по подкатегориям */}
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <div className="bg-blue-50 px-4 py-3 border-b border-gray-200">
+              <div className="glass-l2 rounded-lg overflow-hidden">
+                <div className="px-4 py-3 border-b" style={{
+                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                  borderColor: 'var(--glass-l2-border)'
+                }}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <FaMapMarkedAlt className="text-blue-600" />
-                          <span className="font-semibold text-blue-800">
+                      <FaMapMarkedAlt style={{ color: 'var(--text-accent)' }} />
+                          <span className="font-semibold" style={{ color: 'var(--text-accent)' }}>
                             {activeRouteSubcategory === 'posts' && 'Маршруты для постов'}
                             {activeRouteSubcategory === 'events' && 'Маршруты для событий'}
                             {activeRouteSubcategory === 'personal' && 'Избранные маршруты'}
                           </span>
-                          <div className={`w-2 h-2 rounded-full ${
-                            activeRouteSubcategory === 'posts' ? 'bg-orange-500' :
-                            activeRouteSubcategory === 'events' ? 'bg-pink-500' :
-                            'bg-indigo-500'
-                          }`}></div>
+                          <div className="w-2 h-2 rounded-full" style={{
+                            backgroundColor: activeRouteSubcategory === 'posts' ? 'rgba(249, 115, 22, 1)' :
+                                          activeRouteSubcategory === 'events' ? 'rgba(236, 72, 153, 1)' :
+                                          'rgba(99, 102, 241, 1)'
+                          }}></div>
                     </div>
                     <div className="flex items-center space-x-2">
-                          <span className="text-sm text-blue-600 font-medium">
+                          <span className="text-sm font-medium" style={{ color: 'var(--text-accent)' }}>
                             {(() => {
                               const all = favorites.favoriteRoutes;
                               const filteredRoutes = all.filter(route => {
@@ -676,7 +744,12 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                               favorites.clearAllRoutes();
                             }
                           }}
-                          className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded border border-red-300 hover:border-red-500 transition-colors"
+                          className="text-xs px-2 py-1 rounded border transition-colors"
+                          style={{
+                            color: 'rgba(239, 68, 68, 1)',
+                            borderColor: 'rgba(239, 68, 68, 0.4)',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)'
+                          }}
                               title="Очистить все избранные маршруты"
                         >
                           Очистить
@@ -703,27 +776,37 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                         return (
                           <>
                     {routesLoading && (
-                      <div className="text-sm text-gray-500">Загрузка маршрутов…</div>
+                      <div className="text-sm" style={{ color: 'var(--glass-text-secondary)' }}>Загрузка маршрутов…</div>
                     )}
                             {!routesLoading && filteredRoutes.length === 0 && (
-                              <div className="text-sm text-gray-500 text-center py-8">
+                              <div className="text-sm text-center py-8" style={{ color: 'var(--glass-text-muted)' }}>
                                 Пока нет маршрутов для {activeRouteSubcategory === 'posts' ? 'постов' : activeRouteSubcategory === 'events' ? 'событий' : 'избранного'}
                               </div>
                             )}
                             {!routesLoading && filteredRoutes.map((route: any) => {
                       const classes = getRouteVisualClasses({ isFavorite: true, isUserModified: route.is_user_modified, usedInBlogs: route.used_in_blogs });
                       return (
-                        <div key={route.id} className={`flex items-center justify-between p-3 rounded-lg border ${classes}`}>
+                        <div key={route.id} className={`flex items-center justify-between p-3 rounded-lg border ${classes}`} style={{
+                          borderColor: 'var(--glass-l2-border)',
+                          backgroundColor: 'transparent'
+                        }} onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = 'var(--glass-l2-bg-hover)';
+                        }} onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}>
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                        <FaMapMarkedAlt className="text-white text-sm" />
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{
+                        backgroundColor: 'var(--text-accent)',
+                        color: 'white'
+                      }}>
+                        <FaMapMarkedAlt className="text-sm" />
                       </div>
                       <div>
-                              <div className="font-medium text-gray-800">{route.title || route.name || 'Без названия'}</div>
-                              <div className="text-sm text-gray-600">
+                              <div className="font-medium" style={{ color: 'var(--glass-text)' }}>{route.title || route.name || 'Без названия'}</div>
+                              <div className="text-sm" style={{ color: 'var(--glass-text-secondary)' }}>
                                 {(route.points?.length || route.waypoints?.length || 0)} точек
                                 {route.created_at && (
-                                  <div className="text-xs text-gray-500 mt-1">
+                                  <div className="text-xs mt-1" style={{ color: 'var(--glass-text-muted)' }}>
                                     {new Date(route.created_at).toLocaleDateString('ru-RU')}
                                   </div>
                                 )}
@@ -768,7 +851,8 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                                 />
                               </div>
                               <button
-                                className="px-2 py-1 text-red-600 hover:text-red-800 text-xs"
+                                className="px-2 py-1 text-xs"
+                                style={{ color: 'rgba(239, 68, 68, 1)' }}
                                 onClick={() => {
                                   if (confirm('Удалить маршрут из избранного?')) {
                                     favorites.removeFavoriteRoute(route.id);
@@ -779,7 +863,7 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                                 ✕
                               </button>
                             </div>
-                            <div className="text-right text-xs text-gray-500">
+                            <div className="text-right text-xs" style={{ color: 'var(--glass-text-muted)' }}>
                               {(route.createdAt || route.addedAt) ? new Date(route.createdAt || route.addedAt).toLocaleDateString('ru-RU') : ''}
                     </div>
                   </div>
@@ -868,24 +952,27 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                   </div>
 
                   {/* Список мест по подкатегориям */}
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <div className="bg-green-50 px-4 py-3 border-b border-gray-200">
+              <div className="glass-l2 rounded-lg overflow-hidden">
+                <div className="px-4 py-3 border-b" style={{
+                  backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                  borderColor: 'var(--glass-l2-border)'
+                }}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <FaStar className="text-green-600" />
-                          <span className="font-semibold text-green-800">
+                      <FaStar style={{ color: 'rgba(34, 197, 94, 1)' }} />
+                          <span className="font-semibold" style={{ color: 'rgba(34, 197, 94, 1)' }}>
                             {activePlaceCategory === 'posts' && 'Метки для постов'}
                             {activePlaceCategory === 'events' && 'Метки для событий'}
                             {activePlaceCategory === 'personal' && 'Избранные метки'}
                           </span>
-                          <div className={`w-2 h-2 rounded-full ${
-                            activePlaceCategory === 'posts' ? 'bg-orange-500' :
-                            activePlaceCategory === 'events' ? 'bg-pink-500' :
-                            'bg-indigo-500'
-                          }`}></div>
+                          <div className="w-2 h-2 rounded-full" style={{
+                            backgroundColor: activePlaceCategory === 'posts' ? 'rgba(249, 115, 22, 1)' :
+                                          activePlaceCategory === 'events' ? 'rgba(236, 72, 153, 1)' :
+                                          'rgba(99, 102, 241, 1)'
+                          }}></div>
                     </div>
                         <div className="flex items-center space-x-2">
-                          <span className="text-sm text-green-600 font-medium">
+                          <span className="text-sm font-medium" style={{ color: 'rgba(34, 197, 94, 1)' }}>
                             {(() => {
                               const filteredPlaces = favorites.favoritePlaces.filter(place => {
                                 if (activePlaceCategory === 'personal') {
@@ -922,14 +1009,24 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                             {(showAllPlaces ? filteredPlaces : filteredPlaces.slice(0, 5)).map((place) => {
                       const classes = getMarkerVisualClasses({ isFavorite: true, isUserModified: false, usedInBlogs: false });
                       return (
-                        <div key={place.id} className={`flex items-center justify-between p-3 rounded-lg border ${classes}`}>
+                        <div key={place.id} className={`flex items-center justify-between p-3 rounded-lg border ${classes}`} style={{
+                          borderColor: 'var(--glass-l2-border)',
+                          backgroundColor: 'transparent'
+                        }} onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = 'var(--glass-l2-bg-hover)';
+                        }} onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}>
                     <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                              <FaStar className="text-white text-xs" />
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{
+                              backgroundColor: 'rgba(34, 197, 94, 1)',
+                              color: 'white'
+                            }}>
+                              <FaStar className="text-xs" />
                       </div>
                       <div>
-                              <div className="font-medium text-gray-800">{place.name}</div>
-                              <div className="text-sm text-gray-600">{place.location}</div>
+                              <div className="font-medium" style={{ color: 'var(--glass-text)' }}>{place.name}</div>
+                              <div className="text-sm" style={{ color: 'var(--glass-text-secondary)' }}>{place.location}</div>
                       </div>
                     </div>
                           <div className="flex flex-col items-end space-y-1">
@@ -970,7 +1067,8 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                                 />
                               </div>
                               <button
-                                className="px-2 py-1 text-red-600 hover:text-red-800 text-xs"
+                                className="px-2 py-1 text-xs"
+                                style={{ color: 'rgba(239, 68, 68, 1)' }}
                                 onClick={() => {
                                   if (confirm('Удалить метку из избранного?')) {
                                     favorites.removeFavoritePlace(place.id);
@@ -981,7 +1079,7 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                                 ✕
                               </button>
                             </div>
-                            <div className="text-right text-xs text-gray-500">
+                            <div className="text-right text-xs" style={{ color: 'var(--glass-text-muted)' }}>
                               {place.addedAt.toLocaleDateString('ru-RU')}
                     </div>
                   </div>
@@ -990,7 +1088,7 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                     })}
 
                             {filteredPlaces.length === 0 && (
-                              <div className="text-sm text-gray-500 text-center py-8">
+                              <div className="text-sm text-center py-8" style={{ color: 'var(--glass-text-muted)' }}>
                                 Пока нет меток для {activePlaceCategory === 'posts' ? 'постов' : activePlaceCategory === 'events' ? 'событий' : 'личного использования'}
                               </div>
                             )}
@@ -998,7 +1096,8 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                             {filteredPlaces.length > 5 && (
                       <div className="text-center py-2">
                         <button
-                          className="text-green-600 hover:text-green-700 text-sm font-medium"
+                          className="text-sm font-medium"
+                          style={{ color: 'rgba(34, 197, 94, 1)' }}
                           onClick={() => setShowAllPlaces((prev) => !prev)}
                         >
                           {showAllPlaces ? 'Свернуть список ←' : 'Показать все места →'}
@@ -1088,24 +1187,27 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                   </div>
 
                   {/* Список событий по подкатегориям */}
-                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="bg-purple-50 px-4 py-3 border-b border-gray-200">
+                <div className="glass-l2 rounded-lg overflow-hidden">
+                  <div className="px-4 py-3 border-b" style={{
+                    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+                    borderColor: 'var(--glass-l2-border)'
+                  }}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <FaTrophy className="text-purple-600" />
-                          <span className="font-semibold text-purple-800">
+                        <FaTrophy style={{ color: 'rgba(147, 51, 234, 1)' }} />
+                          <span className="font-semibold" style={{ color: 'rgba(147, 51, 234, 1)' }}>
                             {activeEventCategory === 'posts' && 'События для постов'}
                             {activeEventCategory === 'events' && 'События для событий'}
                             {activeEventCategory === 'personal' && 'Избранные события'}
                           </span>
-                          <div className={`w-2 h-2 rounded-full ${
-                            activeEventCategory === 'posts' ? 'bg-orange-500' :
-                            activeEventCategory === 'events' ? 'bg-pink-500' :
-                            'bg-indigo-500'
-                          }`}></div>
+                          <div className="w-2 h-2 rounded-full" style={{
+                            backgroundColor: activeEventCategory === 'posts' ? 'rgba(249, 115, 22, 1)' :
+                                          activeEventCategory === 'events' ? 'rgba(236, 72, 153, 1)' :
+                                          'rgba(99, 102, 241, 1)'
+                          }}></div>
                     </div>
                         <div className="flex items-center space-x-2">
-                          <span className="text-sm text-purple-600 font-medium">
+                          <span className="text-sm font-medium" style={{ color: 'rgba(147, 51, 234, 1)' }}>
                             {(() => {
                               const filteredEvents = favorites.favoriteEvents.filter(event => {
                                 if (activeEventCategory === 'personal') {
@@ -1140,25 +1242,33 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                         return (
                           <>
                             {filteredEvents.length === 0 ? (
-                              <div className="text-sm text-gray-500 text-center py-8">
+                              <div className="text-sm text-center py-8" style={{ color: 'var(--glass-text-muted)' }}>
                                 Пока нет событий для {activeEventCategory === 'posts' ? 'постов' : activeEventCategory === 'events' ? 'событий' : 'личного использования'}
                               </div>
                             ) : (
                               filteredEvents.slice(0, 5).map((ev) => {
                         const classes = getEventVisualClasses({ isFavorite: true, isUserModified: false, usedInBlogs: false });
                         return (
-                          <div key={ev.id} className={`flex items-center justify-between p-3 rounded-lg border ${classes}`}>
+                          <div key={ev.id} className={`flex items-center justify-between p-3 rounded-lg border ${classes}`} style={{
+                            borderColor: 'var(--glass-l2-border)',
+                            backgroundColor: 'transparent'
+                          }} onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--glass-l2-bg-hover)';
+                          }} onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}>
                             <div className="flex flex-col">
-                              <div className="font-medium text-gray-800">{ev.title}</div>
-                              <div className="text-sm text-gray-600">{ev.location}</div>
+                              <div className="font-medium" style={{ color: 'var(--glass-text)' }}>{ev.title}</div>
+                              <div className="text-sm" style={{ color: 'var(--glass-text-secondary)' }}>{ev.location}</div>
                             </div>
                             <div className="flex items-center space-x-3">
-                              <div className="text-right text-xs text-gray-500">
+                              <div className="text-right text-xs" style={{ color: 'var(--glass-text-muted)' }}>
                                 {new Date(ev.date).toLocaleDateString('ru-RU')}
                               </div>
                               <div className="flex items-center space-x-2">
                                 <button
-                                  className="px-2 py-1 text-red-600 hover:text-red-800 text-xs"
+                                  className="px-2 py-1 text-xs"
+                                  style={{ color: 'rgba(239, 68, 68, 1)' }}
                                   onClick={() => {
                                     if (confirm('Удалить событие из избранного?')) {
                                       favorites.removeFavoriteEvent(ev.id);
@@ -1176,7 +1286,7 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                     )}
                             {filteredEvents.length > 5 && (
                   <div className="text-center py-2">
-                        <button className="text-purple-600 hover:text-purple-700 text-sm font-medium">
+                        <button className="text-sm font-medium" style={{ color: 'rgba(147, 51, 234, 1)' }}>
                           Показать все события →
                     </button>
                   </div>
@@ -1186,17 +1296,28 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                       })()}
                 </div>
               </div>
-
+              
                 </>
               )}
 
               {/* Мотивационное сообщение */}
-              <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-4 text-white text-center">
+              <div className="rounded-lg p-4 text-center" style={{
+                background: 'linear-gradient(135deg, rgba(147, 51, 234, 0.3), rgba(236, 72, 153, 0.3))',
+                borderColor: 'rgba(147, 51, 234, 0.3)',
+                color: 'var(--glass-text)'
+              }}>
                 <div className="text-lg font-semibold mb-2">🎯 Продолжайте исследовать!</div>
-                <div className="text-sm opacity-90 mb-3">
+                <div className="text-sm mb-3" style={{ opacity: 0.9 }}>
                   Сохраняйте интересные места и маршруты, чтобы не потерять их
                 </div>
-                <button className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                <button className="px-4 py-2 rounded-lg text-sm font-medium transition-colors" style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  color: 'var(--glass-text)'
+                }} onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+                }} onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                }}>
                   Найти новые места
                 </button>
               </div>
@@ -1208,26 +1329,33 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                  {activeTab === 'posts' && (
            <div className="space-y-6 h-full">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="font-semibold text-gray-800 text-lg">Мои посты</h4>
-              <span className="text-sm text-gray-600">{userPosts.length} публикаций</span>
+              <h4 className="font-semibold text-lg" style={{ color: 'var(--glass-text)' }}>Мои посты</h4>
+              <span className="text-sm" style={{ color: 'var(--glass-text-secondary)' }}>{userPosts.length} публикаций</span>
             </div>
 
             {/* Кнопка черновиков */}
             {draftsCount > 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <div className="glass-l2 rounded-lg p-4 mb-4" style={{
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                borderColor: 'rgba(59, 130, 246, 0.3)'
+              }}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <FaCloud className="text-blue-600 text-xl" />
+                    <FaCloud className="text-xl" style={{ color: 'var(--text-accent)' }} />
                     <div>
-                      <div className="font-semibold text-gray-800">Черновики</div>
-                      <div className="text-sm text-gray-600">
+                      <div className="font-semibold" style={{ color: 'var(--glass-text)' }}>Черновики</div>
+                      <div className="text-sm" style={{ color: 'var(--glass-text-secondary)' }}>
                         У вас {draftsCount} {draftsCount === 1 ? 'черновик' : draftsCount < 5 ? 'черновика' : 'черновиков'} для отправки
                       </div>
                     </div>
                   </div>
                   <button
                     onClick={() => setShowDraftsPanel(true)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    className="px-4 py-2 rounded-lg font-medium transition-colors"
+                    style={{
+                      backgroundColor: 'var(--text-accent)',
+                      color: 'white'
+                    }}
                   >
                     Открыть
                   </button>
@@ -1235,28 +1363,37 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
               </div>
             )}
 
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div className="glass-l2 rounded-lg overflow-hidden">
               <div className="p-6">
                 {postsLoading ? (
                   <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
-                    <p className="text-gray-500">Загрузка постов...</p>
+                    <div className="animate-spin rounded-full h-8 w-8 mx-auto mb-3" style={{
+                      borderColor: 'var(--text-accent)',
+                      borderRightColor: 'transparent'
+                    }}></div>
+                    <p style={{ color: 'var(--glass-text-secondary)' }}>Загрузка постов...</p>
                   </div>
                 ) : userPosts.length === 0 ? (
                   <div className="text-center py-8">
-                    <i className="fas fa-newspaper text-4xl text-gray-300 mb-3"></i>
-                    <p className="text-gray-500 mb-2">Здесь будут отображаться ваши посты</p>
-                    <p className="text-sm text-gray-400">Создайте первый пост на странице "Посты"</p>
+                    <i className="fas fa-newspaper text-4xl mb-3" style={{ color: 'var(--glass-text-muted)' }}></i>
+                    <p className="mb-2" style={{ color: 'var(--glass-text-secondary)' }}>Здесь будут отображаться ваши посты</p>
+                    <p className="text-sm" style={{ color: 'var(--glass-text-muted)' }}>Создайте первый пост на странице "Посты"</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {userPosts.map((post) => (
-                      <div key={post.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                      <div key={post.id} className="rounded-lg p-4 transition-colors" style={{
+                        border: '1px solid var(--glass-l2-border)'
+                      }} onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--glass-l2-bg-hover)';
+                      }} onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h5 className="font-semibold text-gray-900 mb-2">{post.title || 'Без названия'}</h5>
-                            <p className="text-sm text-gray-600 mb-3 line-clamp-3">{post.body}</p>
-                            <div className="flex items-center space-x-4 text-xs text-gray-400">
+                            <h5 className="font-semibold mb-2" style={{ color: 'var(--glass-text)' }}>{post.title || 'Без названия'}</h5>
+                            <p className="text-sm mb-3 line-clamp-3" style={{ color: 'var(--glass-text-secondary)' }}>{post.body}</p>
+                            <div className="flex items-center space-x-4 text-xs" style={{ color: 'var(--glass-text-muted)' }}>
                               <span className="flex items-center">
                                 <i className="far fa-calendar mr-1"></i>
                                 {new Date(post.created_at).toLocaleDateString()}
@@ -1281,46 +1418,60 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
           </div>
         )}
 
+        {activeTab === 'mypacks' && (
+          <MyPacksSection />
+        )}
+
                  {activeTab === 'settings' && (
            <div className="space-y-4 h-full flex flex-col justify-center">
-            <h4 className="font-semibold text-gray-800 mb-4">Настройки</h4>
+            <h4 className="font-semibold mb-4" style={{ color: 'var(--glass-text)' }}>Настройки</h4>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--glass-text)' }}>
                   Имя пользователя
                 </label>
                 <input
                   type="text"
                   value={user.username}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 rounded-lg"
+                  style={{
+                    backgroundColor: 'var(--glass-l2-bg)',
+                    borderColor: 'var(--glass-l2-border)',
+                    color: 'var(--glass-text)'
+                  }}
                   readOnly
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--glass-text)' }}>
                   Email
                 </label>
                 <input
                   type="email"
                   value={user.email}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 rounded-lg"
+                  style={{
+                    backgroundColor: 'var(--glass-l2-bg)',
+                    borderColor: 'var(--glass-l2-border)',
+                    color: 'var(--glass-text)'
+                  }}
                   readOnly
                 />
               </div>
               
               {/* Настройки уведомлений */}
-              <div className="border-t border-gray-200 pt-4 mt-4">
-                <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
+              <div className="border-t pt-4 mt-4" style={{ borderColor: 'var(--glass-l1-border)' }}>
+                <h5 className="text-sm font-semibold mb-3 flex items-center" style={{ color: 'var(--glass-text)' }}>
                   <FaBell className="mr-2" />
                   Уведомления
                 </h5>
                 <div className="space-y-3">
                   <label className="flex items-center justify-between cursor-pointer">
                     <div className="flex-1">
-                      <div className="text-sm font-medium text-gray-700">
+                      <div className="text-sm font-medium" style={{ color: 'var(--glass-text)' }}>
                         Получать уведомления о модерации
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs mt-1" style={{ color: 'var(--glass-text-muted)' }}>
                         Уведомления о статусе вашего контента (одобрено/отклонено)
                       </div>
                     </div>
@@ -1332,28 +1483,33 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                         setNotificationsEnabled(enabled);
                         moderationNotificationsService.setEnabled(enabled);
                       }}
-                      className="ml-4 w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      className="ml-4 w-5 h-5 rounded"
+                      style={{
+                        accentColor: 'var(--text-accent)',
+                        backgroundColor: 'var(--glass-l2-bg)',
+                        borderColor: 'var(--glass-l2-border)'
+                      }}
                     />
                   </label>
                 </div>
               </div>
 
               {/* Конфиденциальность и аналитика */}
-              <div className="border-t border-gray-200 pt-4 mt-4">
-                <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
+              <div className="border-t pt-4 mt-4" style={{ borderColor: 'var(--glass-l1-border)' }}>
+                <h5 className="text-sm font-semibold mb-3 flex items-center" style={{ color: 'var(--glass-text)' }}>
                   <FaChartBar className="mr-2" />
                   Конфиденциальность и аналитика
                 </h5>
                 <div className="space-y-3">
                   <label className="flex items-start justify-between cursor-pointer">
                     <div className="flex-1 pr-4">
-                      <div className="text-sm font-medium text-gray-700 mb-1">
+                      <div className="text-sm font-medium mb-1" style={{ color: 'var(--glass-text)' }}>
                         Помогать улучшать ГеоБлог
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs" style={{ color: 'var(--glass-text-muted)' }}>
                         Мы собираем анонимные данные об использовании: как вы работаете с картой, создаете посты, используете офлайн-режим. Это помогает нам делать сервис удобнее.
                       </div>
-                      <div className="text-xs text-gray-400 mt-2 italic">
+                      <div className="text-xs mt-2 italic" style={{ color: 'var(--glass-text-muted)' }}>
                         Можно изменить в любой момент
                       </div>
                     </div>
@@ -1373,7 +1529,12 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
                             alert('Не удалось обновить настройку. Попробуйте позже.');
                           }
                         }}
-                        className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-5 h-5 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{
+                          accentColor: 'var(--text-accent)',
+                          backgroundColor: 'var(--glass-l2-bg)',
+                          borderColor: 'var(--glass-l2-border)'
+                        }}
                       />
                     </div>
                   </label>
@@ -1382,7 +1543,12 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ onClose }) => {
               
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center justify-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                className="w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors"
+                style={{
+                  backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                  borderColor: 'rgba(239, 68, 68, 0.4)',
+                  color: 'rgba(239, 68, 68, 1)'
+                }}
               >
                 <FaSignOutAlt />
                 <span>Выйти из системы</span>

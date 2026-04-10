@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useMemo, useCallback, lazy, Suspense, useEffect } from 'react';
 import styled from 'styled-components';
 import { 
   Heart, 
@@ -24,6 +24,7 @@ import { GeoBadgeList, GeoRef } from '../Geo/GeoBadge';
 import { useGeoFocusStore } from '../../stores/geoFocusStore';
 import { useContentStore } from '../../stores/contentStore';
 import { useThemeStore } from '../../stores/themeStore';
+import { useNewComments } from '../../hooks/useNewComments';
 
 const PostComments = lazy(() => import('./PostComments'));
 
@@ -266,6 +267,34 @@ const Stats = styled.div<{ $dark?: boolean }>`
   font-weight: 500;
 `;
 
+const NewBadge = styled.span`
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  margin-left: 4px;
+  background: linear-gradient(135deg, #ff3040 0%, #ff6b7d 100%);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 10px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(255, 48, 64, 0.3);
+  animation: badgePulse 2s infinite;
+
+  @keyframes badgePulse {
+    0%, 100% {
+      box-shadow: 0 2px 8px rgba(255, 48, 64, 0.3);
+    }
+    50% {
+      box-shadow: 0 2px 12px rgba(255, 48, 64, 0.5);
+    }
+  }
+`;
+
 const PostCard: React.FC<PostCardProps> = ({
   post,
   onClick,
@@ -284,6 +313,16 @@ const PostCard: React.FC<PostCardProps> = ({
   const [reactions, setReactions] = useState<PostReaction[]>(post.reactions || []);
   const [showComments, setShowComments] = useState(false);
   const [localCommentsCount, setLocalCommentsCount] = useState(post.comments_count ?? 0);
+  
+  // Отслеживание новых комментариев
+  const { hasNew, markAsViewed } = useNewComments(post.id, localCommentsCount);
+  
+  // Когда комментарии открыты, отметить как просмотренные
+  useEffect(() => {
+    if (showComments) {
+      markAsViewed();
+    }
+  }, [showComments, markAsViewed]);
   // Собираем гео-ссылки из полей поста
   const geoRefs = useMemo<GeoRef[]>(() => {
     const refs: GeoRef[] = [];
@@ -616,6 +655,7 @@ const PostCard: React.FC<PostCardProps> = ({
           <ActionButton onClick={handleComment} $active={showComments} $dark={dk}>
             <MessageCircle size={18} fill={showComments ? 'currentColor' : 'none'} />
             {localCommentsCount}
+            {hasNew && <NewBadge>new</NewBadge>}
           </ActionButton>
           
           <ActionButton onClick={handleShare} $dark={dk}>

@@ -165,6 +165,26 @@
   transform: translate(-50%, calc(-50% + 6vh + 4px)) scale(1);
 }
 
+@media (max-width: 767px) {
+  .add-marker-panel.glass-panel-center,
+  .add-marker-panel.glass-panel-center.glass-panel-open {
+    top: 50% !important;
+    left: 50% !important;
+    width: min(220px, calc(100vw - 16px)) !important;
+    max-width: calc(100vw - 16px) !important;
+    transform: translate(-50%, calc(-50% + 5vh + 4px)) scale(0.95);
+  }
+
+  .add-marker-panel.glass-panel-center.glass-panel-open {
+    transform: translate(-50%, calc(-50% + 5vh + 4px)) scale(1);
+  }
+
+  .add-marker-panel.glass-panel-constrained.glass-panel-center,
+  .add-marker-panel.glass-panel-constrained.glass-panel-center.glass-panel-open {
+    left: 50% !important;
+  }
+}
+
 /* Стеклянный блок для информации о культуре меток - над меткой */
 .culture-info-glass.glass-panel-center {
   /* Метка поднята выше на 4 см, блок культуры тоже поднимается выше */

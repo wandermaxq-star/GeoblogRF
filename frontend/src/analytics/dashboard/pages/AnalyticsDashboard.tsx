@@ -1,12 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ExecutiveOverview from '../components/ExecutiveOverview';
 import ProductTeamDashboard from '../components/ProductTeamDashboard';
 import TechnicalDashboard from '../components/TechnicalDashboard';
 
 type DashboardView = 'executive' | 'product' | 'technical';
 
-const AnalyticsDashboard: React.FC = () => {
-  const [activeView, setActiveView] = useState<DashboardView>('executive');
+interface AnalyticsDashboardProps {
+  initialView?: DashboardView;
+}
+
+const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ 
+  initialView = 'executive' 
+}) => {
+  const [activeView, setActiveView] = useState<DashboardView>(initialView);
+
+  useEffect(() => {
+    setActiveView(initialView);
+  }, [initialView]);
 
   const views = [
     { id: 'executive' as DashboardView, label: 'Обзор для руководства', icon: '🎯' },

@@ -20,6 +20,7 @@ export const validateRegister = (req, res, next) => {
       'string.pattern.base': 'Некорректный номер телефона',
       'any.required': 'Номер телефона обязателен'
     }),
+    referral_code: Joi.string().max(8).optional(),
     first_name: Joi.string().max(100).optional(),
     last_name: Joi.string().max(100).optional(),
     avatar_url: Joi.string().uri().optional(),

@@ -8,6 +8,7 @@ export const useMapDisplayMode = () => {
   const leftContent = useContentStore((state) => state.leftContent);
   const rightContent = useContentStore((state) => state.rightContent);
   const showBackgroundMap = useContentStore((state) => state.showBackgroundMap);
+  const isMobile = useContentStore((state) => state.isMobile);
 
   return useMemo(() => {
     // Проверяем, активен ли Planner (использует Яндекс карту)
@@ -17,12 +18,13 @@ export const useMapDisplayMode = () => {
     const isMapActive = leftContent === 'map';
     
     // Двухоконный режим - когда открыта правая панель
-    const isTwoPanelMode = rightContent !== null;
+    const isTwoPanelMode = rightContent !== null && !isMobile;
 
-    // ИСПРАВЛЕНО: Leaflet карта ВСЕГДА видна как декоративный фон
-    // Пользователь явно требует: фон статичен, не должен перезагружаться при смене контента
-    // showBackgroundMap — единственный способ скрыть фон (через настройки)
-    const shouldShowFullscreen = isMapActive || isPlannerActive || showBackgroundMap;
+    // ИСПРАВЛЕНО: Leaflet-карта видна как фон ТОЛЬКО когда Planner НЕ активен.
+    // Когда Planner активен — он рендерит Яндекс-карту в #planner-map-container,
+    // и Leaflet-портал (#global-map-root) не должен перекрывать его и перехватывать клики.
+    // showBackgroundMap — единственный способ скрыть фоновый Leaflet через настройки.
+    const shouldShowFullscreen = isMapActive || (showBackgroundMap && !isPlannerActive);
 
     return {
       // Использовать Leaflet карту (не Яндекс)
@@ -47,7 +49,7 @@ export const useMapDisplayMode = () => {
         ? 'facade-map-root two-panel-mode' 
         : 'facade-map-root',
     };
-  }, [leftContent, rightContent, showBackgroundMap]);
+  }, [leftContent, rightContent, showBackgroundMap, isMobile]);
 }
 
 export default useMapDisplayMode;

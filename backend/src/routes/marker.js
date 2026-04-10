@@ -3,28 +3,62 @@ import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { validateMarker } from '../middleware/validation.js';
 import pool from '../../db.js';
-import { checkPointAgainstZones } from '../utils/zoneGuard.js';
 import { isWithinRussiaBounds } from '../middleware/russiaValidation.js';
 import logger from '../../logger.js';
 
 const router = express.Router();
 
-// GET /api/markers - Получить все маркеры
+// GET /api/markers - Получить маркеры с пагинацией
 router.get('/markers', async (req, res) => {
   try {
-    // Получаем только активные и публичные маркеры
+    const { limit = 100, offset = 0, categories } = req.query;
+    const limitNum = Math.min(parseInt(limit, 10) || 100, 500); // максимум 500
+    const offsetNum = Math.max(parseInt(offset, 10) || 0, 0);
+
+    let whereClause = `WHERE is_active = true AND visibility = 'public'`;
+    const whereParams = [];
+
+    if (typeof categories === 'string' && categories.trim()) {
+      const categoryList = categories
+        .split(',')
+        .map((category) => category.trim())
+        .filter(Boolean);
+
+      if (categoryList.length > 0) {
+        whereParams.push(categoryList);
+        whereClause += ` AND category = ANY($${whereParams.length})`;
+      }
+    }
+
+    // Получаем только активные и публичные маркеры с пагинацией
     const result = await pool.query(`
-      SELECT *, used_in_blogs FROM map_markers 
-      WHERE is_active = true AND visibility = 'public'
+      SELECT *, used_in_blogs FROM map_markers
+      ${whereClause}
       ORDER BY created_at DESC
-    `);
-    // Логируем creator_id, is_active и visibility для каждого маркера
-    result.rows.forEach((marker, index) => {
-      logger.info(`Marker ${index}: creator_id: ${marker.creator_id}, is_active: ${marker.is_active}, visibility: ${marker.visibility}`);
+      LIMIT $${whereParams.length + 1} OFFSET $${whereParams.length + 2}
+    `, [...whereParams, limitNum, offsetNum]);
+
+    // Получаем общее количество маркеров для пагинации
+    const countResult = await pool.query(`
+      SELECT COUNT(*) as total FROM map_markers
+      ${whereClause}
+    `, whereParams);
+    const total = parseInt(countResult.rows[0].total, 10);
+
+    // Логируем информацию о пагинации
+    logger.info(`Markers pagination: limit=${limitNum}, offset=${offsetNum}, total=${total}, returned=${result.rows.length}`);
+
+    res.json({
+      markers: result.rows,
+      pagination: {
+        limit: limitNum,
+        offset: offsetNum,
+        total,
+        hasMore: offsetNum + result.rows.length < total
+      }
     });
-    
-    res.json(result.rows);
   } catch (err) {
+    logger.error('Ошибка получения маркеров:', err);
     res.status(500).json({ message: 'Ошибка сервера при получении маркеров.' });
   }
 });
@@ -191,31 +225,8 @@ router.post('/markers', authenticateToken, validateMarker, async (req, res) => {
       logger.info('⚠️ Координаты не являются числами:', { latitude, longitude, latType: typeof latitude, lngType: typeof longitude });
     }
 
-    // Проверка зон (если есть загруженные зоны)
-    if (typeof longitude === 'number' && typeof latitude === 'number') {
-      const zones = await checkPointAgainstZones(Number(longitude), Number(latitude));
-      if (zones && zones.length) {
-        const hasCritical = zones.some(z => (z.severity || 'restricted') === 'critical');
-        if (hasCritical) {
-          return res.status(422).json({ message: 'Локация попадает в критическую зону. Создание запрещено.', zones });
-        }
-        // Для restricted/warning — добавим пометку в metadata
-        let meta = {};
-        if (metadata) {
-          if (typeof metadata === 'string') {
-            try {
-              meta = JSON.parse(metadata);
-            } catch {
-              meta = { value: metadata };
-            }
-          } else if (typeof metadata === 'object') {
-            meta = metadata;
-          }
-        }
-          meta.restrictedZones = zones;
-        metadata = meta; // Обновляем переменную metadata для дальнейшего использования
-      }
-    }
+    // Запрещённые зоны временно не проверяются — логика отключена
+    // (ранее использовался checkPointAgainstZones из lazyZoneGuard)
     // Обрабатываем photoUrls - если это строка, разбиваем на массив
     let photo_urls = [];
     if (photoUrls) {

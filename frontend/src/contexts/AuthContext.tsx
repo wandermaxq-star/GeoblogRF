@@ -9,6 +9,8 @@ interface User {
   username: string;
   role: string;
   phone?: string;
+  referral_code?: string;
+  referred_by?: string;
   first_name?: string;
   last_name?: string;
   avatar_url?: string;
@@ -27,11 +29,16 @@ interface User {
     latitude: number;
     longitude: number;
   };
+  // custom properties for achievements / partners
+  packsPurchased?: number;
+  purchasedPacks?: string[];
+  partnerTier?: 'newbie' | 'expert' | 'top' | '';
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
+  isLoading: boolean;
   login: (token: string) => Promise<void>;
   register: (
     email: string, 
@@ -44,8 +51,11 @@ interface AuthContextType {
     bio?: string
   ) => Promise<any>;
   logout: () => void;
+  deleteAccount: () => Promise<void>;
   updateUserAvatar: (avatarUrl: string) => Promise<void>;
   updatePreferredLocation: (location: { city: string; region: string; latitude: number; longitude: number }) => void;
+  // new helper to merge user fields (packsPurchased, etc.)
+  updateUser: (fields: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -85,6 +95,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return localStorage.getItem('token');
   });
 
+  // true пока идёт восстановление сессии при перезагрузке (token есть, user=null)
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    const hasToken = !!localStorage.getItem('token');
+    const hasUser = !!(localStorage.getItem('user') || sessionStorage.getItem('user'));
+    return hasToken && !hasUser;
+  });
+
   // Синхронизируем токен с axios немедленно и загружаем профиль при старте
   useEffect(() => {
     if (token) {
@@ -101,17 +118,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (token && !user) {
       getProfile()
         .then((data) => {
+          if (!data || !data.user) {
+            // Сервер недоступен или вернул пустой ответ — НЕ разлогиниваем,
+            // сессия может быть восстановлена когда сервер поднимется
+            setIsLoading(false);
+            return;
+          }
           setUser(data.user);
           saveUserSnapshot(data.user);
+          setIsLoading(false);
         })
-        .catch(() => {
-          setUser(null);
-          setToken(null);
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          if ((apiClient.defaults.headers as any).Authorization) {
-            delete (apiClient.defaults.headers as any).Authorization;
+        .catch((err) => {
+          // Разлогиниваем только при явной ошибке аутентификации (401/403)
+          // При сетевых ошибках (ECONNREFUSED, timeout) — сохраняем сессию
+          const status = err?.response?.status;
+          if (status === 401 || status === 403) {
+            setUser(null);
+            setToken(null);
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            if ((apiClient.defaults.headers as any).Authorization) {
+              delete (apiClient.defaults.headers as any).Authorization;
+            }
           }
+          setIsLoading(false);
         });
     }
   }, [token, user]);
@@ -124,9 +154,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     (apiClient.defaults.headers as any).Authorization = `Bearer ${newToken}`;
 
     // Сразу загружаем профиль, чтобы не было "гостевого" состояния
-    const data = await getProfile();
-    setUser(data.user);
-    saveUserSnapshot(data.user);
+    try {
+      const data = await getProfile();
+      if (data && data.user) {
+        setUser(data.user);
+        saveUserSnapshot(data.user);
+      } else {
+        console.error('getProfile вернул пустой ответ:', data);
+      }
+    } catch (error) {
+      console.error('Ошибка при загрузке профиля:', error);
+      // Не разлогиниваем - токен валиден, профиль можно загрузить позже
+    }
+  };
+
+  // generic user updater
+  const updateUser = (fields: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...fields };
+      saveUserSnapshot(updated);
+      return updated;
+    });
   };
 
   const register = async (
@@ -203,6 +252,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('✅ Все данные очищены, пользователь вышел');
   };
 
+  const deleteAccount = async () => {
+    await apiClient.delete('/users');
+    logout();
+  };
+
   const updateUserAvatar = async (avatarUrl: string) => {
     try {
       const response = await apiClient.put('/users/avatar', { avatar_url: avatarUrl });
@@ -226,25 +280,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, updateUserAvatar, updatePreferredLocation }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, deleteAccount, updateUserAvatar, updatePreferredLocation, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export function useAuth() {
+export function useAuth(): AuthContextType {
   const ctx = useContext(AuthContext);
   if (!ctx) {
     // Возвращаем заглушку вместо выбрасывания ошибки для предотвращения блокировки рендеринга
     return {
       user: null,
       token: null,
+      isLoading: false,
       login: async () => {},
       register: async () => ({}),
       logout: () => {},
+      deleteAccount: async () => {},
       updateUserAvatar: async () => {},
       updatePreferredLocation: () => {},
-    };
+      updateUser: () => {},
+    } as AuthContextType;
   }
   return ctx;
 }

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "./schemas/tsconfig.schema.json",
+  "title": "Local TSConfig Schema Override",
+  "description": "Local fallback schema to avoid remote schemastore lookups in offline environments.",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "compilerOptions": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "include": {
+      "type": "array",
+      "items": {
+        "type": ["string", "object"]
+      }
+    },
+    "exclude": {
+      "type": "array",
+      "items": {
+        "type": ["string", "object"]
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "extends": {
+      "type": ["string", "array"]
+    }
+  }
+}

@@ -52,6 +52,15 @@ export const AnalyticsLoadingFallback: React.FC = () => (
   </div>
 );
 
+export const AdminLoadingFallback: React.FC = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+      <p className="mt-4 text-gray-600">Загрузка админ-панели...</p>
+    </div>
+  </div>
+);
+
 export const ComponentLoadingFallback: React.FC = () => (
   <div className="flex items-center justify-center p-4">
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600"></div>

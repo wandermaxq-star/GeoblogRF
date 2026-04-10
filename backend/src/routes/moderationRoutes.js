@@ -31,13 +31,15 @@ import logger from '../../logger.js';
 
 const router = express.Router();
 
-// Все маршруты требуют авторизации и роли admin
+// ===== ИИ-МОДЕРАЦИЯ (полуавтоматическая) =====
+// Анализ может вызывать любой авторизованный пользователь (не только админ)
 router.use(authenticateToken);
+router.post('/ai/:contentType/:contentId/analyze', analyzeContent);
+
+// Остальные маршруты требуют роли admin
 router.use(requireRole(['admin']));
 
-// ===== ИИ-МОДЕРАЦИЯ (полуавтоматическая) =====
 router.get('/ai/:contentType/review', getContentForReview);
-router.post('/ai/:contentType/:contentId/analyze', analyzeContent);
 router.post('/ai/decisions/:decisionId/verdict', setAdminVerdict);
 router.get('/ai/stats', getAIStats);
 router.get('/ai/counts', getModerationCounts);

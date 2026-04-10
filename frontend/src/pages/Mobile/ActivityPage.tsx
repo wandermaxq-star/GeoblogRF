@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import TopBar from '../../components/Mobile/TopBar';
 import FilterTabs from '../../components/Mobile/FilterTabs';
 import { Card } from '../../components/ui/card';
 import { Avatar, AvatarFallback } from '../../components/ui/avatar';
@@ -8,15 +7,24 @@ import { Users, TrendingUp, Award } from 'lucide-react';
 import { activityService, ActivityItem } from '../../services/activityService';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { useAuth } from '../../contexts/AuthContext';
 
 type ActivityFilter = 'feed' | 'trending' | 'achievements';
 
 const ActivityPage: React.FC = () => {
+  const { token } = useAuth();
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<ActivityFilter>('feed');
 
   useEffect(() => {
+    // ← КРИТИЧНО: Не загружаем активность для гостей
+    if (!token) {
+      setActivities([]);
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
     
     const loadActivities = async () => {
@@ -42,7 +50,7 @@ const ActivityPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [token]);
 
   const getActivityColor = (type: string) => {
     switch (type) {
@@ -119,7 +127,6 @@ const ActivityPage: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen">
-      <TopBar title="Активность" />
       <FilterTabs 
         tabs={tabs} 
         defaultTab={filter}

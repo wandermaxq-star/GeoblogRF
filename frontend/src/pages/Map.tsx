@@ -1,20 +1,23 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom';
 import { FilterLogic } from '../components/HashtagFilter';
 import { MarkerData } from '../types/marker';
-import { projectManager } from '../services/projectManager';
 import { geocodingService, Place } from '../services/geocodingService';
 import SearchResultsDropdown from '../components/Search/SearchResultsDropdown';
-import { useLazyMarkers, Bounds } from '../hooks/useLazyMarkers';
+import { Bounds } from '../hooks/useLazyMarkers';
+import { useMapFilters } from '../hooks/useMapFilters';
+import { useMapSearch } from '../hooks/useMapSearch';
+import { useMapMarkers } from '../hooks/useMapMarkers';
 import { mapFacade, INTERNAL } from '../services/map_facade/index';
+import { projectManager } from '../services/projectManager';
 import { useUserLocation } from '../hooks/useUserLocation';
+import { useLocationMode } from '../hooks/useLocationMode';
 // КРИТИЧНО: Централизованное хранилище маркеров - решает проблему потери маркеров
 import { useMapStateStore, mapStateHelpers } from '../stores/mapStateStore';
 
 import {
   FaStar, FaMap, FaCog, FaSearch, FaRoute, FaDownload
 } from 'react-icons/fa';
-import FavoritesPanel from '../components/FavoritesPanel';
 import MapActionButtons from '../components/Map/MapActionButtons';
 import MapFilters from '../components/Map/MapFilters';
 import RegionSelector from '../components/Regions/RegionSelector';
@@ -44,19 +47,15 @@ import { offlineContentStorage, OfflineMarkerDraft } from '../services/offlineCo
 import MapComponent from '../components/Map/Map';
 import { MapContainer } from '../components/Map/Map.styles';
 import CategoryQuickFilter from '../components/Map/CategoryQuickFilter';
+import MapAddSelector, { MapAddMode } from '../components/Map/MapAddSelector';
+import { useEventsStore } from '../stores/eventsStore';
+import { getEvents } from '../services/eventService';
+import { mockEvents } from '../components/TravelCalendar/mockEvents';
 
-const useDebounce = (value: string, delay: number) => {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-  return debouncedValue;
-};
+const LazyEventDetailPage = lazy(() =>
+  import('../components/Events/EventDetailPage').then(m => ({ default: m.EventDetailPage }))
+);
+
 
 interface MapPageProps {
   selectedMarkerId?: string;
@@ -70,6 +69,8 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const { registerPanel, unregisterPanel } = usePanelRegistration();
   const { isDarkMode } = useTheme();
+  const { startLoading, stopLoading } = useLoading();
+  const { setMarkerDataForBlog, openLeftPanel, openRightPanel } = useLayoutState();
 
   // Portal root for facade map (ensures map renders at document.body and is not clipped by page layout)
   const [facadeMapRootEl] = useState<HTMLElement | null>(() => {
@@ -94,148 +95,38 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
   // Регистрируем панели при монтировании компонента
   useEffect(() => {
     registerPanel(); // Левая панель с настройками
-    registerPanel(); // Правая панель с избранным
+    // Правая панель с избранным удалена, так как избранное теперь отдельная страница
     return () => {
       unregisterPanel(); // Левая панель
-      unregisterPanel(); // Правая панель
     };
   }, [registerPanel, unregisterPanel]);
 
   useEffect(() => {
     console.log('[MapPage] mounted');
+    // КРИТИЧНО: явно устанавливаем leftContent='map' при монтировании,
+    // чтобы Map.tsx (компонент) видел isMapInteractive=true сразу,
+    // не дожидаясь useEffect в MainLayout (как сделано в мобильной версии)
+    useContentStore.getState().setLeftContent('map');
     return () => {
       console.log('[MapPage] unmounted');
     };
-  }, []);
-
-  // Загрузка запрещенных зон для отрисовки
-  useEffect(() => {
-    getAllZones().then(setZones).catch(() => { });
   }, []);
 
   // Состояние для выдвигающихся панелей
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [legendOpen, setLegendOpen] = useState(false);
   const [isAddingMarkerMode, setIsAddingMarkerMode] = useState(false);
+  const [isAddingEventMode, setIsAddingEventMode] = useState(false);
+  const [addSelectorOpen, setAddSelectorOpen] = useState(false);
+  const [isCreationPanelOpen, setIsCreationPanelOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
-  // === Офлайн-тайлы: оверлей поверх основной карты ===
-  const [offlineTilesActive, setOfflineTilesActive] = useState(false);
-  const [offlineMenuOpen, setOfflineMenuOpen] = useState(false);
-  const offlineMenuRef = useRef<HTMLDivElement>(null);
-  const [offlineTilesets, setOfflineTilesets] = useState<Array<{
-    name: string; format: string; sizeMB: number;
-    bounds: number[] | null; center: number[] | null;
-    minzoom: number | null; maxzoom: number | null;
-    description: string | null;
-  }>>([]);
-  const [activeOfflineTileset, setActiveOfflineTileset] = useState<string>('test-raster');
-  const [offlineTilesMeta, setOfflineTilesMeta] = useState<any>(null);
-  const offlineTileLayerRef = useRef<any>(null);
-  const offlineBoundsLayerRef = useRef<any>(null);
-
-  // Закрытие выпадающего офлайн-меню при клике вне
-  useEffect(() => {
-    if (!offlineMenuOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (offlineMenuRef.current && !offlineMenuRef.current.contains(e.target as Node)) {
-        setOfflineMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [offlineMenuOpen]);
-
-  // Загружаем список тайлсетов при активации офлайн-режима
-  useEffect(() => {
-    if (!offlineTilesActive) return;
-    const load = async () => {
-      try {
-        const res = await fetch('/api/tiles');
-        if (!res.ok) return;
-        const data = await res.json();
-        const list = data.tilesets || [];
-        setOfflineTilesets(list);
-        // Автовыбор PNG-тайлсета
-        const png = list.find((t: any) => t.format === 'png');
-        if (png) setActiveOfflineTileset(png.name);
-      } catch (err) {
-        console.warn('[MapPage] Не удалось загрузить список офлайн-тайлсетов:', err);
-      }
-    };
-    load();
-  }, [offlineTilesActive]);
-
-  // Добавляем/удаляем офлайн тайловый слой на Leaflet-карту
-  useEffect(() => {
-    try { mapFacade().getMap(); } catch { return; }
-
-    // Удаляем предыдущий слой
-    if (offlineTileLayerRef.current) {
-      try { mapFacade().removeLayer(offlineTileLayerRef.current); } catch {}
-      offlineTileLayerRef.current = null;
-    }
-    if (offlineBoundsLayerRef.current) {
-      try { mapFacade().removeLayer(offlineBoundsLayerRef.current); } catch {}
-      offlineBoundsLayerRef.current = null;
-    }
-
-    if (!offlineTilesActive || !activeOfflineTileset) return;
-
-    // Загружаем метаданные
-    fetch(`/api/tiles/${activeOfflineTileset}/metadata`)
-      .then(r => r.ok ? r.json() : null)
-      .then(meta => {
-        if (!meta) return;
-        setOfflineTilesMeta(meta);
-
-        // Динамический импорт Leaflet (он уже загружен — берём из кэша)
-        // FACADE: используем mapFacade() вместо прямого обращения к L
-        const facade = mapFacade();
-
-        // Добавляем тайловый слой через фасад
-        const tileUrl = `/api/tiles/${activeOfflineTileset}/{z}/{x}/{y}.png`;
-        const tileLayer = facade.addTileLayer(tileUrl, {
-          minZoom: meta.minzoom ?? 1,
-          maxZoom: meta.maxzoom ?? 18,
-          opacity: 0.9,
-          attribution: `Offline: ${activeOfflineTileset}`,
-          zIndex: 500,
-        });
-        offlineTileLayerRef.current = tileLayer;
-
-        // Показываем границы тайлсета прямоугольником через фасад
-        if (meta.bounds && meta.bounds.length === 4) {
-          const [west, south, east, north] = meta.bounds;
-          const boundsRect = facade.createRectangle(
-            [[south, west], [north, east]],
-            { color: '#3b82f6', weight: 2, fill: true, fillOpacity: 0.05, dashArray: '8 4' }
-          );
-          offlineBoundsLayerRef.current = boundsRect;
-
-          // Перемещаем карту в область тайлов
-          facade.fitBounds({ south, west, north, east } as any, { padding: [20, 20], maxZoom: meta.maxzoom ?? 12 });
-        }
-      })
-      .catch(err => console.warn('[MapPage] Ошибка загрузки метаданных тайлсета:', err));
-
-    return () => {
-      // Cleanup при размонтировании или изменении зависимостей
-      if (offlineTileLayerRef.current) {
-        try { mapFacade().removeLayer(offlineTileLayerRef.current); } catch {}
-        offlineTileLayerRef.current = null;
-      }
-      if (offlineBoundsLayerRef.current) {
-        try { mapFacade().removeLayer(offlineBoundsLayerRef.current); } catch {}
-        offlineBoundsLayerRef.current = null;
-      }
-    };
-  }, [offlineTilesActive, activeOfflineTileset]);
-
+  // Обработчик записи трека (GPS)
   const handleRecordTrackClick = useCallback(async () => {
     if (!isRecording) {
       try {
-        mapFacade().startTracking();
+        await projectManager.startTracking();
         setIsRecording(true);
       } catch (e: any) {
         // best-effort notify
@@ -245,7 +136,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
     }
 
     try {
-      const track = await mapFacade().stopTracking();
+      const track = await projectManager.stopTracking();
       setIsRecording(false);
       // Open post constructor or show quick modal to save/attach
       // For now, navigate to profile routes or show notification
@@ -256,9 +147,49 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
     }
   }, [isRecording]);
 
+  const handleCalendarClick = () => {
+    if (rightContent === 'calendar') {
+      closeRightPanel();
+      setIsCalendarOpen(false);
+    } else {
+      setRightContent('calendar');
+      setIsCalendarOpen(true);
+    }
+  };
+
+  /** Единая кнопка "+" — открывает/закрывает предвыборный попап */
+  const handleAddClick = () => {
+    if (isAddingMarkerMode || isAddingEventMode) {
+      // Отменяем активный режим
+      setIsAddingMarkerMode(false);
+      setIsAddingEventMode(false);
+      setAddSelectorOpen(false);
+    } else {
+      setAddSelectorOpen(prev => !prev);
+    }
+  };
+
+  /** Пользователь выбрал тип в MapAddSelector */
+  const handleAddModeSelect = (mode: MapAddMode) => {
+    setAddSelectorOpen(false);
+    if (mode === 'marker') {
+      setIsAddingMarkerMode(true);
+      setIsAddingEventMode(false);
+    } else {
+      setIsAddingEventMode(true);
+      setIsAddingMarkerMode(false);
+    }
+  };
+
   const favoritesContext = useFavorites();
-  const favoritesOpen = (favoritesContext as any)?.favoritesOpen ?? false;
-  const setFavoritesOpen = (favoritesContext as any)?.setFavoritesOpen ?? (() => { });
+  const navigate = useNavigate();
+  const { setRoutePoints } = useRoutePlanner();
+  // favoritesOpen и setFavoritesOpen больше не нужны, так как избранное отдельная страница
+
+  // КРИТИЧНО: Получаем глобальное состояние выбранных маршрутов из FavoritesContext
+  // Это обеспечивает синхронизацию чекбоксов маршрутов между Favorites, Map и Planner
+  const selectedRouteIds = (favoritesContext as any)?.selectedRouteIds ?? [];
+  const setSelectedRouteIds = (favoritesContext as any)?.setSelectedRouteIds ?? (() => { });
 
   // КРИТИЧНО: Берём favorites и selectedMarkerIds из КОНТЕКСТА, а не из локального state.
   // Это обеспечивает синхронизацию: MarkerPopup добавляет через контекст → FavoritesPanel и карта видят изменения.
@@ -270,17 +201,34 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
     }
-  }, [favoritesOpen, favoritesContext]);
+  }, [favoritesContext]);
 
   const [zones, setZones] = useState<Array<{ severity?: string; polygons: number[][][]; name?: string; type?: string }>>([]);
   const [showZonesLayer, setShowZonesLayer] = useState(false);
+
+  // Загрузка запрещённых зон для отрисовки — только когда пользователь включил слой
+  useEffect(() => {
+    if (!showZonesLayer) {
+      setZones([]);
+      return;
+    }
+
+    let cancelled = false;
+    getAllZones()
+      .then(z => { if (!cancelled) setZones(z); })
+      .catch(() => { if (!cancelled) setZones([]); });
+    return () => { cancelled = true; };
+  }, [showZonesLayer]);
   const [selectedHashtags, setSelectedHashtags] = useState<string[]>([]);
   const [filterLogic] = useState<FilterLogic>('OR');
-  const [allMarkers, setAllMarkers] = useState<MarkerData[]>([]);
+  // markers state is managed by shared hook (handles loading, favorites merge, lazy mode etc.)
   const [pendingMarkerDrafts, setPendingMarkerDrafts] = useState<MarkerData[]>([]);
   const [activePreset] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+
+  // NOTE: actual call to useMapMarkers is moved further down, after we know
+  // the `appliedFilters` object from useMapFilters.  We also want to tie the
+  // hook's behaviour to the `useLazyLoading` state, which is declared later.
+
 
   // КРИТИЧНО: Восстанавливаем маркеры из centralized store при возврате на страницу
   // Это решает проблему "маркеры теряются после переключения на Planner и обратно"
@@ -291,18 +239,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
     // Если маркеры уже загружены в store, но не в локальном state - восстанавливаем
     if (markersLoaded && cachedMarkers.length > 0 && allMarkers.length === 0) {
       console.log('[MapPage] Restoring markers from cache:', cachedMarkers.length);
-      // Преобразуем обратно в MarkerData формат
-      const restoredMarkers: MarkerData[] = cachedMarkers.map((m: any) => ({
-        id: m.id,
-        latitude: m.lat,
-        longitude: m.lon,
-        title: m.title || m.name,
-        description: m.description || '',
-        category: m.category || 'other',
-      } as MarkerData));
-      setAllMarkers(restoredMarkers);
-
-      // Также повторно передаём в фасад через публичный метод (не используем INTERNAL напрямую)
+      // просто обновляем фасад, чтобы картины не «мигали» после возвращения
       try {
         mapFacade().updateExternalMarkers(cachedMarkers);
         console.log('[MapPage] Restored markers passed to facade');
@@ -325,15 +262,13 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
   // Автоматическое определение местоположения пользователя
   const { location: userLocation, bounds: userBounds, loading: locationLoading, error: locationError, refreshLocation, clearLocation } = useUserLocation();
 
+  // Режим геолокации: 'auto' - использовать местоположение пользователя, 'manual' - ручной режим
+  const { mode: locationMode, toggleMode: toggleLocationMode } = useLocationMode();
+
   // Состояние для ленивой загрузки
   const [useLazyLoading, setUseLazyLoading] = useState(false);
   const [mapBounds, setMapBounds] = useState<Bounds | null>(userBounds);
 
-  const [isSearchLoading, setIsSearchLoading] = useState(false);
-  const [isDropdownVisible, setIsDropdownVisible] = useState(false);
-
-  const [geocodingResults, setGeocodingResults] = useState<Place[]>([]);
-  const [filteredMarkersForSearch, setFilteredMarkersForSearch] = useState<MarkerData[]>([]);
 
   const [flyToCoordinates, setFlyToCoordinates] = useState<[number, number] | null>(null);
   const [selectedMarkerIdForPopup, setSelectedMarkerIdForPopup] = useState<string | null>(null);
@@ -357,27 +292,17 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
 
   // Ссылки для поиска
   const inputRef = useRef<HTMLInputElement>(null);
-  const searchLoadingRef = useRef(false);
-  const lazyLoadingRef = useRef(false);
   const loadingStartRef = useRef(false);
 
   // ИСПРАВЛЕНО: Используем store для двухпанельного режима
   const leftContent = useContentStore((state) => state.leftContent);
   const rightContent = useContentStore((state) => state.rightContent);
+  const setRightContent = useContentStore((state) => state.setRightContent);
+  const closeRightPanel = useContentStore((state) => state.closeRightPanel);
   const isTwoPanelMode = rightContent !== null;
 
-  // Заглушки для функций, чтобы не было ошибок компиляции
-  // (заменить на реальные импорты/контексты при интеграции)
-  const startLoading = () => { };
-  const stopLoading = () => { };
-  const setMarkerDataForBlog = (_?: any) => { };
-  const setRoutePoints = (_?: any) => { };
-  const openLeftPanel = (_?: any) => { };
-  const openRightPanel = (_?: any) => { };
-  const navigate = (_?: any) => { };
+  // navigate уже объявлен выше через useNavigate, используем реальные контексты и store
 
-  // addToFavoritesContext заглушка
-  const addToFavoritesContext = undefined;
 
   // Экспорт компонента
 
@@ -385,8 +310,9 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
   // Получаем маршруты из FavoritesContext
   const { favoriteRoutes } = favoritesContext || { favoriteRoutes: [] };
 
-  // Преобразуем FavoriteRoute в RouteData для совместимости
-  const routes: RouteData[] = favoriteRoutes.map(route => ({
+  // Преобразуем FavoriteRoute в RouteData для совместимости.
+  // useMemo стабилизирует ссылку — useEffect([selectedRouteIds, routes]) не срабатывает на каждый рендер
+  const routes = useMemo<RouteData[]>(() => favoriteRoutes.map(route => ({
     id: route.id,
     title: route.title,
     description: '',
@@ -394,20 +320,81 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
     waypoints: [],
     createdAt: route.addedAt.toISOString(),
     updatedAt: route.addedAt.toISOString()
-  } as RouteData));
+  } as RouteData)), [favoriteRoutes]);
 
   // Черновики (draft) — то, что меняет пользователь в фильтрах/настройках
-  const [draftFilters, setDraftFilters] = useState<{
-    categories: string[];
-    radiusOn: boolean;
-    radius: number;
-    preset: string | null;
-  }>({
-    categories: ['attraction'],
-    radiusOn: false,
-    radius: 10,
-    preset: null,
-  });
+  // filters are managed by shared hook
+  const {
+    draft: draftFilters,
+    applied: appliedFilters,
+    setDraft: setDraftFilters,
+    apply: applyFilters,
+    reset: resetFilters,
+    quickChange: handleQuickCategoryChange,
+  } = useMapFilters();
+
+  // Когда пользователь выбирает категорию "Событие" в QuickFilter — загружаем события в store
+  const setOpenEvents = useEventsStore((state) => state.setOpenEvents);
+  const selectedEvent = useEventsStore((state) => state.selectedEvent);
+  const setSelectedEvent = useEventsStore((state) => state.setSelectedEvent);
+
+  // Мемоизированный ExternalEvent для EventDetailPage.
+  // Зависим только от id чтобы объект не пересоздавался на каждый рендер (иначе бесконечный цикл).
+  const selectedEventForDetail = useMemo(() => {
+    const ev = selectedEvent;
+    if (!ev) return null;
+    return {
+      id: String(ev.id),
+      title: ev.title,
+      description: ev.description || '',
+      start_date: ev.date,
+      end_date: ev.endDate ?? ev.date,
+      location: {
+        address: ev.location || '',
+        latitude: Number.isFinite(ev.latitude) ? ev.latitude : undefined,
+        longitude: Number.isFinite(ev.longitude) ? ev.longitude : undefined,
+      },
+      source: 'local' as const,
+      category: ev.categoryId,
+      url: '',
+      image_url: '',
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEvent?.id]);
+  useEffect(() => {
+    if (!appliedFilters.categories.includes('event')) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await getEvents();
+        if (cancelled) return;
+        const mapped = data
+          .filter((e: any) => e.latitude != null && e.longitude != null)
+          .map((e: any) => ({
+            id: Number(e.id) || 0,
+            title: e.title,
+            description: e.description || '',
+            date: (e.start_datetime || '').split('T')[0],
+            endDate: e.end_datetime ? (e.end_datetime).split('T')[0] : undefined,
+            categoryId: e.category || e.event_type || 'festival',
+            hashtags: Array.isArray(e.hashtags) ? e.hashtags : [],
+            location: e.location || '',
+            latitude: Number(e.latitude),
+            longitude: Number(e.longitude),
+          }));
+        const all = [...mapped, ...mockEvents].filter(
+          ev => !isNaN(ev.latitude) && !isNaN(ev.longitude) && ev.latitude !== 0 && ev.longitude !== 0
+        );
+        setOpenEvents(all);
+      } catch (_err) {
+        // Показываем хотя бы mockEvents
+        const valid = mockEvents.filter(ev => !isNaN(ev.latitude) && !isNaN(ev.longitude));
+        if (!cancelled) setOpenEvents(valid);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [appliedFilters.categories, setOpenEvents]);
+
   const [draftMapSettings, setDraftMapSettings] = useState({
     mapType: 'light',
     showTraffic: false,
@@ -417,31 +404,50 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
   });
 
   // Применённые (applied) — то, что реально отображается на карте
-  const [appliedFilters, setAppliedFilters] = useState<{
-    categories: string[];
-    radiusOn: boolean;
-    radius: number;
-    preset: string | null;
-  }>(draftFilters);
   const [appliedMapSettings, setAppliedMapSettings] = useState(draftMapSettings);
 
-  // Ленивая загрузка маркеров
+  // Общий хук для загрузки маркеров. В аргументах указываем категории из
+  // применённых фильтров и состояние ленивой загрузки из локального стейта.
+  // 'event' — специальная «виртуальная» категория для событий, не передаём в API
+  const markerApiCategories = appliedFilters.categories.filter(c => c !== 'event');
   const {
-    markers: lazyMarkers,
-    loading: lazyLoading,
+    allMarkers,
+    loading: markersLoading,
+    error: markersError,
     loadMarkers,
-    reloadMarkers
-  } = useLazyMarkers({
-    categories: appliedFilters.categories,
-    limit: 100
+    reloadMarkers,
+    clearMarkers,
+  } = useMapMarkers({
+    categories: markerApiCategories,
+    lazy: useLazyLoading,
+    // если отключаем ленивый режим, limit undefined означает "без ограничения" в
+    // реализации хука. при ленивом режиме можно оставить default 100.
+    limit: useLazyLoading ? 100 : undefined,
   });
 
-  // Перезагружаем маркеры при изменении фильтров
+  // search is handled by shared hook (depends on allMarkers)
+  const {
+    query: searchQuery,
+    setQuery: setSearchQuery,
+    isLoading: isSearchLoading,
+    isDropdownVisible,
+    setIsDropdownVisible,
+    places: geocodingResults,
+    markers: filteredMarkersForSearch,
+  } = useMapSearch(allMarkers);
+
+  // synchronize global loading indicator with search status
   useEffect(() => {
-    if (useLazyLoading && mapBounds) {
-      reloadMarkers(mapBounds);
+    if (isSearchLoading) {
+      try { startLoading(); } catch {}
+    } else {
+      try { stopLoading(); } catch {}
     }
-  }, [appliedFilters.categories, useLazyLoading, mapBounds, reloadMarkers]);
+  }, [isSearchLoading, startLoading, stopLoading]);
+
+  // когда карта получает новые границы, хук может подгрузить маркеры сам (в lazy
+  // режиме), но для простоты мы вызываем reloadMarkers вручную при смене
+  // режимов/границ ниже (см. handleMapBoundsChange / handleLoadingModeToggle).
 
   const addToFavorites = useCallback((marker: MarkerData) => {
     // Используем контекстную функцию для единого источника данных
@@ -455,37 +461,6 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
     }
   }, [favoritesContext]);
 
-  // Загружаем маркеры при инициализации (только если НЕ используется ленивая загрузка)
-  useEffect(() => {
-    // В ленивом режиме не загружаем все маркеры сразу
-    if (useLazyLoading) {
-      console.log('[MapPage] Skipping marker load - using lazy loading');
-      return;
-    }
-
-    const fetchMarkers = async () => {
-      console.log('[MapPage] Starting to fetch markers...');
-      loadingStartRef.current = true;
-      try {
-        startLoading();
-        // КРИТИЧНО: используем loadAllMarkers вместо getMarkers 
-        // getMarkers() это синхронный метод который возвращает уже загруженные маркеры
-        // loadAllMarkers() это асинхронный метод который реально загружает с сервера
-        const fetched = await projectManager.loadAllMarkers();
-        console.log('[MapPage] Fetched markers:', fetched?.length || 0);
-        setAllMarkers(fetched || []);
-      } catch (error: any) {
-        console.error('[MapPage] Failed to load markers:', error);
-        setAllMarkers([]);
-      } finally {
-        if (loadingStartRef.current) {
-          stopLoading();
-          loadingStartRef.current = false;
-        }
-      }
-    };
-    fetchMarkers();
-  }, [useLazyLoading]); // Добавляем зависимость от useLazyLoading
 
   // КРИТИЧНО: Передаем загруженные маркеры в фасад для отрисовки
   // Это главный способ как маркеры попадают на карту!
@@ -527,7 +502,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
         // Если showOnlySelected, скрываем панели
         if (showOnlySelected) {
           setSettingsOpen(false);
-          setFavoritesOpen(false);
+          // setFavoritesOpen больше не используется
         }
       }
     }
@@ -543,7 +518,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
     if (type === 'marker') {
       const marker = allMarkers.find((m) => m.id === id);
       if (marker && Number.isFinite(marker.longitude) && Number.isFinite(marker.latitude)) {
-        setFlyToCoordinates([marker.longitude, marker.latitude]);
+        setFlyToCoordinates([marker.latitude, marker.longitude]);
         setSelectedMarkerIdForPopup(marker.id);
       }
     }
@@ -563,9 +538,13 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
   }, [userLocation]);
   */
 
-  // ОТКЛЮЧЕНО: Автоматическое центрирование при изменении региона
-  // Это вызывало сброс состояния карты при переключении Map <-> Planner
-  // Центрирование теперь происходит только при первой загрузке или по запросу пользователя
+  // РЕГИОНЫ: раньше автоматически центрировали карту при изменении selectedRegions.
+  // Эта логика вызывала «приклеивание» к исходной точке – каждый раз, когда
+  // список регионов обновлялся (например, при детекции геолокации), центр
+  // сбрасывался. Код оставлен как комментарий для истории и наглядности, но
+  // он **не выполняется**. Центрирование теперь делается вручную через
+  // RegionSelector или кнопки, поэтому проблема с блокировкой прокрутки
+  // приводящая к жалобе исчезла.
   /*
   useEffect(() => {
     if (selectedRegions.length > 0) {
@@ -594,116 +573,53 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
     }
   }, [userBounds]);
 
-  // Инициализация маркеров при загрузке страницы (только для ленивого режима)
+  // when bounds change or mode toggles we simply ask the hook to reload markers.
   useEffect(() => {
-    if (useLazyLoading && mapBounds) {
-      loadMarkers(mapBounds);
+    if (mapBounds) {
+      reloadMarkers(mapBounds);
     }
-  }, [useLazyLoading, mapBounds, loadMarkers]);
+  }, [mapBounds, reloadMarkers]);
 
-  // Обработчик изменения границ карты для ленивой загрузки
   const handleMapBoundsChange = useCallback((bounds: Bounds) => {
     setMapBounds(bounds);
-    if (useLazyLoading) {
-      loadMarkers(bounds);
-    }
-  }, [useLazyLoading, loadMarkers]);
+    reloadMarkers(bounds);
+  }, [reloadMarkers]);
 
-  // Обработчик переключения режима загрузки
   const handleLoadingModeToggle = useCallback((useLazy: boolean) => {
     setUseLazyLoading(useLazy);
-    if (useLazy && mapBounds) {
-      // Переключаемся на ленивую загрузку - загружаем маркеры для текущей области
-      loadMarkers(mapBounds);
-    } else if (!useLazy) {
-      // Переключаемся на полную загрузку - загружаем все маркеры
-      const fetchAllMarkers = async () => {
-        try {
-          const fetched = await projectManager.getMarkers();
-          setAllMarkers(fetched);
-        } catch (error) {
-        }
-      };
-      fetchAllMarkers();
-    }
-  }, [mapBounds, loadMarkers]);
+    // new mode — reload markers appropriately
+    reloadMarkers(mapBounds || undefined);
+  }, [mapBounds, reloadMarkers]);
 
+  // синхронизируем индикатор загрузки с возвращаемым значением из хука
   useEffect(() => {
-    const performSearch = async () => {
-      if (debouncedSearchQuery.length < 3) {
-        setGeocodingResults([]);
-        setFilteredMarkersForSearch([]);
-        setIsDropdownVisible(false);
-        return;
-      }
-
-      setIsSearchLoading(true);
-      setIsDropdownVisible(true);
-      // mark global loading for search
-      searchLoadingRef.current = true;
-      try { startLoading(); } catch (e) { }
-
-      // Запускаем оба поиска одновременно
-      const placesPromise = geocodingService.searchPlaces(debouncedSearchQuery);
-
-      const q = debouncedSearchQuery.toLowerCase();
-      const markersPromise = Promise.resolve(
-        allMarkers.filter(marker => (marker.title || '').toLowerCase().includes(q))
-      );
-
-      const [places, markers] = await Promise.all([placesPromise, markersPromise]);
-
-      setGeocodingResults(places);
-      setFilteredMarkersForSearch(markers);
-      setIsSearchLoading(false);
-      if (searchLoadingRef.current) {
-        try { stopLoading(); } catch (e) { }
-        searchLoadingRef.current = false;
-      }
-    };
-
-    performSearch();
-  }, [debouncedSearchQuery, allMarkers]);
-
-  // Синхронизируем глобальный loading с lazyLoading из хука маркеров
-  useEffect(() => {
-    if (useLazyLoading && lazyLoading) {
-      if (!lazyLoadingRef.current) {
-        try { startLoading(); } catch (e) { }
-        lazyLoadingRef.current = true;
-      }
+    if (markersLoading) {
+      try { startLoading(); } catch {};
     } else {
-      if (lazyLoadingRef.current) {
-        try { stopLoading(); } catch (e) { }
-        lazyLoadingRef.current = false;
-      }
+      try { stopLoading(); } catch {};
     }
-  }, [useLazyLoading, lazyLoading, startLoading, stopLoading]);
+  }, [markersLoading, startLoading, stopLoading]);
 
   const handlePlaceSelect = (place: Place) => {
     setFlyToCoordinates(place.coordinates);
     setSearchQuery('');
-    setIsDropdownVisible(false);
+    // dropdown visibility is controlled by hook
   };
 
   const handleMarkerSelect = (marker: MarkerData) => {
     if (Number.isFinite(marker.longitude) && Number.isFinite(marker.latitude)) {
-      setFlyToCoordinates([marker.longitude, marker.latitude]);
+      setFlyToCoordinates([marker.latitude, marker.longitude]);
     }
     setSelectedMarkerIdForPopup(marker.id);
     setSearchQuery('');
     setIsDropdownVisible(false);
   };
 
-  // Мгновенное обновление категорий из виджета CategoryQuickFilter
-  const handleQuickCategoryChange = useCallback((categories: string[]) => {
-    const newFilters = { ...appliedFilters, categories };
-    setAppliedFilters(newFilters);
-    setDraftFilters(prev => ({ ...prev, categories }));
-  }, [appliedFilters]);
+  // quick-change logic comes from the filters hook
+  // (we already aliased `handleQuickCategoryChange` above)
 
   const handleApply = () => {
-    setAppliedFilters(draftFilters);
+    applyFilters();
     setAppliedMapSettings(draftMapSettings);
 
     // Если используем ленивую загрузку, перезагружаем маркеры с новыми фильтрами
@@ -713,12 +629,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
   };
 
   const handleReset = () => {
-    const defaultFilters = {
-      categories: ['attraction'],
-      radiusOn: false,
-      radius: 10,
-      preset: null,
-    };
+    resetFilters();
     const defaultMapSettings = {
       mapType: 'light',
       showTraffic: false,
@@ -726,9 +637,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
       showHints: true,
       themeColor: 'green',
     };
-    setDraftFilters(defaultFilters);
     setDraftMapSettings(defaultMapSettings);
-    setAppliedFilters(defaultFilters);
     setAppliedMapSettings(defaultMapSettings);
   };
 
@@ -826,25 +735,106 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
 
   // Отображение маршрута по чекбоксу из избранного (режим карты)
   const [routeModalOpen, setRouteModalOpen] = useState(false);
+  const [activeFavoriteRoutes, setActiveFavoriteRoutes] = useState<Map<string, any>>(new Map());
+  
   const handleRouteToggleFromFavorites = async (route: any, checked: boolean) => {
-    if (!route || !Array.isArray(route.points)) return;
+    if (!route || !route.id) return;
+    
+    const routeId = route.id;
+    
     if (checked) {
-      // Передаём точки в планировщик и открываем страницу планирования — построение маршрута в Planner
-      const routePointsForPlanner = route.points.map((point: any, index: number) => ({
-        id: point.id || `route-point-${index}`,
-        latitude: Number(point.latitude),
-        longitude: Number(point.longitude),
-        title: point.title || `Точка ${index + 1}`,
-        description: point.description || '',
-      }));
-      setRoutePoints?.(routePointsForPlanner);
-      navigate('/planner');
+      // Добавляем маршрут в активные маршруты для отображения на карте
+      setActiveFavoriteRoutes(prev => {
+        const newMap = new Map(prev);
+        newMap.set(routeId, route);
+        return newMap;
+      });
+      
+      // Извлекаем точки маршрута
+      const routePoints = route.points || [];
+      if (routePoints.length >= 2) {
+        // Нормализуем точки в формат [lat, lon]
+        const normalizedPoints: [number, number][] = routePoints
+          .map((p: any) => {
+            const lat = Number(p?.latitude ?? p?.lat);
+            const lon = Number(p?.longitude ?? p?.lon ?? p?.lng);
+            if (Number.isFinite(lat) && Number.isFinite(lon)) {
+              return [lat, lon] as [number, number];
+            }
+            return null;
+          })
+          .filter((p: [number, number] | null): p is [number, number] => p !== null);
+        
+        if (normalizedPoints.length >= 2) {
+          // Устанавливаем данные маршрута для отображения на карте
+          // Используем polyline вместо geometry для совместимости с типами
+          setRouteData({
+            id: `fav-route-${routeId}`,
+            title: route.title || 'Маршрут из избранного',
+            polyline: normalizedPoints,
+            markers: [],
+          });
+          
+          // Центрируем карту на первой точке маршрута
+          setCenter(normalizedPoints[0]);
+          setZoom(12);
+        }
+      }
+      
+      console.log('[Map] Route displayed from favorites:', routeId);
     } else {
-      // Скрываем маршрут
+      // Удаляем маршрут из активных
+      setActiveFavoriteRoutes(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(routeId);
+        return newMap;
+      });
+      
+      // Скрываем маршрут с карты
       setRouteData(null);
       setRouteModalOpen(false);
+      
+      console.log('[Map] Route hidden from favorites:', routeId);
     }
   };
+
+  // КРИТИЧНО: Синхронизация selectedRouteIds с отображением маршрутов на карте
+  // Это позволяет отображать маршруты выбранные на странице Favorites.tsx
+  const prevSelectedRouteIdsRef = useRef<string[]>([]);
+  useEffect(() => {
+    const prevIds = prevSelectedRouteIdsRef.current;
+    const currentIds = selectedRouteIds;
+    
+    // Определяем добавленные и удалённые ID
+    const addedIds = currentIds.filter((id: string) => !prevIds.includes(id));
+    const removedIds = prevIds.filter((id: string) => !currentIds.includes(id));
+    
+    prevSelectedRouteIdsRef.current = currentIds;
+    
+    // Обрабатываем добавленные маршруты
+    addedIds.forEach((routeId: string) => {
+      // Ищем маршрут в favoriteRoutes
+      const route = routes.find((r: RouteData) => r.id === routeId);
+      if (route) {
+        handleRouteToggleFromFavorites(route, true);
+      }
+    });
+    
+    // Обрабатываем удалённые маршруты
+    removedIds.forEach((routeId: string) => {
+      // Скрываем маршрут с карты
+      if (routeData?.id === `fav-route-${routeId}`) {
+        setRouteData(null);
+        setActiveFavoriteRoutes(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(routeId);
+          return newMap;
+        });
+      }
+    });
+    
+    console.log('[Map] selectedRouteIds changed:', { addedIds, removedIds, currentIds });
+  }, [selectedRouteIds, routes]);
 
   // Функция для передачи данных метки в блог
   const handleAddMarkerToBlog = (marker: MarkerData) => {
@@ -871,12 +861,35 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
     // Больше не очищаем глобальный выбор здесь, это делается только в настройках карты
   };
 
-  const [searchRadiusCenter, setSearchRadiusCenter] = useState<[number, number]>([56.1366, 40.3966]);
+  // Центр поиска/радиуса - зависит от режима геолокации
+  // В режиме 'auto' - используем местоположение пользователя
+  // В режиме 'manual' - используем текущий центр карты
+  const [manualSearchRadiusCenter, setManualSearchRadiusCenter] = useState<[number, number]>([56.1366, 40.3966]);
+  
+  // Вычисляем searchRadiusCenter на основе режима
+  const searchRadiusCenter = useMemo<[number, number]>(() => {
+    if (locationMode === 'auto' && userLocation) {
+      return [userLocation.latitude, userLocation.longitude];
+    }
+    return manualSearchRadiusCenter;
+  }, [locationMode, userLocation, manualSearchRadiusCenter]);
+
+  // Обновляем manualSearchRadiusCenter когда пользователь перемещает карту в ручном режиме
+  const handleSearchRadiusCenterChange = useCallback((newCenter: [number, number]) => {
+    if (locationMode === 'manual') {
+      setManualSearchRadiusCenter(newCenter);
+    }
+    // В режиме 'auto' searchRadiusCenter автоматически обновляется через useMemo
+  }, [locationMode]);
 
   // Оптимизация: мемоизация фильтрованных маркеров
   const filteredMarkers = useMemo(() => {
-    // Выбираем источник маркеров в зависимости от режима загрузки
-    let result = useLazyLoading && lazyMarkers.length > 0 ? lazyMarkers : allMarkers;
+    // Защитная проверка: убеждаемся что allMarkers это массив
+    const markers = Array.isArray(allMarkers) ? allMarkers : [];
+    
+    // Источник маркеров определяется одним массивом из хука;
+    // ленивый режим уже реализован внутри самого хука.
+    let result = markers;
 
     // Логируем количество маркеров для отладки
     console.log('[MapPage] Filtering markers:', {
@@ -975,11 +988,15 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
       }
     }
 
-    // Фильтр по категориям - показываем все маркеры, если категории не выбраны
+    // Фильтр по категориям - показываем все маркеры, если категории не выбраны.
+    // 'event' — специальная категория для событий, не фильтрует обычные метки
     if (appliedFilters.categories && appliedFilters.categories.length > 0) {
-      result = result.filter(marker =>
-        appliedFilters.categories.includes(marker.category)
-      );
+      const regularCategoryFilter = appliedFilters.categories.filter(c => c !== 'event');
+      if (regularCategoryFilter.length > 0) {
+        result = result.filter(marker =>
+          regularCategoryFilter.includes(marker.category)
+        );
+      }
     }
 
     // Фильтр по радиусу
@@ -999,7 +1016,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
     }
 
     return result;
-  }, [useLazyLoading, lazyMarkers, allMarkers, pendingMarkerDrafts, auth?.user?.id, selectedHashtags, filterLogic, searchQuery, activePreset, appliedFilters, searchRadiusCenter, selectedMarkerIds, favorites, selectedRegions]);
+  }, [allMarkers, pendingMarkerDrafts, auth?.user?.id, selectedHashtags, filterLogic, searchQuery, activePreset, appliedFilters, searchRadiusCenter, selectedMarkerIds, favorites, selectedRegions]);
 
   // Загружаем счётчик модерации
   useEffect(() => {
@@ -1076,13 +1093,17 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
 
     return () => {
       clearInterval(interval);
-      // Очищаем созданные URL для изображений
-      pendingMarkerDrafts.forEach(marker => {
-        marker.photo_urls?.forEach(url => {
-          if (url.startsWith('blob:')) {
-            URL.revokeObjectURL(url);
-          }
+      // Очищаем созданные URL для изображений.
+      // Используем setPendingMarkerDrafts с чтением текущего state чтобы избежать stale closure
+      setPendingMarkerDrafts(current => {
+        current.forEach(marker => {
+          marker.photo_urls?.forEach((url: string) => {
+            if (url.startsWith('blob:')) {
+              URL.revokeObjectURL(url);
+            }
+          });
         });
+        return current; // не меняем state, только читаем
       });
     };
   }, [auth?.user?.id]);
@@ -1093,13 +1114,23 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
 
   // Синхронизируем метки с mapFacade (в useEffect чтобы избежать сайд-эффектов в рендере)
   useEffect(() => {
-    // Передаём только отфильтрованные маркеры для отображения на карте
-    try {
-      mapFacade().updateExternalMarkers(allMarkersWithModeration);
-      console.debug('[MapPage] External markers synchronized to facade:', allMarkersWithModeration.length);
-    } catch (err) {
-      console.warn('[MapPage] Failed to update facade external markers:', err);
-    }
+    // debounce updates so that clicking UI controls rapidly doesn't
+    // flood the map with synchronous work
+    let handle: number | null = null;
+    const sync = () => {
+      try {
+        projectManager.updateMarkers(allMarkersWithModeration);
+        console.debug('[MapPage] External markers synchronized to facade:', allMarkersWithModeration.length);
+      } catch (err) {
+        console.warn('[MapPage] Failed to update facade external markers:', err);
+      }
+    };
+    handle = window.setTimeout(sync, 0);
+    return () => {
+      if (handle !== null) {
+        clearTimeout(handle);
+      }
+    };
   }, [allMarkersWithModeration]);
 
   // Раньше здесь автоматически открывалась левая панель с картой при монтировании
@@ -1107,11 +1138,12 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
   // управление открытием панели за явными действиями (пользователь или
   // другие контроллеры через `openLeftPanel` / `setLeftContent`).
   return (
-    <MirrorGradientContainer className="page-layout-container page-container map-mode">
-      <div className="page-main-area">
-        <div className="page-content-wrapper">
-          <div className="page-main-panel relative" style={{ background: 'transparent', borderRadius: 0 }}>
-            {/* Стеклянный блок с инструментами: Поиск + RegionSelector + Запрещенные зоны
+    <>
+    <MirrorGradientContainer className="page-layout-container page-container map-mode" style={{ pointerEvents: 'none' }}>
+      <div className="page-main-area" style={{ pointerEvents: 'none' }}>
+        <div className="page-content-wrapper" style={{ pointerEvents: 'none' }}>
+          <div className="page-main-panel relative" style={{ background: 'transparent', borderRadius: 0, pointerEvents: 'none' }}>
+            {/* Стеклянный блок с инструментами: Поиск + RegionSelector
                 ВАЖНО: Вынесен за пределы MapContainer чтобы выпадающий список не обрезался
                 Стиль: тёмное матовое стекло */}
             <div
@@ -1210,186 +1242,49 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
               {/* Селектор регионов */}
               <RegionSelector />
 
-              {/* Переключатель запрещенных зон */}
+              {/* Кнопка перехода в PRO раздел офлайн-карт */}
               <button
-                onClick={() => setShowZonesLayer(!showZonesLayer)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 map-zone-btn glass-l2 ${showZonesLayer ? 'active' : ''}`}
+                onClick={() => window.location.href = '/pro'}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 map-offline-btn glass-l2"
+                title="Офлайн-карты (PRO)"
                 style={{
-                  ...(showZonesLayer ? {
-                    background: 'rgba(76, 201, 240, 0.25)',
-                    borderColor: 'rgba(76, 201, 240, 0.4)',
-                    color: '#4cc9f0',
-                  } : {}),
+                  background: 'rgba(59, 130, 246, 0.15)',
+                  borderColor: 'rgba(59, 130, 246, 0.3)',
                 }}
-                title={showZonesLayer ? 'Скрыть запрещённые зоны' : 'Показать запрещённые зоны'}
               >
-                <FaRoute className="w-4 h-4" />
-                <span className="text-sm font-medium whitespace-nowrap">
-                  Зоны
+                <FaDownload className="w-4 h-4" style={{ color: '#60a5fa' }} />
+                <span className="text-sm font-medium whitespace-nowrap" style={{ color: '#60a5fa' }}>
+                  Офлайн
                 </span>
               </button>
-
-              {/* Метка убрана — дубль кнопки в контроллере карты (MapActionButtons) */}
-
-              {/* Кнопка «Офлайн» с выпадающим меню */}
-              <div ref={offlineMenuRef} style={{ position: 'relative' }}>
-                <button
-                  onClick={() => setOfflineMenuOpen(!offlineMenuOpen)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 map-offline-btn glass-l2 ${offlineTilesActive ? 'active' : ''}`}
-                  style={{
-                    ...(offlineTilesActive ? {
-                      background: 'rgba(34, 197, 94, 0.25)',
-                      borderColor: 'rgba(34, 197, 94, 0.4)',
-                      color: '#22c55e',
-                    } : {}),
-                  }}
-                  title="Офлайн-карты"
-                >
-                  <FaDownload className="w-4 h-4" />
-                  <span className="text-sm font-medium whitespace-nowrap">
-                    {offlineTilesActive ? 'Офлайн ✓' : 'Офлайн'}
-                  </span>
-                </button>
-
-                {/* Выпадающее меню */}
-                {offlineMenuOpen && (
-                  <div
-                    className="glass-l1"
-                    style={{
-                      position: 'absolute',
-                      top: 'calc(100% + 6px)',
-                      right: 0,
-                      minWidth: '220px',
-                      borderRadius: '12px',
-                      padding: '6px',
-                      zIndex: 100,
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-                    }}
-                  >
-                    {/* Переключатель оверлея */}
-                    <button
-                      onClick={() => {
-                        setOfflineTilesActive(!offlineTilesActive);
-                        setOfflineMenuOpen(false);
-                      }}
-                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-white/10"
-                      style={{ color: offlineTilesActive ? '#22c55e' : 'var(--glass-card-text)', cursor: 'pointer', border: 'none', background: 'transparent', textAlign: 'left' }}
-                    >
-                      <span style={{ fontSize: '16px' }}>{offlineTilesActive ? '✅' : '🗺️'}</span>
-                      <span style={{ fontSize: '13px', fontWeight: 500 }}>
-                        {offlineTilesActive ? 'Выключить офлайн-слой' : 'Показать офлайн-слой'}
-                      </span>
-                    </button>
-                    {/* Разделитель */}
-                    <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '2px 8px' }} />
-                    {/* Перейти к загрузке */}
-                    <button
-                      onClick={() => {
-                        setOfflineMenuOpen(false);
-                        window.location.href = '/offline';
-                      }}
-                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-white/10"
-                      style={{ color: 'var(--glass-card-text)', cursor: 'pointer', border: 'none', background: 'transparent', textAlign: 'left' }}
-                    >
-                      <span style={{ fontSize: '16px' }}>📥</span>
-                      <div>
-                        <div style={{ fontSize: '13px', fontWeight: 500 }}>Загрузить карты регионов</div>
-                        <div style={{ fontSize: '11px', opacity: 0.6 }}>Выбрать и скачать тайлы</div>
-                      </div>
-                    </button>
-                  </div>
-                )}
-              </div>
             </div>
 
-            {/* Панель информации об офлайн-тайлах */}
-            {offlineTilesActive && (
-              <div
-                className="absolute flex flex-col gap-2 glass-l1"
-                style={{
-                  top: isTwoPanelMode ? '130px' : '130px',
-                  left: isTwoPanelMode ? '25%' : '50%',
-                  transform: 'translateX(-50%)',
-                  borderRadius: '12px',
-                  padding: '8px 14px',
-                  border: '1px solid rgba(34, 197, 94, 0.2)',
-                  zIndex: 10,
-                  pointerEvents: 'auto',
-                  maxWidth: '90vw',
-                }}
-              >
-                {/* Выбор тайлсета */}
-                {offlineTilesets.length > 0 && (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span style={{ color: 'var(--glass-card-text-secondary)', fontSize: '12px' }}>Тайлсет:</span>
-                    {offlineTilesets.filter(ts => ts.format === 'png').map(ts => (
-                      <button
-                        key={ts.name}
-                        onClick={() => setActiveOfflineTileset(ts.name)}
-                        className="glass-l2"
-                        style={{
-                          padding: '3px 10px',
-                          borderRadius: '6px',
-                          ...(activeOfflineTileset === ts.name ? {
-                            border: '1px solid rgba(34, 197, 94, 0.5)',
-                            background: 'rgba(34, 197, 94, 0.2)',
-                            color: '#4ade80',
-                          } : {
-                            color: 'var(--glass-text-secondary)',
-                          }),
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontWeight: 500,
-                        }}
-                      >
-                        {ts.name} ({ts.sizeMB} МБ)
-                      </button>
-                    ))}
-                    {offlineTilesets.filter(ts => ts.format !== 'png').length > 0 && (
-                      <span style={{ color: '#f59e0b', fontSize: '11px' }}>
-                        ⚠️ PBF-тайлсеты ({offlineTilesets.filter(ts => ts.format !== 'png').map(t => t.name).join(', ')}) не совместимы с Leaflet
-                      </span>
-                    )}
-                  </div>
-                )}
-                {/* Метаданные тайлсета */}
-                {offlineTilesMeta && (
-                  <div className="flex items-center gap-3 flex-wrap" style={{ fontSize: '11px', color: 'var(--glass-card-text-secondary)' }}>
-                    <span>Формат: <b style={{ color: 'var(--glass-card-text)' }}>{offlineTilesMeta.format}</b></span>
-                    <span>Zoom: <b style={{ color: 'var(--glass-card-text)' }}>{offlineTilesMeta.minzoom}–{offlineTilesMeta.maxzoom}</b></span>
-                    {offlineTilesMeta.description && (
-                      <span style={{ color: 'var(--glass-card-text-secondary)' }}>{offlineTilesMeta.description}</span>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Виджет быстрого выбора категорий — всегда виден на карте */}
-            <CategoryQuickFilter
-              selectedCategories={appliedFilters.categories}
-              onCategoriesChange={handleQuickCategoryChange}
-              isTwoPanelMode={isTwoPanelMode}
-            />
+            {!(isAddingMarkerMode || isAddingEventMode || addSelectorOpen || isCreationPanelOpen) && (
+              <CategoryQuickFilter
+                selectedCategories={appliedFilters.categories}
+                onCategoriesChange={handleQuickCategoryChange}
+                isTwoPanelMode={isTwoPanelMode}
+              />
+            )}
 
             {/* Кнопки действий карты — ВСЕГДА видны на карте, рендерим вне портала для корректного z-index */}
             <MapActionButtons
               onSettingsClick={() => setSettingsOpen(true)}
-              onFavoritesClick={() => {
-                if (process.env.NODE_ENV === 'development') {
-                }
-                setFavoritesOpen(true);
-              }}
-              favoritesCount={favoritesCount}
               onLegendClick={() => setLegendOpen(true)}
-              onAddMarkerClick={() => setIsAddingMarkerMode(true)}
-              isAddingMarkerMode={isAddingMarkerMode}
-              onRecordTrackClick={handleRecordTrackClick}
-              isRecording={isRecording}
+              onAddClick={handleAddClick}
+              isAddingMode={isAddingMarkerMode || isAddingEventMode || addSelectorOpen}
               isTwoPanelMode={isTwoPanelMode}
+              locationMode={locationMode}
+              onLocationModeToggle={toggleLocationMode}
             />
 
+            {/* Предвыбор типа добавляемого объекта */}
+            <MapAddSelector
+              isOpen={addSelectorOpen}
+              onSelect={handleAddModeSelect}
+              onClose={() => setAddSelectorOpen(false)}
+            />
             {/* Область карты (рендерим в portal, чтобы избежать обрезания родительскими панелями) */}
             {typeof document !== 'undefined' && facadeMapRootEl && ReactDOM.createPortal(
               <MapContainer
@@ -1400,7 +1295,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
 
                 {/* Индикатор загрузки геолокации убран - геолокация работает в фоне, не блокирует карту */}
 
-                {useLazyLoading && lazyLoading && (
+                {markersLoading && (
                   <div className="absolute top-4 right-4 z-10 rounded-lg px-4 py-2 flex items-center space-x-2 glass-l2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                     <span className="text-sm" style={{ color: 'var(--glass-text-secondary)' }}>Загрузка маркеров...</span>
@@ -1429,9 +1324,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
                     try { setSelectedMarkerIds(Array.isArray(ids) ? ids : []); } catch (e) { }
                   }}
                   onFavoritesClick={() => {
-                    if (process.env.NODE_ENV === 'development') {
-                    }
-                    setFavoritesOpen(true);
+                    navigate('/favorites');
                   }}
                   favoritesCount={favoritesCount}
                   isFavorite={marker => {
@@ -1442,13 +1335,16 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
                   zones={showZonesLayer ? zones : []}
                   filters={appliedFilters}
                   searchRadiusCenter={searchRadiusCenter}
-                  onSearchRadiusCenterChange={setSearchRadiusCenter}
+                  onSearchRadiusCenterChange={handleSearchRadiusCenterChange}
                   selectedMarkerIds={selectedMarkerIds}
                   onAddToBlog={handleAddMarkerToBlog}
                   onBoundsChange={handleMapBoundsChange}
                   routeData={routeData}
                   isAddingMarkerMode={isAddingMarkerMode}
                   onAddMarkerModeChange={setIsAddingMarkerMode}
+                  isAddingEventMode={isAddingEventMode}
+                  onAddingEventModeChange={setIsAddingEventMode}
+                  onCreationPanelVisibilityChange={setIsCreationPanelOpen}
                   legendOpen={legendOpen}
                   onLegendOpenChange={setLegendOpen}
                 />
@@ -1482,27 +1378,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
               />
             </GlassPanel>
 
-            {/* Правая выдвигающаяся панель с избранным - использует GlassPanel внутри */}
-            <FavoritesPanel
-              favorites={favorites}
-              routes={routes}
-              isVip={isVip}
-              onRemove={removeFromFavorites}
-              onClose={() => {
-                setFavoritesOpen(false);
-              }}
-              onMoveToPlanner={handleMoveToPlanner}
-              onBuildRoute={handleBuildRoute}
-              onLoadRoute={handleLoadRoute}
-              onRouteToggle={handleRouteToggleFromFavorites}
-              mode="map"
-              selectedMarkerIds={selectedMarkerIds}
-              onSelectedMarkersChange={setSelectedMarkerIds}
-              selectedRouteIds={[]}
-              onSelectedRouteIdsChange={() => { }}
-              isOpen={favoritesOpen}
-              constrainToMapArea={isTwoPanelMode}
-            />
+            {/* Правая выдвигающаяся панель с избранным удалена, так как избранное теперь отдельная страница /favorites */}
 
             {/* Кнопка модерации для админа */}
             {
@@ -1532,27 +1408,7 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
                   contentType="marker"
                   onContentApproved={(contentId) => {
                     // Перезагружаем маркеры после одобрения
-                    if (mapBounds) {
-                      reloadMarkers(mapBounds);
-                    } else if (useLazyLoading) {
-                      const defaultBounds = {
-                        north: center[0] + 0.1,
-                        south: center[0] - 0.1,
-                        east: center[1] + 0.1,
-                        west: center[1] - 0.1
-                      };
-                      reloadMarkers(defaultBounds);
-                    } else {
-                      const fetchMarkers = async () => {
-                        try {
-                          const fetched = await projectManager.getMarkers();
-                          setAllMarkers(fetched || []);
-                        } catch (err) {
-                          console.error('Ошибка загрузки маркеров:', err);
-                        }
-                      };
-                      fetchMarkers();
-                    }
+                    reloadMarkers(mapBounds || undefined);
                     // Обновляем счётчик
                     const counts = getPendingContentCounts();
                     setModerationCount(counts.marker);
@@ -1571,6 +1427,36 @@ const MapPage: React.FC<MapPageProps> = ({ selectedMarkerId, showOnlySelected = 
         </div >
       </div >
     </MirrorGradientContainer >
+
+    {/* Панель детальной информации о событии — открывается при клике на маркер события на карте
+        Показывается ТОЛЬКО когда календарь не активен в правой панели (иначе EventDetailPage
+        показывается внутри самого TravelCalendar поверх его фона) */}
+    {selectedEventForDetail && rightContent !== 'calendar' && (() => {
+      const externalEvent = selectedEventForDetail;
+      if (!externalEvent) return null;
+      return (
+        <GlassPanel
+          isOpen={true}
+          onClose={() => setSelectedEvent(null)}
+          position="right"
+          width="480px"
+          closeOnOverlayClick={true}
+          showCloseButton={false}
+          className={`map-event-detail-panel${isDarkMode ? ' dark' : ''}`}
+        >
+          <Suspense fallback={<div style={{ padding: 24, color: 'var(--glass-text)' }}>Загрузка...</div>}>
+            <LazyEventDetailPage
+              event={externalEvent}
+              onClose={() => setSelectedEvent(null)}
+              onBack={() => setSelectedEvent(null)}
+              standalone={true}
+            />
+          </Suspense>
+        </GlassPanel>
+      );
+    })()}
+
+    </>
   );
 };
 

@@ -44,6 +44,7 @@ const Badge = styled.div`
 const NotificationIcon: React.FC = () => {
   const { unreadCount, refreshUnreadCount } = useNotifications();
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Обновляем счётчик при монтировании и периодически
@@ -52,10 +53,21 @@ const NotificationIcon: React.FC = () => {
     return () => clearInterval(interval);
   }, [refreshUnreadCount]);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isPanelOpen && containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsPanelOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isPanelOpen]);
+
   return (
-    <>
+    <div ref={containerRef} style={{ position: 'relative', display: 'inline-block' }}>
       <IconButton
-        onClick={() => setIsPanelOpen(true)}
+        onClick={() => setIsPanelOpen((open) => !open)}
         title="Уведомления"
       >
         <FaBell size={20} />
@@ -72,7 +84,7 @@ const NotificationIcon: React.FC = () => {
           refreshUnreadCount();
         }}
       />
-    </>
+    </div>
   );
 };
 

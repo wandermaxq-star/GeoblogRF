@@ -87,11 +87,35 @@ export const rejectEvent = async (eventId: string, reason?: string): Promise<Eve
   }
 };
 
+// Создание нового события
+export const createEvent = async (data: {
+  title: string;
+  description?: string;
+  start_date: string;
+  end_date?: string;
+  location?: string;
+  category?: string;
+  latitude?: number;
+  longitude?: number;
+  is_public?: boolean;
+  hashtags?: string[];
+}): Promise<EventData> => {
+  const response = await apiClient.post('/events', {
+    ...data,
+    start_datetime: data.start_date,
+    end_datetime: data.end_date,
+    is_public: data.is_public ?? true,
+    status: 'pending',
+  });
+  return response.data;
+};
+
 // Экспортируем объект сервиса для совместимости
 export const eventService = {
   getEventById,
   getAllEvents,
-  updateEvent
+  updateEvent,
+  createEvent,
 };
 
 // Экспортируем тип для совместимости

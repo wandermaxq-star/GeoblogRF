@@ -8,6 +8,8 @@ import { CATEGORIES } from '../../constants/categories';
 import { markerService } from '../../services/markerService';
 import { GlassPanel, GlassHeader, GlassAccordion, GlassButton, GlassInput } from '../Glass';
 import { useContentStore } from '../../stores/contentStore';
+import { useAuth } from '../../contexts/AuthContext';
+import { useIsMobile } from '../../hooks/use-mobile';
 
 const HEADER_FOOTER_BG = '#dadada';
 const HEADER_FOOTER_TEXT = '#222';
@@ -364,6 +366,8 @@ export const ElegantAccordionForm: React.FC<ElegantAccordionFormProps> = ({
   onCultureMessageClose,
   discoveredPlace
 }) => {
+  const { user, token } = useAuth();
+  const isMobile = useIsMobile();
   const [openIdx, setOpenIdx] = useState<number | null>(null); // Все меню закрыты по умолчанию
   const [form, setForm] = useState<any>({
     title: '',
@@ -393,8 +397,15 @@ export const ElegantAccordionForm: React.FC<ElegantAccordionFormProps> = ({
     }
   }, [discoveredPlace]);
 
-  // Загружаем фото пользователя при открытии формы
+  // Загружаем фото пользователя при открытии формы (только для авторизованных)
   useEffect(() => {
+    // КРИТИЧНО: Фото пользователя загружаем только для авторизованных пользователей
+    if (!user || !token) {
+      setIsLoadingPhotos(false);
+      setUserPhotos([]);
+      return;
+    }
+    
     setIsLoadingPhotos(true);
     markerService.getUserPhotos()
       .then(photos => {
@@ -404,7 +415,7 @@ export const ElegantAccordionForm: React.FC<ElegantAccordionFormProps> = ({
       .catch(() => {
         setIsLoadingPhotos(false);
       });
-  }, []);
+  }, [user, token]);
 
   // Скрываем выпадающий список при клике вне поля
   useEffect(() => {
@@ -572,7 +583,7 @@ export const ElegantAccordionForm: React.FC<ElegantAccordionFormProps> = ({
   };
 
   const rightContent = useContentStore(s => s.rightContent);
-  const isTwoPanelMode = rightContent !== null;
+  const isTwoPanelMode = rightContent !== null && !isMobile;
 
   return (
     <GlassPanel

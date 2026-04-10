@@ -9,6 +9,11 @@ export function calculateRequiredXP(level) {
 
 // Рассчитать уровень на основе общего XP
 export function calculateLevelFromTotalXP(totalXP) {
+  // Защита от некорректных входных данных
+  if (!Number.isFinite(totalXP) || totalXP < 0) {
+    totalXP = 0;
+  }
+  
   let level = 1;
   let accumulatedXP = 0;
   
@@ -20,7 +25,12 @@ export function calculateLevelFromTotalXP(totalXP) {
     accumulatedXP += requiredXP;
     level++;
     
-    if (level > 1000) break; // Защита от бесконечного цикла
+    if (level > 1000) {
+      // Дополнительная защита: если уровень превысил 1000, прерываем цикл
+      // и устанавливаем accumulatedXP как totalXP, чтобы currentLevelXP был 0
+      accumulatedXP = totalXP;
+      break;
+    }
   }
   
   const currentLevelXP = totalXP - accumulatedXP;

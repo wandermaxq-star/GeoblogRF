@@ -677,15 +677,29 @@
 /* Кнопка фильтра */
 .filter-btn {
   padding: 0.5rem 1rem; /* px-4 py-2 */
-  border-radius: 0.5rem; /* rounded-lg */
+  border-radius: 0.25rem; /* less rounded for cleaner look */
   font-weight: 500; /* font-medium */
   transition: all 0.2s;
-  border: 1px solid transparent;
+  border: 1px solid rgba(156, 163, 175, 0.4); /* gray-400/40 */
+  background-color: rgba(255, 255, 255, 0.72);
+  color: #475569; /* gray-600 */
 }
 
 .filter-btn.active {
   color: white;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); /* shadow-md */
+  box-shadow: none;
+  border-color: transparent;
+  background-color: #111827;
+}
+
+.filter-btn:focus,
+.filter-btn:focus-visible,
+.filter-btn:hover,
+.filter-btn:active {
+  outline: none;
+  box-shadow: none;
+  border-color: rgba(156, 163, 175, 0.4);
+  background-color: rgba(255, 255, 255, 0.87);
 }
 
 /* Варианты активных цветов */
@@ -776,7 +790,114 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Утверждённые фавориты для mobile */
+.favorites-accordion,
+.favorites-wrapper {
+  background: var(--glass-l1-bg);
+  border: 1px solid var(--glass-l1-border);
+  box-shadow: var(--glass-l1-shadow);
+  color: var(--glass-text);
+}
+
+.favorites-header {
+  background: var(--glass-l2-bg);
+  border-bottom: 1px solid var(--glass-l2-border);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.favorites-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.favorites-main-title {
+  margin: 0;
+  font-size: 1rem;
   font-weight: 700;
+  color: var(--glass-text);
+}
+
+.favorites-tabs {
+  display: flex;
+  gap: 0.5rem;
+  background: var(--glass-l2-bg);
+  border-bottom: 1px solid var(--glass-l2-border);
+  padding: 8px;
+}
+
+.favorites-tab {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: var(--glass-text);
+  background: transparent;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+
+.favorites-tab:hover,
+.favorites-tab.active {
+  background: var(--glass-l2-bg-hover);
+  border-color: var(--glass-l2-border-hover);
+}
+
+.favorites-count {
+  background: #22c55e;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-radius: 9999px;
+  padding: 0 6px;
+  font-size: 0.7rem;
+}
+
+.favorites-empty {
+  color: var(--glass-text-secondary);
+}
+
+.marker-item,
+.route-item,
+.event-item,
+.post-item {
+  background: var(--glass-l2-bg);
+  border: 1px solid var(--glass-l2-border);
+  box-shadow: var(--glass-l2-shadow);
+  border-radius: 12px;
+  padding: 10px;
+  color: var(--glass-text);
+}
+
+.marker-item:hover,
+.route-item:hover,
+.event-item:hover,
+.post-item:hover,
+.marker-item.active,
+.route-item.active,
+.event-item.active,
+.post-item.active {
+  background: var(--glass-l2-bg-hover);
+  border-color: var(--glass-l2-border-hover);
+}
+
+.marker-title,
+.route-title,
+.event-title,
+.post-title {
+  color: var(--glass-text);
+}
+
+.marker-details,
+.route-points-count,
+.event-subtitle,
+.post-subtitle {
+  color: var(--glass-text-secondary);
 }
 
 /* --- Loading & Empty States --- */
@@ -929,18 +1050,24 @@
   animation: btn-pulse 2s ease-in-out infinite;
 }
 
+/* Особый стиль для активной кнопки геолокации (зеленый) */
+.btn-primary-active {
+  background: rgba(34, 197, 94, 0.3) !important;
+  border: 2px solid rgba(34, 197, 94, 0.7) !important;
+  animation: btn-pulse-green 2s ease-in-out infinite;
+}
+
 @keyframes btn-pulse {
   0%, 100% { box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
   50% { box-shadow: 0 4px 20px rgba(59, 130, 246, 0.6); }
 }
 
-/* --- Dark Theme & Light Variants --- */
-
-/* .btn-dark — legacy, теперь .btn-glass автоматически
-   переключается через CSS vars (--glass-l2-*) */
-.btn-dark {
-  /* Пустой — наследует всё из .btn-glass через CSS vars */
+@keyframes btn-pulse-green {
+  0%, 100% { box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4); }
+  50% { box-shadow: 0 4px 20px rgba(34, 197, 94, 0.7); }
 }
+
+/* --- Dark Theme & Light Variants --- */
 
 /* Светлая тема (для кнопок на темном фоне, как в Calendar horizontal) */
 .btn-light {
@@ -1040,9 +1167,6 @@
 }
 
 /* .dark class — legacy, теперь автоматически через CSS vars */
-.map-action-buttons-container.dark {
-  /* Пустой — наследует всё через CSS vars */
-}
 
 /* Кнопки внутри MapActionButtons остаются интерактивными */
 .map-action-buttons-container .map-action-button-wrapper {

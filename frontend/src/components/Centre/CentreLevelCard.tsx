@@ -4,21 +4,41 @@
  */
 
 import React from 'react';
-import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Flame, Zap, Sprout, Search, Compass, Crown, Star } from 'lucide-react';
 import { useLevelProgress } from '../../hooks/useLevelProgress';
 import { useAuth } from '../../contexts/AuthContext';
 import { useGamification } from '../../contexts/GamificationContext';
 import { RankInfo } from '../../types/gamification';
 import { getRankInfo } from '../../utils/xpCalculator';
+import { UserAvatar } from '../UserAvatar';
 
-const CentreLevelCard: React.FC = () => {
+interface CentreLevelCardProps {
+  /** Показывать информацию о роли пользователя (роль / уровень партнёра) */
+  showRole?: boolean;
+  /** Явное значение роли. Если не указано — берётся из auth.user */
+  role?: string;
+  /** Явное значение уровня партнёра. Если не указано — берётся из auth.user */
+  partnerTier?: string;
+}
+
+const CentreLevelCard: React.FC<CentreLevelCardProps> = ({ showRole = false, role, partnerTier }) => {
   const { userLevel, rankInfo: ownRankInfo, progressPercentage: ownProgress, loading } = useLevelProgress();
   const auth = useAuth();
   const { stats } = useGamification();
 
   const username = auth?.user?.username || auth?.user?.email?.split('@')[0] || 'Пользователь';
   const streak = stats?.dailyGoals?.streak ?? 0;
+
+  const effectiveRole = role ?? auth?.user?.role;
+  const effectivePartnerTier = partnerTier ?? auth?.user?.partnerTier;
+  const partnerBorderColor = effectiveRole === 'partner'
+    ? effectivePartnerTier === 'expert'
+      ? '#3B82F6'
+      : effectivePartnerTier === 'top'
+      ? '#F59E0B'
+      : '#10B981'
+    : undefined;
+
   const rankInfo: RankInfo | null = userLevel ? getRankInfo(userLevel.rank) : ownRankInfo;
   const progressPercentage = ownProgress;
 
@@ -65,13 +85,6 @@ const CentreLevelCard: React.FC = () => {
     }
   })();
 
-  const userInitials = username
-    .split(' ')
-    .map((n: string) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2) || 'U';
-
   return (
     <div className="centre-glass-card h-full">
       <div className="flex items-center gap-5">
@@ -104,16 +117,16 @@ const CentreLevelCard: React.FC = () => {
             />
           </svg>
           {/* Аватар по центру кольца */}
-          <div className="absolute inset-0 flex items-center justify-center" style={{ transform: 'rotate(90deg)' }}>
-            <Avatar className="w-16 h-16 border-2 border-white/30 shadow-lg">
-              <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-xl">
-                {userInitials}
-              </AvatarFallback>
-            </Avatar>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <UserAvatar
+              username={username}
+              avatarUrl={auth?.user?.avatar_url}
+              className="w-16 h-16 shadow-lg"
+              borderColor={partnerBorderColor}
+            />
           </div>
           {/* Уровень — бейдж внизу-справа */}
-          <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold border-2 border-white/30 shadow-lg"
-               style={{ transform: 'rotate(90deg)' }}>
+          <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold border-2 border-white/30 shadow-lg">
             {level}
           </div>
         </div>
@@ -123,6 +136,18 @@ const CentreLevelCard: React.FC = () => {
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xl font-bold cg-text truncate">{username}</span>
           </div>
+          {showRole && effectiveRole && (
+            <div className="inline-flex items-center gap-2 mb-2 px-3 py-1 rounded-full" style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.12)',
+              color: 'rgba(255, 255, 255, 0.9)'
+            }}>
+              <span className="text-xs font-medium">
+                {effectiveRole === 'partner'
+                  ? `Партнёр${effectivePartnerTier ? `: ${effectivePartnerTier}` : ''}`
+                  : `Роль: ${effectiveRole}`}
+              </span>
+            </div>
+          )}
           <div className="flex items-center gap-2 mb-2">
             {rankIcon}
             <span className="text-base font-semibold cg-text-dim">{rankInfo?.name || 'Новичок'}</span>

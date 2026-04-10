@@ -1,8 +1,8 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import pool from '../../db.js';
-import { checkLineAgainstZones } from '../utils/zoneGuard.js';
-import { isWithinRussiaBounds } from '../middleware/russiaValidation.js';
+import { checkLineAgainstZones } from '../utils/lazyZoneGuard.js';
+import { getRussiaBounds, isWithinRussiaBounds } from '../middleware/russiaValidation.js';
 import logger from '../../logger.js';
 
 // Проверка маршрута на соответствие границам РФ
@@ -29,12 +29,58 @@ const validateRouteBounds = (routeData) => {
   return { valid: true };
 };
 
+const normalizeRouteData = (rawRouteData) => {
+  try {
+    return typeof rawRouteData === 'string'
+      ? JSON.parse(rawRouteData)
+      : (rawRouteData || null);
+  } catch (error) {
+    logger.warn('Ошибка парсинга route_data:', error);
+    return null;
+  }
+};
+
+const normalizeWaypoints = (waypoints) => {
+  if (!Array.isArray(waypoints)) {
+    return [];
+  }
+
+  return waypoints.filter((waypoint) => waypoint && waypoint.id !== null);
+};
+
+const toRouteResponse = (route) => {
+  const normalizedWaypoints = normalizeWaypoints(route.waypoints);
+  const coordinates = normalizedWaypoints
+    .filter((waypoint) => waypoint.latitude && waypoint.longitude)
+    .map((waypoint) => [waypoint.longitude, waypoint.latitude]);
+
+  return {
+    ...route,
+    route_data: normalizeRouteData(route.route_data),
+    coordinates,
+    distance: route.total_distance ?? route.distance ?? null,
+    duration: route.estimated_duration ?? route.duration ?? null,
+    total_distance: route.total_distance ?? route.distance ?? null,
+    estimated_duration: route.estimated_duration ?? route.duration ?? null,
+    author_id: route.creator_id ?? route.author_id ?? null,
+    points: normalizedWaypoints,
+    waypoints: normalizedWaypoints,
+  };
+};
+
 const router = express.Router();
 
 // GET /api/routes/:id - Получить маршрут по ID
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+
+    const statusColumnResult = await pool.query(
+      `SELECT column_name
+       FROM information_schema.columns
+       WHERE table_name = 'travel_routes' AND column_name = 'status'`
+    );
+    const hasStatus = statusColumnResult.rows.length > 0;
     
     const result = await pool.query(`
       SELECT 
@@ -49,49 +95,24 @@ router.get('/:id', async (req, res) => {
             'departure_time', rw.departure_time,
             'duration_minutes', rw.duration_minutes,
             'notes', rw.notes,
-            'latitude', rw.latitude,
-            'longitude', rw.longitude
+            'latitude', mm.latitude,
+            'longitude', mm.longitude,
+            'is_overnight', rw.is_overnight
           ) ORDER BY rw.order_index
-        ) as waypoints
-      FROM routes r
+        ) FILTER (WHERE rw.marker_id IS NOT NULL) as waypoints
+      FROM travel_routes r
       LEFT JOIN route_waypoints rw ON r.id = rw.route_id
-      WHERE r.id = $1 AND r.is_active = true
+      LEFT JOIN map_markers mm ON rw.marker_id = mm.id
+      WHERE r.id = $1
+        ${hasStatus ? "AND r.status = 'active'" : ''}
       GROUP BY r.id
     `, [id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Маршрут не найден' });
     }
-    
-    const route = result.rows[0];
-    
-    // Преобразуем waypoints в формат для фронтенда
-    const coordinates = route.waypoints
-      .filter(wp => wp.latitude && wp.longitude)
-      .map(wp => [wp.longitude, wp.latitude]);
-    
-    // Парсим route_data (может быть JSON строка или объект)
-    let routeData = null;
-    try {
-      routeData = typeof route.route_data === 'string' 
-        ? JSON.parse(route.route_data) 
-        : (route.route_data || null);
-    } catch (e) {
-      logger.warn('Ошибка парсинга route_data:', e);
-    }
-    
-    res.json({
-      id: route.id,
-      title: route.title,
-      description: route.description,
-      coordinates: coordinates,
-      route_data: routeData, // ВАЖНО: возвращаем сохранённую геометрию маршрута!
-      distance: route.distance,
-      duration: route.duration,
-      author_id: route.creator_id,
-      created_at: route.created_at,
-      updated_at: route.updated_at
-    });
+
+    res.json(toRouteResponse(result.rows[0]));
   } catch (err) {
     logger.error('Ошибка при получении маршрута:', err);
     res.status(500).json({ message: 'Ошибка сервера при получении маршрута.' });
@@ -116,35 +137,21 @@ router.get('/', authenticateToken, async (req, res) => {
             'departure_time', rw.departure_time,
             'duration_minutes', rw.duration_minutes,
             'notes', rw.notes,
+            'latitude', mm.latitude,
+            'longitude', mm.longitude,
             'is_overnight', rw.is_overnight
           ) ORDER BY rw.order_index
         ) FILTER (WHERE rw.marker_id IS NOT NULL) as waypoints
       FROM travel_routes r
       LEFT JOIN route_waypoints rw ON r.id = rw.route_id
+      LEFT JOIN map_markers mm ON rw.marker_id = mm.id
       WHERE r.creator_id = $1
       GROUP BY r.id
       ORDER BY r.created_at DESC
     `, [userId]);
     
     // Преобразуем результат для фронтенда
-    const routes = result.rows.map(row => {
-      // Парсим route_data (может быть JSON строка или объект)
-      let routeData = null;
-      try {
-        routeData = typeof row.route_data === 'string' 
-          ? JSON.parse(row.route_data) 
-          : (row.route_data || null);
-      } catch (e) {
-        logger.warn('Ошибка парсинга route_data для маршрута', row.id, ':', e);
-      }
-      
-      return {
-      ...row,
-        route_data: routeData, // ВАЖНО: возвращаем сохранённую геометрию маршрута!
-      points: row.waypoints || [], // для совместимости с фронтендом
-      waypoints: row.waypoints || []
-      };
-    });
+    const routes = result.rows.map((row) => toRouteResponse(row));
     
     res.json(routes);
   } catch (err) {
@@ -193,7 +200,7 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(422).json({
         message: boundsValidation.message,
         invalidPoints: boundsValidation.invalidPoints,
-        russiaBounds: RUSSIA_BOUNDS
+        russiaBounds: getRussiaBounds()
       });
     }
 

@@ -6,27 +6,32 @@ import {
   ModerationNotification
 } from '../../services/moderationNotificationsService';
 
-const PanelOverlay = styled.div<{ isOpen: boolean }>`
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 9999;
-  display: ${props => props.isOpen ? 'flex' : 'none'};
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-`;
-
 const PanelContainer = styled.div`
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(360px, 92vw);
+  max-height: 68vh;
   background: white;
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  width: 100%;
-  max-width: 600px;
-  max-height: 80vh;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  z-index: 1100;
+  border: 1px solid #e2e8f0;
+`;
+
+const PopoverArrow = styled.div`
+  position: absolute;
+  top: -6px;
+  right: 16px;
+  width: 12px;
+  height: 12px;
+  background: white;
+  transform: rotate(45deg);
+  box-shadow: -2px -2px 4px rgba(0,0,0,0.08);
+  z-index: 1101;
 `;
 
 const PanelHeader = styled.div`
@@ -89,14 +94,14 @@ const GroupTitle = styled.h3`
   letter-spacing: 0.5px;
 `;
 
-const NotificationItem = styled.div<{ read: boolean }>`
+const NotificationItem = styled.div<{ $read: boolean }>`
   padding: 16px;
   border-radius: 8px;
   margin-bottom: 8px;
   cursor: pointer;
   transition: background 0.2s;
-  background: ${props => props.read ? 'transparent' : '#f8f9fa'};
-  border: 1px solid ${props => props.read ? '#e0e0e0' : '#d0d0d0'};
+  background: ${props => props.$read ? 'transparent' : '#f8f9fa'};
+  border: 1px solid ${props => props.$read ? '#e0e0e0' : '#d0d0d0'};
 
   &:hover {
     background: #f0f0f0;
@@ -121,11 +126,11 @@ const NotificationTime = styled.div`
   color: #999;
 `;
 
-const NotificationDescription = styled.div<{ hasReason?: boolean }>`
+const NotificationDescription = styled.div<{ $hasReason?: boolean }>`
   font-size: 13px;
   color: #444;
   line-height: 1.5;
-  margin-bottom: ${props => props.hasReason ? '8px' : '0'};
+  margin-bottom: ${props => props.$hasReason ? '8px' : '0'};
 `;
 
 const NotificationReason = styled.div`
@@ -198,7 +203,8 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
       } else if (contentType === 'route') {
         window.location.href = `/planner?route=${contentId}`;
       } else if (contentType === 'event') {
-        window.location.href = `/calendar?event=${contentId}`;
+        // Открываем карту с EventPanel вместо /calendar
+        window.location.href = `/map`;
       }
     } else if (status === 'rejected') {
       // TODO: Открыть форму редактирования
@@ -313,10 +319,10 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
   if (!isOpen) return null;
 
   return (
-    <PanelOverlay isOpen={isOpen} onClick={onClose}>
-      <PanelContainer onClick={(e) => e.stopPropagation()}>
-        <PanelHeader>
-          <PanelTitle>Уведомления</PanelTitle>
+    <PanelContainer>
+      <PopoverArrow />
+      <PanelHeader>
+        <PanelTitle>Уведомления</PanelTitle>
           <CloseButton onClick={onClose}>
             <FaTimes />
           </CloseButton>
@@ -335,7 +341,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
                   {groups.today.map(notif => (
                     <NotificationItem
                       key={notif.id}
-                      read={notif.read}
+                      $read={notif.read}
                       onClick={() => handleNotificationClick(notif)}
                     >
                       <NotificationHeader>
@@ -344,7 +350,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
                         </NotificationTitle>
                         <NotificationTime>{formatTime(notif.timestamp)}</NotificationTime>
                       </NotificationHeader>
-                      <NotificationDescription hasReason={!!notif.reason}>
+                      <NotificationDescription $hasReason={!!notif.reason}>
                         {getDescription(notif)}
                       </NotificationDescription>
                       {notif.reason && (
@@ -363,7 +369,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
                   {groups.yesterday.map(notif => (
                     <NotificationItem
                       key={notif.id}
-                      read={notif.read}
+                      $read={notif.read}
                       onClick={() => handleNotificationClick(notif)}
                     >
                       <NotificationHeader>
@@ -372,7 +378,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
                         </NotificationTitle>
                         <NotificationTime>{formatTime(notif.timestamp)}</NotificationTime>
                       </NotificationHeader>
-                      <NotificationDescription hasReason={!!notif.reason}>
+                      <NotificationDescription $hasReason={!!notif.reason}>
                         {getDescription(notif)}
                       </NotificationDescription>
                       {notif.reason && (
@@ -391,7 +397,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
                   {groups.earlier.map(notif => (
                     <NotificationItem
                       key={notif.id}
-                      read={notif.read}
+                      $read={notif.read}
                       onClick={() => handleNotificationClick(notif)}
                     >
                       <NotificationHeader>
@@ -400,7 +406,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
                         </NotificationTitle>
                         <NotificationTime>{formatTime(notif.timestamp)}</NotificationTime>
                       </NotificationHeader>
-                      <NotificationDescription hasReason={!!notif.reason}>
+                      <NotificationDescription $hasReason={!!notif.reason}>
                         {getDescription(notif)}
                       </NotificationDescription>
                       {notif.reason && (
@@ -424,8 +430,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
             </ClearButton>
           </PanelFooter>
         )}
-      </PanelContainer>
-    </PanelOverlay>
+    </PanelContainer>
   );
 };
 

@@ -4,8 +4,8 @@ import { useLayoutState } from '../contexts/LayoutContext';
 import { useContentStore, ContentType } from '../stores/contentStore';
 import { useAuth } from '../contexts/AuthContext';
 import { useGuest } from '../contexts/GuestContext';
+import { useFavorites } from '../contexts/FavoritesContext';
 import { logFrontend } from '../api/apiClient';
-import ProfilePanel from './ProfilePanel';
 import AuthGate from './AuthGate';
 import { FaBell, FaNewspaper, FaUserPlus, FaSignInAlt } from 'react-icons/fa';
 import { usePreload } from '../hooks/usePreload';
@@ -38,7 +38,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: 'feed', icon: 'fa-stream', label: 'Лента', type: 'right' },
       { id: 'posts', icon: 'fa-newspaper', label: 'Посты', type: 'right' },
-      { id: 'test', icon: 'fa-flask', label: 'Тест', type: 'page', path: '/test' },
+      { id: 'favorites', icon: 'fa-heart', label: 'Избранное', type: 'right' },
     ],
   },
   {
@@ -46,8 +46,9 @@ const navGroups: NavGroup[] = [
     items: [
       { id: 'profile', icon: 'fa-user', label: 'Личный кабинет', type: 'right' },
       { id: 'pro', icon: 'fa-crown', label: 'PRO Аккаунт', type: 'page', path: '/pro' },
-      { id: 'influence', icon: 'fa-users', label: 'Центр влияния', type: 'page', path: '/centre' },
+      { id: 'hub', icon: 'fa-globe', label: 'Маршрутный Хаб', type: 'page', path: '/hub' },
       { id: 'partners', icon: 'fa-handshake', label: 'Партнёры', type: 'page', path: '/partners' },
+      { id: 'influence', icon: 'fa-users', label: 'Центр влияния', type: 'page', path: '/centre' },
     ],
   },
   {
@@ -74,6 +75,8 @@ const Sidebar: React.FC = () => {
   const [authGateType, setAuthGateType] = useState<'marker' | 'route' | 'event' | 'post'>('marker');
   const [isExpanded, setIsExpanded] = useState(false);
   const { preloadRoute } = usePreload();
+  const favorites = useFavorites();
+  const favoritesCount = favorites.getFavoritesStats ? favorites.getFavoritesStats().totalItems : 0;
 
   // Автоматически закрываем сайдбар при выборе элемента
   useEffect(() => {
@@ -87,71 +90,33 @@ const Sidebar: React.FC = () => {
     e.stopPropagation();
 
     const store = useContentStore.getState();
-    // Временная визуальная подсказка для диагностики (не оставляет консольные логи)
-    try {
-      const overlayId = 'diag-sidebar-overlay';
-      let overlay = document.getElementById(overlayId);
-      if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.id = overlayId;
-        document.body.appendChild(overlay);
-      }
-      overlay.style.position = 'fixed';
-      overlay.style.right = '12px';
-      overlay.style.top = '76px';
-      overlay.style.zIndex = '99999';
-      overlay.style.background = 'rgba(0,0,0,0.7)';
-      overlay.style.color = 'white';
-      overlay.style.padding = '8px 12px';
-      overlay.style.borderRadius = '8px';
-      overlay.style.fontSize = '13px';
-      overlay.style.fontFamily = 'sans-serif';
-      overlay.style.pointerEvents = 'none';
-      overlay.textContent = `path=${location.pathname} | left=${store.leftContent} | right=${store.rightContent} | click=${item.id}`;
-      setTimeout(() => { try { overlay?.remove(); } catch (_) { } }, 5000);
-    } catch (e) { }
-    // click handled
+    // diagnostic overlay removed - was only for temporary debugging
 
-    // ═══ КАЛЕНДАРЬ — универсальный компонент с 5 состояниями ═══
-    // 1. Solo: calendar один (leftContent=calendar, rightContent=null → но fallback posts)
-    // 2. calendar(left) + posts(right): calendar слева, посты справа
-    // 3. calendar(left) + activity(right): calendar слева, активность справа
-    // 4. map(left) + calendar(right): карта слева, calendar справа
-    // 5. planner(left) + calendar(right): планировщик слева, calendar справа
+    // Определяем, был ли пользователь на solo-странице (центре/про/юридичке)
+    // — тогда при переходе на любую страницу из двухоконного режима
+    // нас интересует однопанельный режим.
+    const isSoloPage = ['/centre', '/pro', '/partners', '/partner', '/admin', '/legal', '/profile']
+      .some(p => location.pathname.startsWith(p));
+
+    // ═══ КАЛЕНДАРЬ — всегда правая панель ═══
+    // Без map/planner: календарь на весь экран с leaflet-фоном
+    // С map/planner: календарь справа в dual mode
     if (item.id === 'calendar') {
-      const calendarOnLeft = store.leftContent === 'calendar';
-      const calendarOnRight = store.rightContent === 'calendar';
-
-      // Toggle: если календарь уже активен — закрываем
-      if (calendarOnLeft || calendarOnRight) {
-        if (calendarOnLeft) {
-          store.setLeftContent(null);
-          // Правая панель остаётся (posts/activity)
-          if (!store.rightContent) {
-            store.setRightContent('posts');
-          }
-        }
-        if (calendarOnRight) {
-          // Восстанавливаем посты справа
-          store.setRightContent('posts');
-        }
+      if (isSoloPage) {
+        // Из solo — переходим на /map и открываем EventPanel справа
+        store.setLeftContent('map');
+        store.setRightContent('calendar');
+        navigate('/map');
         setIsExpanded(false);
         return;
       }
-
-      // Открываем календарь:
-      // Если map/planner на левой → calendar идёт ВПРАВО
-      if (store.leftContent === 'map' || store.leftContent === 'planner') {
-        store.setRightContent('calendar');
+      if (store.rightContent === 'calendar') {
+        // Toggle off: возвращаем posts
+        store.setRightContent('posts');
       } else {
-        // Нет map/planner → calendar идёт ВЛЕВО, правая панель сохраняется
-        store.setLeftContent('calendar');
-        if (!store.rightContent) {
-          store.setRightContent('posts');
-        }
-        // rightContent (posts/activity/feed) остаётся как есть!
+        // Открываем календарь справа, левую панель не трогаем
+        store.setRightContent('calendar');
       }
-
       setIsExpanded(false);
       return;
     }
@@ -172,16 +137,10 @@ const Sidebar: React.FC = () => {
 
       preloadRoute(leftRoute);
 
-      // Если calendar на левой → мигрируем его в правую панель, текущий элемент берёт левую
-      if (store.leftContent === 'calendar') {
-        store.setRightContent('calendar');
-        store.setLeftContent(item.id as ContentType);
-        if (location.pathname !== leftRoute) {
-          setTimeout(() => navigate(leftRoute), 0);
-        }
-        setIsExpanded(false);
-        return;
-      }
+      // Определяем, был ли пользователь на solo-странице (центре/про/юридичке)
+      // — в этом случае ожидаем, что переход на карту будет в полноэкранном режиме.
+      const isSoloPage = ['/centre', '/pro', '/partner', '/admin', '/legal', '/profile']
+        .some(p => location.pathname.startsWith(p));
 
       // Проверяем, является ли текущая левая панель той же самой
       const isCurrentlyActive = store.leftContent === item.id;
@@ -194,11 +153,19 @@ const Sidebar: React.FC = () => {
           navigate('/');
         }
       } else {
+        // Запоминаем, была ли уже активна левая панель (map/planner) в полноэкранном режиме
+        const hadLeftPanel = store.leftContent === 'map' || store.leftContent === 'planner';
+
         // КРИТИЧНО: СНАЧАЛА меняем store, потом navigate
         store.setLeftContent(item.id as ContentType);
-        // Для ЛЮБОЙ карты (map/planner): сохраняем правую панель если она уже есть,
-        // если нет — открываем посты по умолчанию
-        if (!store.rightContent) {
+
+        // Если пришли с solo-страницы — открываем карту в полноэкранном режиме (без правой панели)
+        if (isSoloPage) {
+          store.setRightContent(null);
+        } else if (!store.rightContent && !hadLeftPanel) {
+          // Открываем посты ТОЛЬКО при первом открытии левой панели.
+          // Если переключаемся между map↔planner и rightContent=null —
+          // значит пользователь намеренно закрыл правую панель, уважаем это.
           store.setRightContent('posts');
         }
 
@@ -213,32 +180,77 @@ const Sidebar: React.FC = () => {
     }
 
     if (item.type === 'right') {
-      if (item.id === 'posts') {
-        preloadRoute('/posts');
+      // Профиль — отдельная страница, не задействует панели
+      if (item.id === 'profile') {
+        preloadRoute('/profile');
+        navigate('/profile');
+        setIsExpanded(false);
+        return;
       }
 
-      // Проверяем, закрываем ли мы панель (она уже активна)
-      const isCurrentlyActive = store.rightContent === item.id;
+      // Разрешаем корректный переход из solo-страницы:
+      // при перемещении с solo на правую панель надо сбрасывать левую панель
+      // и перейти на соответствующий route.
+      const routeForRightItem: Record<string, string> = {
+        feed: '/activity',
+        posts: '/posts',
+        favorites: '/favorites',
+      };
 
-      if (isCurrentlyActive) {
-        // Закрываем правую панель ТОЛЬКО если есть map/planner на левой (можно работать без правой)
-        // Если на левой calendar или ничего — переключаем на posts
-        if (store.leftContent === 'map' || store.leftContent === 'planner') {
-          store.setRightContent(null);
-        } else {
-          // Нет map/planner: нельзя оставить пустую правую панель
-          // Если это posts — не закрываем (нечего показать)
-          if (item.id !== 'posts') {
-            store.setRightContent('posts');
+      if (isSoloPage) {
+        store.setLeftContent(null);
+        store.setRightContent(item.id as ContentType);
+        const route = routeForRightItem[item.id];
+        if (route) {
+          preloadRoute(route);
+          navigate(route);
+        }
+        setIsExpanded(false);
+        return;
+      }
+
+      const isPostsRoute = location.pathname === '/' || location.pathname === '/posts';
+      const isFeedRoute = location.pathname === '/activity';
+      const isFavoritesRoute = location.pathname === '/favorites';
+
+      const routeBasedActive =
+        (item.id === 'posts' && isPostsRoute) ||
+        (item.id === 'feed' && isFeedRoute) ||
+        (item.id === 'favorites' && isFavoritesRoute);
+
+      const isActive = store.rightContent === item.id || (routeBasedActive && !store.rightContent);
+
+      // Тоггл: если панель активна — закрываем
+      if (isActive) {
+        // Позволяем закрывать любую правую панель даже в dual-mode.
+        // Если карта/планировщик слева остались — они перейдут в полноэкранный режим.
+        store.setRightContent(null);
+
+        // Если мы открыты не в dual-mode — возвращаемся на главную
+        const hasMapLeft = store.leftContent === 'map' || store.leftContent === 'planner';
+        if (!hasMapLeft) {
+          if (item.id === 'posts') {
+            navigate('/');
           }
         }
-      } else {
-        // Открываем правую панель
-        store.setRightContent(item.id as ContentType);
 
-        // КРИТИЧНО: Навигация на /posts ТОЛЬКО если нет левой панели (карты/планировщика)
-        // Если карта открыта, navigate('/posts') вызовет MainLayout → setLeftContent(null) → карта исчезнет!
-        if (item.id === 'posts' && !store.leftContent && location.pathname !== '/' && location.pathname !== '/posts') {
+        setIsExpanded(false);
+        return;
+      }
+
+      // Активируем выбранную правую панель
+      // КРИТИЧНО: НЕ трогаем leftContent! Если слева карта/планировщик — они остаются.
+      // Это обеспечивает корректный dual-mode: map + posts, planner + favorites и т.д.
+      store.setRightContent(item.id as ContentType);
+
+      // Если слева нет map/planner и мы переходим на posts — обновляем URL
+      const hasMapLeft = store.leftContent === 'map' || store.leftContent === 'planner';
+      if (item.id === 'posts' && !hasMapLeft) {
+        // Без карты слева — posts на весь экран, убираем calendar слева если был
+        if (store.leftContent && store.leftContent !== 'map' && store.leftContent !== 'planner') {
+          store.setLeftContent(null);
+        }
+        if (location.pathname !== '/' && location.pathname !== '/posts') {
           navigate('/posts');
         }
       }
@@ -259,8 +271,7 @@ const Sidebar: React.FC = () => {
     if (item.type === 'left') {
       const isExactRoute =
         (item.id === 'planner' && location.pathname === '/planner') ||
-        (item.id === 'map' && location.pathname === '/map') ||
-        (item.id === 'calendar' && location.pathname === '/calendar');
+        (item.id === 'map' && location.pathname === '/map');
 
       if (isExactRoute) {
         return true;
@@ -281,11 +292,6 @@ const Sidebar: React.FC = () => {
     return false;
   };
 
-  const handleCloseProfile = () => {
-    const store = useContentStore.getState();
-    store.setRightContent(null);
-  };
-
   // Сайдбар показывается всегда - для навигации
 
   return (
@@ -299,7 +305,8 @@ const Sidebar: React.FC = () => {
           top: '64px',
           height: 'calc(100vh - 64px)',
           width: isExpanded ? '280px' : '50px',
-          zIndex: 1150,
+          zIndex: 1200,
+          pointerEvents: 'auto',
           background: 'var(--glass-card-bg)',
           backdropFilter: 'var(--glass-blur-strong)',
           WebkitBackdropFilter: 'var(--glass-blur-strong)',
@@ -317,7 +324,7 @@ const Sidebar: React.FC = () => {
         }}
       >
         {/* Иконки навигации - вертикальный столбец */}
-        <div className="flex flex-col h-full py-4">
+        <div className="flex flex-col h-full py-4" style={{ overflowY: 'auto', overflowX: 'hidden' }}>
           {navGroups.map((group) => (
             <div key={group.title} className="mb-4">
               {/* Заголовок группы - показывается только при раскрытии */}
@@ -368,21 +375,50 @@ const Sidebar: React.FC = () => {
                               // Posts уже загружен
                             } else if (item.id === 'feed') {
                               preloadRoute('/activity');
+                            } else if (item.id === 'favorites') {
+                              // Favorites загружается лениво
                             }
                           }
                         }}
                       >
                         {/* Иконка - всегда видна */}
-                        <i
-                          className={`fas ${item.icon}`}
-                          style={{
-                            fontSize: '20px',
-                            width: '26px',
-                            textAlign: 'center',
-                            color: active ? '#4cc9f0' : 'var(--glass-text)',
-                            filter: active ? 'drop-shadow(0 0 4px rgba(76, 201, 240, 0.6))' : 'none'
-                          }}
-                        />
+                        <div style={{ position: 'relative' }}>
+                          <i
+                            className={`fas ${item.icon}`}
+                            style={{
+                              fontSize: '20px',
+                              width: '26px',
+                              textAlign: 'center',
+                              color: active ? '#4cc9f0' : 'var(--glass-text)',
+                              filter: active ? 'drop-shadow(0 0 4px rgba(76, 201, 240, 0.6))' : 'none'
+                            }}
+                          />
+                          {/* Бейдж для избранного */}
+                          {item.id === 'favorites' && favoritesCount > 0 && (
+                            <span
+                              style={{
+                                position: 'absolute',
+                                left: '18px',
+                                top: '-4px',
+                                backgroundColor: '#ff4757',
+                                color: 'white',
+                                fontSize: '10px',
+                                fontWeight: 'bold',
+                                borderRadius: '50%',
+                                minWidth: '16px',
+                                height: '16px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '0 2px',
+                                lineHeight: 1,
+                                zIndex: 10,
+                              }}
+                            >
+                              {favoritesCount > 99 ? '99+' : favoritesCount}
+                            </span>
+                          )}
+                        </div>
 
                         {/* Название - показывается только при раскрытии */}
                         {isExpanded && (
@@ -407,11 +443,6 @@ const Sidebar: React.FC = () => {
           ))}
         </div>
       </nav>
-
-      {/* Profile Panel */}
-      {rightContent === 'profile' && (
-        <ProfilePanel onClose={handleCloseProfile} />
-      )}
 
       {/* AuthGate */}
       <AuthGate

@@ -1,108 +1,87 @@
-import React, { useEffect, useRef } from 'react';
-import { projectManager } from '../services/projectManager';
+// Импортируем leafletInit чтобы window.L (и CSS) были доступны
+import '../utils/leafletInit';
+import React, { useEffect, useRef, useState } from 'react';
 import { useContentStore } from '../stores/contentStore';
-import { mapFacade } from '../services/map_facade/index';
+
+const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const MSK: [number, number] = [55.7558, 37.6176];
 
 const PersistentMapBackground: React.FC = () => {
-  const ref = useRef<HTMLDivElement | null>(null);
+  // Используем отдельный div монтируемый прямо в body через ref — так глобальный
+  // CSS @media min-width:768px (.leaflet-container { position: fixed }) не конфликтует
+  // с родительским stacking context.
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<any>(null);
   const leftContent = useContentStore((s) => s.leftContent);
-  // ВАЖНО: Фон только для map, НЕ для planner
-  // Planner имеет свою собственную карту через projectManager.initializeMap в компоненте Planner
-  // Если инициализировать фон для planner, будет конфликт двух карт
-  const isMapOnly = leftContent === 'map';
-  const initializedRef = React.useRef(false);
+  // Скрываем когда pages/Map.tsx активен — он сам рисует карту
+  const isMapPageActive = leftContent === 'map' || leftContent === 'planner';
 
   useEffect(() => {
-    let mounted = true;
-    if (!ref.current) return () => { mounted = false; };
+    // Создаём контейнер прямо в body чтобы избежать конфликтов стека z-index
+    if (mapRef.current) return; // уже инициализирован
+    const el = document.createElement('div');
+    el.id = 'bg-map-container';
+    el.style.cssText = 'position:fixed;inset:0;z-index:0;pointer-events:none;';
+    document.body.appendChild(el);
+    containerRef.current = el;
 
-    const el = ref.current;
+    let cancelled = false;
 
-    // Инициализируем фон один раз — только когда пользователь открыл карту (map)
-    // (чтобы не загружать фон вместе с постами). После первой инициализации
-    // он сохраняется и больше не пересоздаётся.
-    // Planner имеет свою карту, не используем фон для него
-    if (initializedRef.current || !isMapOnly) return () => { mounted = false; };
+    // Ждём пока контейнер будет виден в DOM (нужен размер для Leaflet)
+    const tryInit = () => {
+      if (cancelled) return;
+      const L = (window as any).L;
+      if (!L) return; // leafletInit ещё не загрузился (маловероятно)
 
-    const initIfSized = async () => {
       try {
-        const hasSize = () => el && el.offsetWidth > 0 && el.offsetHeight > 0 && window.getComputedStyle(el).visibility !== 'hidden' && window.getComputedStyle(el).display !== 'none';
-
-        if (!hasSize()) {
-          await new Promise<void>((resolve) => {
-            let resolved = false;
-            const ro = (window as any).ResizeObserver ? new (window as any).ResizeObserver(() => {
-              if (!resolved && hasSize()) {
-                resolved = true;
-                try { ro.disconnect(); } catch (e) {}
-                resolve();
-              }
-            }) : null;
-
-            if (ro) {
-              try { ro.observe(el); } catch (e) { /* ignore */ }
-            }
-
-            const to = setTimeout(() => {
-              if (!resolved) {
-                resolved = true;
-                try { ro && ro.disconnect(); } catch (e) {}
-                resolve();
-              }
-            }, 1200);
-
-            if (hasSize()) {
-              clearTimeout(to);
-              resolved = true;
-              try { ro && ro.disconnect(); } catch (e) {}
-              resolve();
-            }
-          });
-        }
-
-        if (!mounted) return;
-
-        try {
-          const api = await projectManager.initializeMap(el, {
-            provider: 'leaflet',
-            center: [55.7558, 37.6176],
-            zoom: 10,
-            markers: [],
-            routes: []
-          });
-          if (api) {
-            try { mapFacade().registerBackgroundApi?.(api); } catch (e) { /* ignore */ }
-          }
-          initializedRef.current = true;
-        } catch (err) {
-          console.warn('PersistentMapBackground: mapFacade init failed', err);
-        }
+        const map = L.map(el, {
+          center: MSK,
+          zoom: 10,
+          zoomControl: false,
+          attributionControl: true,
+          dragging: false,       // статичный фон — не тащим
+          touchZoom: false,
+          doubleClickZoom: false,
+          scrollWheelZoom: false,
+          keyboard: false,
+          boxZoom: false,
+        });
+        L.tileLayer(TILE_URL, {
+          maxZoom: 19,
+          attribution: '© <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
+        }).addTo(map);
+        mapRef.current = map;
       } catch (err) {
-        // ignore
+        console.warn('[PersistentMapBackground] Leaflet init failed:', err);
       }
     };
 
-    initIfSized();
+    // Небольшая задержка чтобы DOM успел примонтироваться и получить размеры
+    const t = setTimeout(tryInit, 50);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+      // Убираем контейнер при размонтировании
+      if (containerRef.current) {
+        try {
+          if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
+          containerRef.current.remove();
+        } catch (e) {}
+        containerRef.current = null;
+      }
+    };
+  }, []);
 
-    return () => { mounted = false; };
-  }, [isMapOnly]);
+  // Управляем видимостью через style на DOM-элементе напрямую
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.style.opacity = isMapPageActive ? '0' : '1';
+    el.style.transition = 'opacity 300ms ease';
+  }, [isMapPageActive]);
 
-  return (
-    <div
-      ref={ref}
-      className="persistent-map-bg"
-      aria-hidden
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 0,
-        pointerEvents: 'none',
-        // Показываем фон только для map, скрываем для planner (у него своя карта)
-        opacity: isMapOnly ? 1 : (leftContent === 'planner' ? 0 : 0.85),
-        transition: 'opacity 300ms ease'
-      }}
-    />
-  );
+  // Компонент не рендерит ничего в дерево React — карта монтируется в body напрямую
+  return null;
 };
 
 export default PersistentMapBackground;

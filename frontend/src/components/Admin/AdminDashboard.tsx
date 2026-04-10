@@ -1,34 +1,102 @@
 import React, { useState, useEffect } from 'react';
-import ModerationHistoryPanel from './ModerationHistoryPanel';
-import AnalyticsDashboard from '../../analytics/dashboard/pages/AnalyticsDashboard';
+import AdminSidebar from './AdminSidebar';
+import AdminContent from './AdminContent';
 import apiClient from '../../api/apiClient';
+import {
+  AdminMenuItemType,
+  AdminNotifications,
+} from '../../types/AdminTypes';
 
 const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'moderation' | 'analytics'>('moderation');
-  const [taskCounts, setTaskCounts] = useState<{
-    markers: number;
-    events: number;
-    posts: number;
-  }>({ markers: 0, events: 0, posts: 0 });
+  const [activeSection, setActiveSection] = useState<string>('moderation');
+  const [activeItem, setActiveItem] = useState<string>('moderation-overview');
+  const [notifications, setNotifications] = useState<AdminNotifications>({
+    moderation: {
+      posts: 0,
+      events: 0,
+      markers: 0,
+      routes: 0,
+      comments: 0,
+      markerComments: 0,
+    },
+    partners: {
+      applications: 0,
+      payouts_pending: 0,
+      refunds_pending: 0,
+    },
+    feedback: {
+      new_complaints: 0,
+      new_suggestions: 0,
+    },
+    analytics: 0,
+    hub: {
+      packs_pending: 0,
+    },
+  });
   const [loading, setLoading] = useState(false);
 
+  // Загрузка счётчиков при монтировании
   useEffect(() => {
-    loadTaskCounts();
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 30000); // Обновляем каждые 30 секунд
+    return () => clearInterval(interval);
   }, []);
 
-  const loadTaskCounts = async () => {
+  const loadNotifications = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await apiClient.get('/moderation/tasks-count', {
-        headers: { Authorization: `Bearer ${token}` }
+      // Загружаем счётчики модерации
+      const moderationRes = await apiClient.get('/moderation/tasks-count', {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (response.data) {
-        setTaskCounts(response.data);
-      }
+      // Загружаем счётчики партнёров
+      const partnersRes = await apiClient
+        .get('/partners/admin/stats', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .catch(() => ({ data: { applications: 0, payouts_pending: 0, refunds_pending: 0 } }));
+
+      // Загружаем счётчики обратной связи
+      const feedbackRes = await apiClient
+        .get('/feedback/admin/stats', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .catch(() => ({ data: { new_complaints: 0, new_suggestions: 0 } }));
+
+      // Загружаем счётчик ожидающих паков сообщества
+      const hubPacksRes = await apiClient
+        .get('/admin/pack-submissions?count=true', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .catch(() => ({ data: { count: 0 } }));
+
+      setNotifications({
+        moderation: {
+          posts: moderationRes.data?.posts || 0,
+          events: moderationRes.data?.events || 0,
+          markers: moderationRes.data?.markers || 0,
+          routes: moderationRes.data?.routes || 0,
+          comments: moderationRes.data?.comments || 0,
+          markerComments: moderationRes.data?.markerComments || 0,
+        },
+        partners: {
+          applications: partnersRes.data?.applications || 0,
+          payouts_pending: partnersRes.data?.payouts_pending || 0,
+          refunds_pending: partnersRes.data?.refunds_pending || 0,
+        },
+        feedback: {
+          new_complaints: feedbackRes.data?.new_complaints || 0,
+          new_suggestions: feedbackRes.data?.new_suggestions || 0,
+        },
+        analytics: 0,
+        hub: {
+          packs_pending: hubPacksRes.data?.count || 0,
+        },
+      });
     } catch (err: any) {
       console.error('Ошибка загрузки счётчиков:', err);
     } finally {
@@ -36,70 +104,23 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleSelectItem = (item: AdminMenuItemType) => {
+    setActiveSection(item.section);
+    setActiveItem(item.id);
+  };
+
   return (
-    <div className="w-full">
-      {/* Навигация по вкладкам */}
-      <div className="mb-6 border-b border-gray-200">
-        <div className="flex space-x-1">
-          <button
-            onClick={() => setActiveTab('moderation')}
-            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-              activeTab === 'moderation'
-                ? 'bg-orange-600 text-white border-b-2 border-orange-600'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-            }`}
-          >
-            Модерация
-          </button>
-          <button
-            onClick={() => setActiveTab('analytics')}
-            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-              activeTab === 'analytics'
-                ? 'bg-blue-600 text-white border-b-2 border-blue-600'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-            }`}
-          >
-            📊 Аналитика
-          </button>
-        </div>
-      </div>
+    <div className="flex h-screen bg-gray-50">
+      {/* Левая сайдбар */}
+      <AdminSidebar
+        activeSection={activeSection}
+        activeItem={activeItem}
+        onSelectItem={handleSelectItem}
+        notifications={notifications}
+      />
 
-      {/* Контент вкладок */}
-      {activeTab === 'moderation' && (
-        <>
-          {/* Счётчики задач модерации */}
-          <div className="mb-6 grid grid-cols-3 gap-4">
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <div className="text-sm text-gray-600 mb-1">Метки</div>
-              <div className="text-2xl font-bold text-orange-600">
-                {loading ? '...' : taskCounts.markers}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">на модерации</div>
-            </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <div className="text-sm text-gray-600 mb-1">События</div>
-              <div className="text-2xl font-bold text-orange-600">
-                {loading ? '...' : taskCounts.events}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">на модерации</div>
-            </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <div className="text-sm text-gray-600 mb-1">Посты</div>
-              <div className="text-2xl font-bold text-orange-600">
-                {loading ? '...' : taskCounts.posts}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">на модерации</div>
-            </div>
-          </div>
-
-          {/* Панель модерации */}
-          <ModerationHistoryPanel />
-        </>
-      )}
-
-      {activeTab === 'analytics' && (
-        <AnalyticsDashboard />
-      )}
+      {/* Основной контент */}
+      <AdminContent activeItem={activeItem} />
     </div>
   );
 };

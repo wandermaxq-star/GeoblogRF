@@ -16,7 +16,8 @@ import {
 // ── Получить pending-контент ────────────────────────────────────────
 export const getPendingContent = async (req, res) => {
   try {
-    const { contentType } = req.params;
+    let { contentType } = req.params;
+    if (contentType === 'marker-comments') contentType = 'marker_comments';
 
     let query;
 
@@ -95,6 +96,21 @@ export const getPendingContent = async (req, res) => {
           ORDER BY c.created_at DESC`;
         break;
 
+      case 'marker_comments':
+        query = `
+          SELECT mc.*, u.username as creator_name,
+                 m.title as source_title, 'markers' as source_type, mc.marker_id as source_id
+          FROM marker_comments mc
+          LEFT JOIN users u ON mc.author_id = u.id
+          LEFT JOIN map_markers m ON mc.marker_id = m.id
+          WHERE mc.status = 'pending'
+            AND NOT EXISTS (
+              SELECT 1 FROM ai_moderation_decisions amd
+              WHERE amd.content_type = 'marker_comments' AND amd.content_id::text = mc.id::text
+            )
+          ORDER BY mc.created_at DESC`;
+        break;
+
       default:
         return res.status(400).json({ message: 'Неверный тип контента.' });
     }
@@ -110,7 +126,8 @@ export const getPendingContent = async (req, res) => {
 // ── Одобрить контент (через фасад) ─────────────────────────────────
 export const approveContent = async (req, res) => {
   try {
-    const { contentType, id } = req.params;
+    let { contentType, id } = req.params;
+    if (contentType === 'marker-comments') contentType = 'marker_comments';
     const adminId = req.user?.id || req.user?.userId;
 
     const result = await facadeApprove(contentType, id, adminId);
@@ -130,7 +147,8 @@ export const approveContent = async (req, res) => {
 // ── Отклонить контент (soft delete через фасад) ─────────────────────
 export const rejectContent = async (req, res) => {
   try {
-    const { contentType, id } = req.params;
+    let { contentType, id } = req.params;
+    if (contentType === 'marker-comments') contentType = 'marker_comments';
     const adminId = req.user?.id || req.user?.userId;
     const { reason } = req.body || {};
 
@@ -155,7 +173,8 @@ export const rejectContent = async (req, res) => {
 // ── Скрыть контент ──────────────────────────────────────────────────
 export const hideContent = async (req, res) => {
   try {
-    const { contentType, id } = req.params;
+    let { contentType, id } = req.params;
+    if (contentType === 'marker-comments') contentType = 'marker_comments';
     const adminId = req.user?.id || req.user?.userId;
 
     const result = await facadeHide(contentType, id, adminId);

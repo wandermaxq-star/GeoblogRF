@@ -282,28 +282,46 @@ export const CustomPopupStylesSelected = styled.div`
 
 export const PopupContainer = styled.div`
   width: 205px;
-  height: 285px;
+  height: auto;
+  max-height: 520px;
+  min-height: 285px;
   display: flex;
   flex-direction: column;
-  background-color: white;
+  overflow: visible;
+  /* Glass-эффект Layer 1 — автоматически переключается с темой */
+  background: var(--glass-l1-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   position: relative;
-  padding: 12px;
+  padding: 8px;
   box-sizing: border-box;
-  overflow: auto;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  border: 2px solid #ffffff; /* Белая рамка для стандартного попапа */
-  border-radius: 8px;
+  overflow: hidden;
+  /* Glass-стиль вместо белого */
+  box-shadow: var(--glass-l1-shadow);
+  border: 2px solid var(--glass-l1-border);
+  border-radius: 14px;
+  transition: all 0.25s ease;
 
-  /* Оранжевая рамка для выбранных (избранных) маркеров */
+  /* Оранжевая рамка и гло для выбранных (избранных) маркеров */
   .selected > & {
-    border: 2px solid #ff9800;
-    box-shadow: 0 0 12px 2px #ff9800, 0 0 20px 4px rgba(255, 152, 0, 0.3);
+    border: 2px solid var(--state-favorite);
+    box-shadow: 0 0 12px 2px var(--state-favorite), 
+                0 0 20px 4px var(--state-favorite-glow),
+                var(--glass-l1-shadow);
     animation: popupSelectedGlow 2s ease-in-out infinite alternate;
   }
 
   @keyframes popupSelectedGlow {
-    from { box-shadow: 0 0 12px 2px #ff9800, 0 0 20px 4px rgba(255, 152, 0, 0.3); }
-    to { box-shadow: 0 0 16px 3px #ff9800, 0 0 30px 6px rgba(255, 152, 0, 0.5); }
+    from { 
+      box-shadow: 0 0 12px 2px var(--state-favorite), 
+                  0 0 20px 4px var(--state-favorite-glow),
+                  var(--glass-l1-shadow);
+    }
+    to { 
+      box-shadow: 0 0 16px 3px var(--state-favorite), 
+                  0 0 30px 6px var(--state-favorite-glow),
+                  var(--glass-l1-shadow);
+    }
   }
 `;
 
@@ -314,19 +332,47 @@ export const CloseButton = styled.button`
   background: none;
   border: none;
   font-size: 1.5em;
-  color: #333;
+  color: var(--glass-text);
   cursor: pointer;
   z-index: 10; // Чтобы был поверх контента
+  transition: color 0.2s ease;
+  opacity: 0.7;
+  
+  &:hover {
+    opacity: 1;
+    color: var(--glass-text);
+  }
 `;
 
-export const PopupContent = styled.div`
+export const PopupContent = styled.div<{ $isExpanded?: boolean }>`
   padding: 0;
-  overflow: visible !important;
+  overflow: ${props => props.$isExpanded ? 'auto' : 'visible'} !important;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0;
   overflow-wrap: break-word;
-  line-height: 1.1;
+  line-height: 1;
+  margin: 0;
+  max-height: ${props => props.$isExpanded ? '520px' : 'none'};
+  transition: overflow 0.3s ease, max-height 0.3s ease;
+  
+  /* Добавляем скролл-бар с glass-стилем */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: var(--glass-l2-bg);
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--glass-text-secondary);
+  }
 `;
 
 export const PopupHeader = styled.div`
@@ -351,55 +397,176 @@ export const Photo = styled.img`
 `;
 
 export const TitleRatingBlock = styled.div`
-  flex-grow: 1; // Занимает все доступное пространство
-  word-break: break-word; /* Добавляем перенос слов для длинных заголовков */
+  flex-grow: 0;
+  word-break: break-word;
+  margin: 0;
+  line-height: 1;
 `;
 
 export const Title = styled.h3`
-  margin: 0 0 4px 0;
+  margin: 0 0 1px 0;
   font-size: 1em;
   font-weight: bold;
-  line-height: 1.1;
-  word-break: break-word; /* Добавляем перенос слов */
+  line-height: 1;
+  word-break: break-word;
+  color: var(--glass-text);
 `;
 
 export const Rating = styled.div`
-  font-size: 0.85em;
-  color: #f1c40f;
+  font-size: 0.75em;
+  font-weight: 600;
+  color: var(--glass-text);
   display: flex;
   align-items: center;
   gap: 4px;
   flex-wrap: nowrap;
-  line-height: 1.1;
+  line-height: 1;
+  margin: 0px 0;
   span {
-    color: #333;
+    color: var(--glass-text);
     white-space: nowrap;
-    font-size: 0.9em;
+    font-size: 0.85em;
+    font-weight: 600;
   }
 `;
 
 export const Description = styled.div<{ $isExpanded?: boolean }>`
-  font-size: 0.85em;
-  line-height: 1.2;
-  color: #555;
-  word-break: break-word; /* Добавляем перенос слов */
+  font-size: 0.75em;
+  font-weight: 600;
+  line-height: 1.05;
+  color: var(--glass-text);
+  word-break: break-word;
+  margin: 1px 0;
+  cursor: pointer;
 
   ${props => !props.$isExpanded && `
     overflow: hidden;
     display: -webkit-box;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3; /* Ограничение до 3 строк */
+    -webkit-line-clamp: 3;
   `}
+`;
+
+export const CommentsSection = styled.div<{ $isExpanded?: boolean }>`
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--glass-l1-border);
+  color: var(--glass-text-secondary);
+`;
+
+export const CommentsList = styled.div<{ $isExpanded?: boolean }>`
+  max-height: ${props => props.$isExpanded ? '400px' : '150px'};
+  overflow-y: auto;
+  margin-bottom: 12px;
+  transition: max-height 0.3s ease;
+`;
+
+export const CommentItem = styled.div`
+  padding: 8px 0;
+  border-left: 2px solid #3498db;
+  padding-left: 8px;
+  margin-bottom: 8px;
+  font-size: 0.70em;
+  font-weight: 600;
+  line-height: 1.3;
+  word-break: break-word;
+  color: var(--glass-text);
+  
+  .comment-author {
+    font-weight: 700;
+    color: var(--glass-text);
+    font-size: 0.80em;
+  }
+  
+  .comment-date {
+    color: var(--glass-text-secondary);
+    font-size: 0.70em;
+    margin-left: 6px;
+    font-weight: 600;
+  }
+  
+  .comment-content {
+    color: var(--glass-text);
+    margin-top: 4px;
+    word-wrap: break-word;
+    font-weight: 600;
+  }
+`;
+
+export const CommentForm = styled.div`
+  margin-top: 8px;
+  padding: 8px;
+  background: #f9f9f9;
+  border-radius: 4px;
+  
+  textarea {
+    width: 100%;
+    padding: 6px;
+    font-size: 0.8em;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    resize: vertical;
+    min-height: 60px;
+    max-height: 120px;
+    font-family: inherit;
+    
+    &:focus {
+      outline: none;
+      border-color: #3498db;
+      box-shadow: 0 0 3px rgba(52, 152, 219, 0.3);
+    }
+  }
+  
+  .comment-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+    
+    button {
+      flex: 1;
+      padding: 5px 10px;
+      font-size: 0.75em;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.2s;
+      
+      &.submit {
+        background: #3498db;
+        color: white;
+        
+        &:hover:not(:disabled) {
+          background: #2980b9;
+        }
+        
+        &:disabled {
+          background: #bdc3c7;
+          cursor: not-allowed;
+        }
+      }
+      
+      &.cancel {
+        background: #ecf0f1;
+        color: #555;
+        
+        &:hover {
+          background: #d5dbdb;
+        }
+      }
+    }
+  }
 `;
 
 export const MetaInfo = styled.div`
   display: flex;
   justify-content: space-between;
-  font-size: 0.8em;
-  color: #777;
-  /* Убедимся, что мета-информация не вызывает горизонтального переполнения */
+  font-size: 0.70em;
+  font-weight: 600;
+  color: var(--glass-text);
   overflow-wrap: break-word;
-  line-height: 1.1;
+  line-height: 1;
+  transition: color 0.2s ease;
+  margin: 0.5px 0;
 `;
 
 export const Author = styled.span`
@@ -408,59 +575,69 @@ export const Author = styled.span`
 `;
 
 export const DateInfo = styled.span`
+  font-weight: 600;
   word-break: break-word; /* Добавляем перенос слов */
 `;
 
 export const Actions = styled.div`
   display: flex;
-  justify-content: space-around;
-  gap: 8px;
-  flex-wrap: wrap; /* Позволяем кнопкам переноситься, если не помещаются */
-  /* Убедимся, что кнопки действий не вызывают горизонтального переполнения */
-  overflow-wrap: break-word;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  width: 100%;
 `;
 
 export const ActionButton = styled.button<{ $buttonColor?: string }>`
   background: none;
   border: none;
-  font-size: 0.8em;
-  color: ${props => props.$buttonColor || '#3498db'}; // Используем переданный цвет или дефолтный синий
+  font-size: 0.70em;
+  font-weight: 600;
+  color: var(--glass-text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 4px 8px;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 5px;
+  min-width: 32px;
   border-radius: 4px;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
   word-break: break-word;
+  white-space: nowrap;
 
   &:hover {
-    background-color: #f0f0f0;
+    background-color: var(--glass-l2-bg);
+    color: var(--glass-text);
   }
 `;
 
 export const Hashtags = styled.div`
   display: flex;
-  flex-wrap: nowrap;
-  overflow-x: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 3px;
   width: 100%;
   cursor: pointer;
+  margin: 1px 0 0 0;
+  line-height: 1;
 `;
 
 export const Hashtag = styled.span`
-  font-size: 0.8em;
-  background-color: #ecf0f1;
-  color: #555;
-  padding: 3px 8px;
-  border-radius: 12px;
+  font-size: 0.64em;
+  font-weight: 600;
+  background-color: var(--glass-l2-bg);
+  color: var(--glass-text);
+  padding: 1px 5px;
+  border-radius: 10px;
   white-space: nowrap;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+  border: 1px solid var(--glass-l2-border);
+  line-height: 1.1;
+  
   &:hover {
-    background: #d1eaff;
+    background: var(--glass-l2-bg-hover);
+    color: var(--glass-text);
   }
 `;
 
@@ -468,6 +645,37 @@ export const Hashtag = styled.span`
 export const LegendButton = styled.button`
   /* Устаревший компонент - не используется */
   display: none;
+`;
+
+/* === Дополнительные компоненты для PopupContainer === */
+
+/* Text для количества оценок (рейтинг) */
+export const RatingCount = styled.span`
+  font-size: 0.70em;
+  font-weight: 600;
+  color: var(--glass-text);
+  margin-left: 4px;
+  transition: color 0.2s ease;
+`;
+
+/* Text для процента заполненности маркера */
+export const CompletenessPercent = styled.span`
+  font-weight: 600;
+  color: var(--glass-text);
+  font-size: 11px;
+  transition: color 0.2s ease;
+`;
+
+/* Container для feedback/error сообщений */
+export const FeedbackMessage = styled.div`
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--glass-l2-bg);
+  border: 1px solid var(--glass-l2-border);
+  color: var(--glass-text-secondary);
+  font-size: 0.85em;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
 `;
 
 export const SearchBarContainer = styled.div`

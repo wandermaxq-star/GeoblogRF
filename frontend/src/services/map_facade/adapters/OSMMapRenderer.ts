@@ -1,6 +1,6 @@
 import type { IMapRenderer, MapConfig, UnifiedMarker, PersistedRoute, GeoPoint, LatLng } from '../IMapRenderer';
 import type { DomainGeoPoint, PolylineStyle, IMapObjectHandle } from '../types';
-import L from 'leaflet';
+import * as L from 'leaflet';
 
 export class OSMMapRenderer implements IMapRenderer {
   clear?(): void {
@@ -122,6 +122,7 @@ export class OSMMapRenderer implements IMapRenderer {
       center: [lat, lon],
       zoom,
       zoomControl: true,
+      closePopupOnClick: false,
     });
 
     // Сохраняем ссылку на созданную карту на контейнере для последующего корректного удаления

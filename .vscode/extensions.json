@@ -1,5 +1,7 @@
 {
     "recommendations": [
-        "gigacode.gigacode-vscode"
+        "gigacode.gigacode-vscode",
+        "koda.koda-cli-vscode-ide-companion",
+        "koda.koda"
     ]
 }

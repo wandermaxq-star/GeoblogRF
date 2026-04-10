@@ -77,14 +77,14 @@ const PanelTitle = styled.h2`
 `;
 
 // Кнопки управления
-const ControlButton = styled.button<{ active?: boolean }>`
+const ControlButton = styled.button<{ $active?: boolean }>`
   width: 100%;
   padding: 12px 16px;
-  border: 2px solid ${props => props.active ? '#3b82f6' : '#e5e7eb'};
+  border: 2px solid ${props => props.$active ? '#3b82f6' : '#e5e7eb'};
   border-radius: 8px;
   margin-bottom: 10px;
-  background: ${props => props.active ? '#f0f9ff' : 'white'};
-  color: ${props => props.active ? '#1e40af' : '#374151'};
+  background: ${props => props.$active ? '#f0f9ff' : 'white'};
+  color: ${props => props.$active ? '#1e40af' : '#374151'};
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -128,8 +128,8 @@ const PreviewArea = styled.div`
 `;
 
 // Блок контента
-const ContentBlock = styled.div<{ isSelected?: boolean }>`
-  border: ${props => props.isSelected ? '2px solid #3b82f6' : '1px solid #e5e7eb'};
+const ContentBlock = styled.div<{ $isSelected?: boolean }>`
+  border: ${props => props.$isSelected ? '2px solid #3b82f6' : '1px solid #e5e7eb'};
   border-radius: 8px;
   background: white;
   position: relative;
@@ -514,7 +514,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
           {/* Переключатель типа поста */}
           <div className="pc-toggle-group">
             <ControlButton
-              active={postType === 'simple'}
+              $active={postType === 'simple'}
               onClick={() => setPostType('simple')}
               className="pc-btn-full"
             >
@@ -522,7 +522,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
               Простой
             </ControlButton>
             <ControlButton
-              active={postType === 'guide'}
+              $active={postType === 'guide'}
               onClick={() => setPostType('guide')}
               className="pc-btn-full"
             >
@@ -533,7 +533,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
           
           {/* Кнопки управления */}
           <ControlButton
-            active={selectedBlock === 'title'}
+            $active={selectedBlock === 'title'}
             onClick={() => setSelectedBlock('title')}
           >
             <Type size={16} />
@@ -541,7 +541,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
           </ControlButton>
           
           <ControlButton
-            active={selectedBlock === 'description'}
+            $active={selectedBlock === 'description'}
             onClick={() => setSelectedBlock('description')}
           >
             <Type size={16} />
@@ -549,7 +549,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
           </ControlButton>
           
           <ControlButton
-            active={postData.map.visible}
+            $active={postData.map.visible}
             onClick={toggleMap}
           >
             <Map size={16} />
@@ -557,7 +557,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
           </ControlButton>
           
           <ControlButton
-            active={postData.images.visible}
+            $active={postData.images.visible}
             onClick={toggleImages}
           >
             <Image size={16} />
@@ -588,8 +588,8 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
               <div className="pc-section">
                 <div className="pc-label-sm">Фон карты</div>
                 <div className="pc-btn-row">
-                  <ControlButton active={postData.map.base === 'opentopo'} onClick={() => setPostData(prev => ({ ...prev, map: { ...prev.map, base: 'opentopo' } }))}>OpenTopoMap</ControlButton>
-                  <ControlButton active={postData.map.base === 'alidade'} onClick={() => setPostData(prev => ({ ...prev, map: { ...prev.map, base: 'alidade' } }))}>Alidade Smooth</ControlButton>
+                  <ControlButton $active={postData.map.base === 'opentopo'} onClick={() => setPostData(prev => ({ ...prev, map: { ...prev.map, base: 'opentopo' } }))}>OpenTopoMap</ControlButton>
+                  <ControlButton $active={postData.map.base === 'alidade'} onClick={() => setPostData(prev => ({ ...prev, map: { ...prev.map, base: 'alidade' } }))}>Alidade Smooth</ControlButton>
                 </div>
               </div>
               <h3 className="pc-section-header">Добавить на карту</h3>
@@ -766,7 +766,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
           <PreviewArea>
             {/* Заголовок */}
             <ContentBlock
-              isSelected={selectedBlock === 'title'}
+              $isSelected={selectedBlock === 'title'}
               onClick={() => setSelectedBlock('title')}
             >
               <TitleBlock
@@ -779,7 +779,7 @@ const PostConstructor: React.FC<PostConstructorProps> = ({ onSave, onClose }) =>
             
             {/* Описание */}
             <ContentBlock
-              isSelected={selectedBlock === 'description'}
+              $isSelected={selectedBlock === 'description'}
               onClick={() => setSelectedBlock('description')}
             >
               <TextBlock

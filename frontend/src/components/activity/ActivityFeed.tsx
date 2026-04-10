@@ -238,12 +238,15 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ className }) => {
   }, []);
 
   // Загрузка при изменении фильтров
+  // ВАЖНО: loadActivities и loadStats намеренно не в deps — они объявлены через useCallback
+  // и стабильны. Включение их вызовет бесконечный цикл т.к. filters входит в их deps.
   useEffect(() => {
     if (user) {
       loadActivities(true);
       loadStats();
     }
-  }, [user, filters, loadActivities, loadStats]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, filters.limit, filters.activity_types, filters.target_types]);
 
   // Автообновление каждые 30 секунд
   useEffect(() => {
